@@ -12,7 +12,7 @@ class Command(BaseCommand):
         from django.conf import settings
         args = map(unicode.lower, args)
         for k in dir(settings):
-            if k.lower() == k:
+            if k.upper() == k:
                 v = getattr(settings, k)
                 found = not bool(args)
                 for arg in args:
