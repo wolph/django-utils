@@ -10,7 +10,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from django.conf import settings
-        args = map(unicode.lower, args)
+        args = map(str.lower, args)
         for k in dir(settings):
             if k.upper() == k:
                 v = getattr(settings, k)
