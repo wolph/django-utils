@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 import pprint
 
+
 class Command(BaseCommand):
     help = '''Get a list of the current settings, any arguments given will be
     used to match the settings name (case insensitive).

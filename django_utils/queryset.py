@@ -1,5 +1,6 @@
 import gc
 
+
 def queryset_iterator(queryset, chunksize=1000, getfunc=getattr):
     '''''
     Iterate over a Django Queryset ordered by the primary key
@@ -9,7 +10,8 @@ def queryset_iterator(queryset, chunksize=1000, getfunc=getattr):
     memory. Using the iterator() method only causes it to not preload all the
     classes.
 
-    Note that the implementation of the iterator does not support ordered query sets.
+    Note that the implementation of the iterator does not support ordered
+    query sets.
     '''
     pk = 0
 
