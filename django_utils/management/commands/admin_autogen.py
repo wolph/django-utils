@@ -47,7 +47,7 @@ class Command(BaseCommand):
 
         if not args:
             print >>sys.stderr, 'This command requires a (list of) app(s)'
-            for app in installed_apps:
+            for app in sorted(installed_apps):
                 print >>sys.stderr, '\t%r' % app
 
     def handle_app(self, app, **options):
