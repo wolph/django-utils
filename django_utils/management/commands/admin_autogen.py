@@ -1,3 +1,4 @@
+import sys
 from django.core.management.base import BaseCommand
 from django.db.models.loading import get_models
 from django.db import models
@@ -33,6 +34,7 @@ class Command(BaseCommand):
 
         installed_apps = dict((a.__name__.rsplit('.', 1)[0], a)
             for a in models.get_apps())
+
         for arg in args:
             app = installed_apps.get(arg)
             if app:
@@ -42,6 +44,11 @@ class Command(BaseCommand):
 
         for app in apps:
             self.handle_app(app, **kwargs)
+
+        if not args:
+            print >>sys.stderr, 'This command requires a (list of) app(s)'
+            for app in installed_apps:
+                print >>sys.stderr, '\t%r' % app
 
     def handle_app(self, app, **options):
         models_dict = {}
