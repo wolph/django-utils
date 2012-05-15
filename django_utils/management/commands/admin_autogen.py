@@ -71,6 +71,11 @@ class Command(BaseCommand):
 
             parent_fields = model._meta.parents.values()
 
+            for field in model._meta.local_many_to_many:
+                if(field.related.parent_model.objects.all()[:100].count()
+                        <= 100):
+                    model_dict['raw_id_fields'].append(field.name)
+
             for field in model._meta.fields:
                 if field in parent_fields:
                     continue
@@ -80,8 +85,8 @@ class Command(BaseCommand):
 
                 if isinstance(field, LIST_FILTER):
                     if isinstance(field, models.ForeignKey):
-                        related_objects = field.related.parent_model.objects
-                        if related_objects.all()[:100].count() <= 100:
+                        if(field.related.parent_model.objects.all()[:100]
+                                .count() <= 100):
                             model_dict['list_filter'].append(field.name)
                         else:
                             model_dict['raw_id_fields'].append(field.name)
@@ -113,6 +118,7 @@ class Command(BaseCommand):
 
         print 'import models'
         print 'from django.contrib import admin'
+        print
 
         for name, model in sorted(models_dict.iteritems()):
             print '\n\nclass %sAdmin(admin.ModelAdmin):' % name
@@ -132,8 +138,7 @@ class Command(BaseCommand):
 
                     print '\n'.join(row_parts)
 
-        print '\n'
+        print '\n\n'
         for name in sorted(models_dict):
             print 'admin.site.register(models.%s, %sAdmin)' % (name, name)
-        print
 
