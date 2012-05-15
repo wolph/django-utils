@@ -15,7 +15,11 @@ setup(
         not included with the standard Django install''',
     url='https://github.com/WoLpH/django-utils',
     license = 'BSD',
-    packages=['django_utils', 'django_utils.management.commands'],
+    packages=[
+        'django_utils',
+        'django_utils.management',
+        'django_utils.management.commands',
+    ],
     long_description=long_description,
 #    test_suite='nose.collector',
 #    setup_requires=['nose'],
