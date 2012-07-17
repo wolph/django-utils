@@ -25,6 +25,8 @@ PREPOPULATED_FIELDS = {
     'slug': ('name',)
 }
 
+LIST_FILTER_TRESHOLD = 25
+RAW_ID_THRESHOLD = 100
 
 class Command(BaseCommand):
 
@@ -85,11 +87,17 @@ class Command(BaseCommand):
 
                 if isinstance(field, LIST_FILTER):
                     if isinstance(field, models.ForeignKey):
-                        if(field.related.parent_model.objects.all()[:100]
-                                .count() <= 100):
-                            model_dict['list_filter'].append(field.name)
-                        else:
+                        related_count = (field.related.parent_model.objects
+                            .all()
+                            [:max(LIST_FILTER_TRESHOLD, RAW_ID_THRESHOLD)]
+                            .count()
+                        )
+
+                        if related_count >= RAW_ID_THRESHOLD:
                             model_dict['raw_id_fields'].append(field.name)
+
+                        if related_count >= LIST_FILTER_TRESHOLD:
+                            model_dict['list_filter'].append(field.name)
                     else:
                         model_dict['list_filter'].append(field.name)
 
