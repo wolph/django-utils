@@ -1,8 +1,9 @@
 from django.db.models import base
-from python_utils import converters
+from django.db import models
+from python_utils import formatters
 
 
-class ModelBase(base.ModelBase):
+class ModelBaseMeta(base.ModelBase):
     '''
     Model base with more readable naming convention
 
@@ -15,7 +16,7 @@ class ModelBase(base.ModelBase):
 
     def __new__(cls, name, bases, attrs):
         class_ = base.ModelBase.__new__(cls, name, bases, attrs)
-        module_name = converters.camel_to_underscore(name)
+        module_name = formatters.camel_to_underscore(name)
 
         app_label = class_.__module__.split('.')[-2]
         db_table = '%s_%s' % (app_label, module_name)
@@ -23,4 +24,9 @@ class ModelBase(base.ModelBase):
             class_._meta.db_table = db_table
 
         return class_
+
+class CreatedAtModelBase(models.Model):
+    __metaclass__ = ModelBaseMeta
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 

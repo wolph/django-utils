@@ -1,3 +1,4 @@
+import django_utils
 import os
 from setuptools import setup
 
@@ -7,23 +8,23 @@ else:
     long_description = 'See http://pypi.python.org/pypi/django-utils/'
 
 setup(
-    name = 'django-utils',
-    version = '1.0',
-    author = 'Rick van Hattem',
-    author_email = 'Rick.van.Hattem@Fawo.nl',
-    description = '''Django Utils is a module with some convenient utilities
-        not included with the standard Django install''',
-    url='https://github.com/WoLpH/django-utils',
-    license = 'BSD',
+    name=django_utils.__name__,
+    version=django_utils.__version__,
+    author=django_utils.__author__,
+    author_email=django_utils.__author_email__,
+    description=django_utils.__description__,
+    url=django_utils.__url__,
+    license='BSD',
     packages=[
         'django_utils',
         'django_utils.management',
         'django_utils.management.commands',
     ],
     long_description=long_description,
-#    test_suite='nose.collector',
-#    setup_requires=['nose'],
+    test_suite='nose.collector',
+    setup_requires=['nose'],
     classifiers=[
         'License :: OSI Approved :: BSD License',
     ],
 )
+

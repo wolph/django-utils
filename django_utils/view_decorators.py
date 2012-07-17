@@ -1,3 +1,5 @@
+import sys
+print sys.path
 import anyjson
 from django import shortcuts as django_shortcuts
 from django import http
