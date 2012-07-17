@@ -1,4 +1,4 @@
-__name__ = 'django-utils'
+__name__ = 'django-utils2'
 __version__ = '1.1'
 __author__ = 'Rick van Hattem'
 __author_email__ = 'Rick.van.Hattem@Fawo.nl'
