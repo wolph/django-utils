@@ -96,7 +96,7 @@ class Command(BaseCommand):
                         if related_count >= RAW_ID_THRESHOLD:
                             model_dict['raw_id_fields'].append(field.name)
 
-                        if related_count >= LIST_FILTER_TRESHOLD:
+                        if related_count <= LIST_FILTER_TRESHOLD:
                             model_dict['list_filter'].append(field.name)
                     else:
                         model_dict['list_filter'].append(field.name)
