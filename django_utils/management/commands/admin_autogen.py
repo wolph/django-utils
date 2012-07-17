@@ -1,3 +1,4 @@
+import re
 import sys
 from django.core.management.base import BaseCommand
 from django.db.models.loading import get_models
@@ -31,26 +32,23 @@ RAW_ID_THRESHOLD = 100
 class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
-        apps = []
-        self.models = []
+        self.model_res = []
 
         installed_apps = dict((a.__name__.rsplit('.', 1)[0], a)
             for a in models.get_apps())
-
-        for arg in args:
-            app = installed_apps.get(arg)
-            if app:
-                apps.append(app)
-            else:
-                self.models.append(arg.lower())
-
-        for app in apps:
-            self.handle_app(app, **kwargs)
 
         if not args:
             print >>sys.stderr, 'This command requires a (list of) app(s)'
             for app in sorted(installed_apps):
                 print >>sys.stderr, '\t%r' % app
+            return
+
+        args = list(args)
+        app = installed_apps.get(args.pop(0))
+        for arg in args:
+            self.model_res.append(re.compile(arg, re.IGNORECASE))
+
+        self.handle_app(app, **kwargs)
 
     def handle_app(self, app, **options):
         models_dict = {}
@@ -59,8 +57,12 @@ class Command(BaseCommand):
             name = model.__name__
             field_names = []
 
-            if self.models and name.lower() not in self.models:
-                continue
+            if self.model_res:
+                for model_re in self.model_res:
+                    if model_re.search(name):
+                        break
+                else:
+                    continue
 
             models_dict[name] = model_dict = {
                 'list_display': [],
