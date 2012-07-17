@@ -1,5 +1,5 @@
 __name__ = 'django-utils'
-__version__ = '1.0'
+__version__ = '1.1'
 __author__ = 'Rick van Hattem'
 __author_email__ = 'Rick.van.Hattem@Fawo.nl'
 __description__ = ('''Django Utils is a module with some convenient '''

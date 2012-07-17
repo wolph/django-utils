@@ -20,6 +20,10 @@ setup(
         'django_utils.management',
         'django_utils.management.commands',
     ],
+    install_requires=[
+        'python-utils>=1.1.1',
+        'anyjson>=0.3.0'
+    ],
     long_description=long_description,
     test_suite='nose.collector',
     setup_requires=['nose'],
