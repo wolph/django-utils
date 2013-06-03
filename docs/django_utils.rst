@@ -39,4 +39,5 @@ Subpackages
 .. toctree::
 
     django_utils.management
+    django_utils.templatetags
 
