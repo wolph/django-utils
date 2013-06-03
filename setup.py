@@ -1,6 +1,6 @@
-import django_utils
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
+import django_utils
 
 if os.path.isfile('README.rst'):
     long_description = open('README.rst').read()
@@ -15,20 +15,18 @@ setup(
     description=django_utils.__description__,
     url=django_utils.__url__,
     license='BSD',
-    packages=[
-        'django_utils',
-        'django_utils.management',
-        'django_utils.management.commands',
-    ],
+    packages=find_packages(),
     install_requires=[
         'python-utils>=1.1.1',
         'anyjson>=0.3.0'
     ],
     long_description=long_description,
     test_suite='nose.collector',
-    setup_requires=['nose'],
-    classifiers=[
-        'License :: OSI Approved :: BSD License',
+    tests_requires=[
+        'nose',
+        'coverage',
+        'django',
     ],
+    classifiers=['License :: OSI Approved :: BSD License'],
 )
 
