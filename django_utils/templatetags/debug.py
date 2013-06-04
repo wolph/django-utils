@@ -7,30 +7,26 @@ import pprint
 
 register = template.Library()
 
-def dump(value):
-    dict_ = getattr(value, '__dict__', None)
-    if not dict_:
-        dict_ = {}
-        for k in dir(value):
-            v = getattr(value, k, None)
-            if v is not None:
-                dict_[k] = v
-
-    for k in dict_.keys():
-        if k.startswith('__'):
-            dict_.pop(k)
-
-    return dict_
 
 class _Formatter(object):
     formatters_type = {}
     formatters_instance = []
 
+
 class Formatter(_Formatter):
     def __init__(self, max_depth=3):
-        self.max_depth = 3
+        '''Initialize the formatter with a given maximum default depth
 
-    def register(*types):
+        :param max_depth: The maximum depth to print
+        '''
+        self.max_depth = max_depth
+
+    def _register(*types):
+        '''Register a handler for the given type(s)
+
+        :param types: The type(s) to handle
+        :return: The unmodified decorated function
+        '''
         def _register(func):
             for type_ in types:
                 _Formatter.formatters_type[type_] = func
@@ -40,38 +36,166 @@ class Formatter(_Formatter):
 
         return _register
 
-    @register(str)
+    @_register(str)
     def format_str(self, value, depth):
-        return self.format_unicode(unicode(value, 'utf-8', 'replace'))
+        '''Format a string
 
-    @register(unicode)
+        :param value: a str value to format
+        :param depth: the current depth
+        :return: a formatted string
+
+        >>> formatter = Formatter()
+        >>> formatter('test')
+        u'test'
+        '''
+        return self.format_unicode(unicode(value, 'utf-8', 'replace'), depth)
+
+    @_register(int, long)
+    def format_int(self, value, depth):
+        '''Format an integer/long
+
+        :param value: an int/long to format
+        :param depth: the current depth
+        :return: a formatted string
+
+        >>> formatter = Formatter()
+        >>> formatter(1, 1)
+        1
+        >>> formatter(2L, 1)
+        2L
+        '''
+        return value
+
+    @_register(unicode)
     def format_unicode(self, value, depth):
+        '''Format a string
+
+        :param value: a unicode value to format
+        :param depth: the current depth
+        :return: a formatted string
+
+        >>> formatter = Formatter()
+        >>> formatter('x' * 101)
+        u'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...'
+        '''
         if value[100:]:
             value = value[:97] + '...'
         return value
 
-    @register(list)
+    @_register(list)
     def format_list(self, value, depth):
-        for i, v in enumerate(value):
-            value[i] = self(v, depth-1)
-        return value
+        '''Format a string
 
-    @register(dict)
+        :param value: a list to format
+        :param depth: the current depth
+        :return: a formatted string
+
+        >>> formatter = Formatter()
+        >>> formatter(range(5))
+        [0, 1, 2, 3, 4]
+        '''
+        values = []
+        for i, v in enumerate(value):
+            values.append(self(v, depth-1))
+        return values
+
+    @_register(dict)
     def format_dict(self, value, depth):
+        '''Format a string
+
+        :param value: a str value to format
+        :param depth: the current depth
+        :return: a formatted string
+
+        >>> formatter = Formatter()
+        >>> formatter({'a': 1, 'b': 2}, 5)
+        {'a': 1, 'b': 2}
+        '''
         for k, v in value.items():
             value[k] = self(v, depth-1)
         return value
 
-    @register(models.Model)
+    @_register(models.Model)
     def format_model(self, value, depth):
+        '''Format a string
+
+        :param value: a str value to format
+        :param depth: the current depth
+        :return: a formatted string
+
+        >>> formatter = Formatter()
+        >>> from django.contrib.auth.models import User
+        >>> user = User()
+        >>> str(formatter(user, 5))[:30]
+        "{'username': u'', 'first_name'"
+        '''
         return self.format_dict(value.__dict__, depth)
 
+    def format_object(self, value, depth):
+        '''Format an object
+
+        :param value: an object to format
+        :param depth: the current depth
+        :return: a formatted string
+
+        >>> formatter = Formatter()
+        >>> class Spam(object):
+        ...     x = 1
+        ...     y = 2
+        >>> spam = Spam()
+        >>> formatter(spam, 1)
+        "<Spam {'x': u'1', 'y': u'2'}>"
+        '''
+        dict_ = getattr(value, '__dict__', None)
+        if dict_:
+            dict_ = dict(dict_)
+        else:
+            dict_ = {}
+            for k in dir(value):
+                v = getattr(value, k, None)
+                if v is not None:
+                    dict_[k] = v
+
+        for k in dict_.keys():
+            if k.startswith('__'):
+                dict_.pop(k)
+
+        for k, v in dict_.items():
+            dict_[k] = self(v, depth-1)
+
+        if hasattr(value, '__class__') and hasattr(value.__class__, '__name__'):
+            name = value.__class__.__name__
+        else:
+            module = __name__
+            name = str(value).replace(module + '.', '', 1)
+
+        return '<%s %s>' % (
+            name,
+            pprint.pformat(dict_),
+        )
+
+
     def __call__(self, value, depth=None):
+        '''Call the formatter with the given value to format and optional depth
+
+        >>> formatter = Formatter()
+        >>> class Eggs: pass
+        >>> formatter(Eggs)
+        '<Eggs {}>'
+        '''
         # Specific is None check since we don't want to replace 0
         if depth is None:
             depth = self.max_depth
+        elif depth <= 0:
+            return self.format_unicode(unicode(value), depth-1)
 
         formatter = self.formatters_type.get(type(value))
+        # print 'value: %s, type: %s, formatter: %s' % (
+        #     value,
+        #     type(value),
+        #     formatter,
+        # )
+
         if not formatter:
             for k, v in self.formatters_instance:
                 if isinstance(value, k):
@@ -79,12 +203,18 @@ class Formatter(_Formatter):
                     break
 
         if not formatter:
-            formatter = lambda self, v, depth: pprint.pformat(v)
+            formatter = Formatter.format_object
+                #formatter = lambda self, v, depth: pprint.pformat(v)
 
         return formatter(self, value, depth)
 
 @register.filter
 def debug(value, max_depth=3):
+    '''Debug template filter to print variables in a pretty way
+
+    >>> debug(123).strip()
+    u'<pre style="border: 1px solid #fcc; background-color: #ccc;">123</pre>'
+    '''
     value = copy.deepcopy(value)
     formatter = Formatter(max_depth=max_depth)
     formatted_safe = mark_safe('''
