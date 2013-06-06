@@ -164,7 +164,7 @@ class Formatter(_Formatter):
         ...     y = 2
         >>> spam = Spam()
         >>> formatter(spam, 1)
-        "<Spam {'x': u'1', 'y': u'2'}>"
+        ('<Spam', {'x': u'1', 'y': u'2'}, '>')
         '''
         dict_ = getattr(value, '__dict__', None)
         if dict_:
@@ -190,9 +190,10 @@ class Formatter(_Formatter):
             name = str(value).replace(module + '.', '', 1)
 
         #return dict_
-        return '<%s %s>' % (
-            name,
-            pprint.pformat(dict_),
+        return (
+            '<%s' % name,
+            dict_,
+            '>',
         )
 
     def __call__(self, value, depth=None):
@@ -201,7 +202,7 @@ class Formatter(_Formatter):
         >>> formatter = Formatter()
         >>> class Eggs: pass
         >>> formatter(Eggs)
-        '<Eggs {}>'
+        ('<Eggs', {}, '>')
         '''
         # Specific is None check since we don't want to replace 0
         if depth is None:
