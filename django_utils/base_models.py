@@ -33,3 +33,15 @@ class CreatedAtModelBase(models.Model):
     class Meta:
         abstract = True
 
+
+class NameMixin(object):
+    def __unicode__(self):
+        return self.name
+
+    def __repr__(self):
+        return (u'<%s[%d]: %s>' % (
+            self.__class__.__name__,
+            self.pk,
+            self.name,
+        )).encode('utf-8')
+
