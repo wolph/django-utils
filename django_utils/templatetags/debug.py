@@ -4,6 +4,7 @@ from django.utils.safestring import mark_safe
 from django.db import models
 import copy
 import pprint
+import datetime
 
 register = template.Library()
 
@@ -99,6 +100,25 @@ class Formatter(_Formatter):
             values.append(self(v, depth-1))
         return values
 
+    @_register(datetime.datetime, datetime.date)
+    def format_datetime(self, value, depth):
+        '''Format a date
+
+        :param value: a date to format
+        :param depth: the current depth
+        :return: a formatted string
+
+        >>> formatter = Formatter()
+        >>> formatter(datetime.date(2000, 1, 2))
+        '<date:2000-01-02>'
+        >>> formatter(datetime.datetime(2000, 1, 2, 3, 4, 5, 6))
+        '<datetime:2000-01-02 03:04:05.000006>'
+        '''
+        return '<%s:%s>' % (
+            value.__class__.__name__,
+            value,
+        )
+
     @_register(dict)
     def format_dict(self, value, depth):
         '''Format a string
@@ -153,7 +173,7 @@ class Formatter(_Formatter):
             dict_ = {}
             for k in dir(value):
                 v = getattr(value, k, None)
-                if v is not None:
+                if v is not None and not hasattr(v, '__call__'):
                     dict_[k] = v
 
         for k in dict_.keys():
@@ -169,11 +189,11 @@ class Formatter(_Formatter):
             module = __name__
             name = str(value).replace(module + '.', '', 1)
 
+        #return dict_
         return '<%s %s>' % (
             name,
             pprint.pformat(dict_),
         )
-
 
     def __call__(self, value, depth=None):
         '''Call the formatter with the given value to format and optional depth
