@@ -39,8 +39,9 @@ class Command(BaseCommand):
 
         if not args:
             print >>sys.stderr, 'This command requires a (list of) app(s)'
+            print >>sys.stderr, 'Available apps:'
             for app in sorted(installed_apps):
-                print >>sys.stderr, '\t%r' % app
+                print >>sys.stderr, '    %s' % app
             return
 
         args = list(args)
