@@ -25,8 +25,13 @@ class ModelBaseMeta(base.ModelBase):
 
         return class_
 
-class CreatedAtModelBase(models.Model):
+class ModelBase(models.Model):
     __metaclass__ = ModelBaseMeta
+
+    class Meta:
+        abstract = True
+
+class CreatedAtModelBase(ModelBase):
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -35,8 +40,24 @@ class CreatedAtModelBase(models.Model):
 
 
 class NameMixin(object):
+    '''Mixin to automatically get a unicode and repr string base on the name
+
+    >>> x = NameMixin()
+    >>> x.pk = 123
+    >>> x.name = 'test'
+    >>> repr(x)
+    '<NameMixin[123]: test>'
+    >>> str(x)
+    'test'
+    >>> unicode(x)
+    u'test'
+
+    '''
     def __unicode__(self):
         return self.name
+
+    def __str__(self):
+        return unicode(self).encode('utf-8', 'replace')
 
     def __repr__(self):
         return (u'<%s[%d]: %s>' % (
