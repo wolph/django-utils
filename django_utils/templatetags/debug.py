@@ -13,8 +13,9 @@ class _Formatter(object):
     formatters_type = {}
     formatters_instance = []
 
-
 class Formatter(_Formatter):
+    MAX_LENGTH = 100
+    MAX_LENGTH_DOTS = 3
 
     def __init__(self, max_depth=3):
         '''Initialize the formatter with a given maximum default depth
@@ -77,11 +78,15 @@ class Formatter(_Formatter):
         :return: a formatted string
 
         >>> formatter = Formatter()
-        >>> formatter('x' * 101)
-        u'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...'
+        >>> old_max_length = formatter.MAX_LENGTH
+        >>> formatter.MAX_LENGTH = 10
+        >>> formatter('x' * 11)
+        u'xxxxxxx...'
+        >>> formatter.MAX_LENGTH = old_max_length
         '''
-        if value[100:]:
-            value = value[:97] + '...'
+        if value[self.MAX_LENGTH:]:
+            value = value[:self.MAX_LENGTH - self.MAX_LENGTH_DOTS]
+            value += self.MAX_LENGTH_DOTS * '.'
         return value
 
     @_register(list)
