@@ -4,6 +4,7 @@ from python_utils import formatters
 
 
 class ModelBaseMeta(base.ModelBase):
+
     '''
     Model base with more readable naming convention
 
@@ -25,11 +26,13 @@ class ModelBaseMeta(base.ModelBase):
 
         return class_
 
+
 class ModelBase(models.Model):
     __metaclass__ = ModelBaseMeta
 
     class Meta:
         abstract = True
+
 
 class CreatedAtModelBase(ModelBase):
     updated_at = models.DateTimeField(auto_now=True)
@@ -40,6 +43,7 @@ class CreatedAtModelBase(ModelBase):
 
 
 class NameMixin(object):
+
     '''Mixin to automatically get a unicode and repr string base on the name
 
     >>> x = NameMixin()
@@ -53,6 +57,7 @@ class NameMixin(object):
     u'test'
 
     '''
+
     def __unicode__(self):
         return self.name
 
@@ -65,4 +70,3 @@ class NameMixin(object):
             self.pk,
             self.name,
         )).encode('utf-8')
-

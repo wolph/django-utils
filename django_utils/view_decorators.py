@@ -59,10 +59,10 @@ def _process_response(request, response):
                     </html>
                     ''' % (title, output)
                     response = http.HttpResponse(output,
-                        mimetype='text/html')
+                                                 mimetype='text/html')
                 else:
                     response = http.HttpResponse(output,
-                        mimetype='text/plain')
+                                                 mimetype='text/plain')
 
                 return response
             else:
@@ -84,8 +84,8 @@ def _process_response(request, response):
         elif response is None:
             render_to_response = django_shortcuts.render_to_response
 
-            return render_to_response(request.template,
-                context_instance=request.context)
+            return render_to_response(
+                request.template, context_instance=request.context)
 
         else:
             raise UnknownViewResponseError(
@@ -148,4 +148,3 @@ def env(function=None, login_required=False):
             return _env
     else:
         return lambda f: env(f, login_required)
-

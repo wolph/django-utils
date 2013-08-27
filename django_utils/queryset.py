@@ -27,4 +27,3 @@ def queryset_iterator(queryset, chunksize=1000, getfunc=getattr):
             pk = getfunc(row, 'pk')
             yield row
         gc.collect()
-

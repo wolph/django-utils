@@ -29,13 +29,14 @@ PREPOPULATED_FIELDS = {
 LIST_FILTER_TRESHOLD = 25
 RAW_ID_THRESHOLD = 100
 
+
 class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         self.model_res = []
 
         installed_apps = dict((a.__name__.rsplit('.', 1)[0], a)
-            for a in models.get_apps())
+                              for a in models.get_apps())
 
         if not args:
             print >>sys.stderr, 'This command requires a (list of) app(s)'
@@ -90,7 +91,8 @@ class Command(BaseCommand):
 
                 if isinstance(field, LIST_FILTER):
                     if isinstance(field, models.ForeignKey):
-                        related_count = (field.related.parent_model.objects
+                        related_count = (
+                            field.related.parent_model.objects
                             .all()
                             [:max(LIST_FILTER_TRESHOLD, RAW_ID_THRESHOLD)]
                             .count()
@@ -152,4 +154,3 @@ class Command(BaseCommand):
         print '\n\n'
         for name in sorted(models_dict):
             print 'admin.site.register(models.%s, %sAdmin)' % (name, name)
-

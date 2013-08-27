@@ -15,6 +15,7 @@ class _Formatter(object):
 
 
 class Formatter(_Formatter):
+
     def __init__(self, max_depth=3):
         '''Initialize the formatter with a given maximum default depth
 
@@ -97,7 +98,7 @@ class Formatter(_Formatter):
         '''
         values = []
         for i, v in enumerate(value):
-            values.append(self(v, depth-1))
+            values.append(self(v, depth - 1))
         return values
 
     @_register(datetime.datetime, datetime.date)
@@ -132,7 +133,7 @@ class Formatter(_Formatter):
         {'a': 1, 'b': 2}
         '''
         for k, v in value.items():
-            value[k] = self(v, depth-1)
+            value[k] = self(v, depth - 1)
         return value
 
     @_register(models.Model)
@@ -181,7 +182,7 @@ class Formatter(_Formatter):
                 dict_.pop(k)
 
         for k, v in dict_.items():
-            dict_[k] = self(v, depth-1)
+            dict_[k] = self(v, depth - 1)
 
         if hasattr(value, '__class__') and hasattr(value.__class__, '__name__'):
             name = value.__class__.__name__
@@ -189,7 +190,7 @@ class Formatter(_Formatter):
             module = __name__
             name = str(value).replace(module + '.', '', 1)
 
-        #return dict_
+        # return dict_
         return (
             '<%s' % name,
             dict_,
@@ -208,7 +209,7 @@ class Formatter(_Formatter):
         if depth is None:
             depth = self.max_depth
         elif depth <= 0:
-            return self.format_unicode(unicode(value), depth-1)
+            return self.format_unicode(unicode(value), depth - 1)
 
         formatter = self.formatters_type.get(type(value))
         # print 'value: %s, type: %s, formatter: %s' % (
@@ -225,9 +226,10 @@ class Formatter(_Formatter):
 
         if not formatter:
             formatter = Formatter.format_object
-                #formatter = lambda self, v, depth: pprint.pformat(v)
+                # formatter = lambda self, v, depth: pprint.pformat(v)
 
         return formatter(self, value, depth)
+
 
 @register.filter
 def debug(value, max_depth=3):
@@ -242,4 +244,3 @@ def debug(value, max_depth=3):
     <pre style="border: 1px solid #fcc; background-color: #ccc;">%s</pre>
     ''' % conditional_escape(pprint.pformat(formatter(value))))
     return formatted_safe
-

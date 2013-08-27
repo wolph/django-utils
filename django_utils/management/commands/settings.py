@@ -24,4 +24,3 @@ class Command(BaseCommand):
                 if found:
                     print '%s: ' % k,
                     pprint.pprint(v)
-

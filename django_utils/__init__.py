@@ -6,4 +6,3 @@ __description__ = (
     '''Django Utils is a module with some convenient utilities not included '''
     '''with the standard Django install''')
 __url__ = 'https://github.com/WoLpH/django-utils'
-
