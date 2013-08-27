@@ -34,4 +34,3 @@ setup(
     ],
     classifiers=['License :: OSI Approved :: BSD License'],
 )
-
