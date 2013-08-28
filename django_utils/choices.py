@@ -5,7 +5,7 @@ Usage
 Create a :py:class:`Choices` class and add :py:class:`Choice` objects to the
 class to define your choices.
 
-Example: 
+Example:
 
 The normal Django version:
 

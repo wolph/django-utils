@@ -13,6 +13,7 @@ class _Formatter(object):
     formatters_type = {}
     formatters_instance = []
 
+
 class Formatter(_Formatter):
     MAX_LENGTH = 100
     MAX_LENGTH_DOTS = 3
@@ -189,7 +190,8 @@ class Formatter(_Formatter):
         for k, v in dict_.items():
             dict_[k] = self(v, depth - 1)
 
-        if hasattr(value, '__class__') and hasattr(value.__class__, '__name__'):
+        if(hasattr(value, '__class__') and
+                hasattr(value.__class__, '__name__')):
             name = value.__class__.__name__
         else:
             module = __name__
