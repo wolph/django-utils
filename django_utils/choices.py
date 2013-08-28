@@ -5,7 +5,8 @@ Usage
 Create a :py:class:`Choices` class and add :py:class:`Choice` objects to the
 class to define your choices.
 
-Example:
+Example with explicit values:
+==============================================================================
 
 The normal Django version:
 
@@ -38,6 +39,44 @@ To reference these properties:
 .. code-block:: python
 
     Human.create(gender=Human.Gender.Male)
+
+Example with implicit values:
+==============================================================================
+
+The normal Django version:
+
+.. code-block:: python
+
+    class SomeModel(models.Model):
+        SOME_ENUM = (
+            (1, 'foo'),
+            (2, 'bar'),
+            (3, 'spam'),
+            (4, 'eggs'),
+        )
+        enum = models.IntegerField(choices=SOME_ENUM, default=1)
+
+The Django Utils Choices version:
+
+.. code-block:: python
+
+    from django_utils import choices
+
+    class SomeModel(models.Model):
+        class Enum(choices.Choices):
+            Foo = choices.Choice()
+            Bar = choices.Choice()
+            Spam = choices.Choice()
+            Eggs = choices.Choice()
+
+        enum = models.IntegerField(
+            choices=Enum.choices, default=SomeModel.Foo)
+
+To reference these properties:
+
+.. code-block:: python
+
+    SomeModel.create(enum=SomeModel.Enum.Spam)
 
 '''
 
