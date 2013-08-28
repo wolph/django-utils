@@ -1,3 +1,46 @@
+'''
+Usage
+------------------------------------------------------------------------------
+
+Create a :py:class:`Choices` class and add :py:class:`Choice` objects to the
+class to define your choices.
+
+Example: 
+
+The normal Django version:
+
+.. code-block:: python
+
+    class Human(models.Model):
+        GENDER = (
+            ('m', 'Male'),
+            ('f', 'Female'),
+            ('o', 'Other'),
+        )
+        gender = models.CharField(max_length=1, choices=GENDER)
+
+The Django Utils Choices version:
+
+.. code-block:: python
+
+    from django_utils import choices
+
+    class Human(models.Model):
+        class Gender(choices.Choices):
+            Male = choices.Choice('m')
+            Female = choices.Choice('f')
+            Other = choices.Choice('o')
+
+        gender = models.CharField(max_length=1, choices=Gender.choices)
+
+To reference these properties:
+
+.. code-block:: python
+
+    Human.create(gender=Human.Gender.Male)
+
+'''
+
 import collections
 
 

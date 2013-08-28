@@ -47,7 +47,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = django_utils.__name__.replace('-', ' ').capitalize()
+project = django_utils.__package_name__.replace('-', ' ').capitalize()
 copyright = u'%s, %s' % (
     datetime.date.today().year,
     django_utils.__author__,
@@ -174,7 +174,7 @@ html_static_path = ['_static']
 # html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = django_utils.__name__ + '-doc'
+htmlhelp_basename = django_utils.__package_name__ + '-doc'
 
 
 # -- Options for LaTeX output --------------------------------------------
@@ -194,8 +194,8 @@ latex_elements = {
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [(
     'index',
-    '%s.tex' % django_utils.__name__,
-    u'%s Documentation' % django_utils.__name__.replace('-', ' ').capitalize(),
+    '%s.tex' % django_utils.__package_name__,
+    u'%s Documentation' % django_utils.__package_name__.replace('-', ' ').capitalize(),
                    django_utils.__author__,
                    'manual',
                    )]
@@ -227,8 +227,8 @@ latex_documents = [(
 # (source start file, name, description, authors, manual section).
 man_pages = [(
     'index',
-    django_utils.__name__,
-    u'%s Documentation' % django_utils.__name__.replace('-', ' ').capitalize(),
+    django_utils.__package_name__,
+    u'%s Documentation' % django_utils.__package_name__.replace('-', ' ').capitalize(),
     [django_utils.__author__],
     1,
 )]
@@ -244,10 +244,10 @@ man_pages = [(
 #  dir menu entry, description, category)
 texinfo_documents = [(
     'index',
-    django_utils.__name__,
-    u'%s Documentation' % django_utils.__name__.replace('-', ' ').capitalize(),
+    django_utils.__package_name__,
+    u'%s Documentation' % django_utils.__package_name__.replace('-', ' ').capitalize(),
     django_utils.__author__,
-    django_utils.__name__,
+    django_utils.__package_name__,
     django_utils.__description__,
     'Miscellaneous',
 )]
@@ -265,7 +265,7 @@ texinfo_documents = [(
 # -- Options for Epub output ---------------------------------------------
 
 # Bibliographic Dublin Core info.
-epub_title = django_utils.__name__.replace('-', ' ').capitalize()
+epub_title = django_utils.__package_name__.replace('-', ' ').capitalize()
 epub_author = django_utils.__author__
 epub_publisher = django_utils.__author__
 epub_copyright = copyright

@@ -1,5 +1,5 @@
 __package_name__ = 'django_utils2'
-__version__ = '1.1'
+__version__ = '1.2'
 __author__ = 'Rick van Hattem'
 __author_email__ = 'Rick.van.Hattem@Fawo.nl'
 __description__ = (

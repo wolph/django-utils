@@ -4,7 +4,7 @@ django_utils Package
 :mod:`django_utils` Package
 ---------------------------
 
-.. automodule:: django_utils.__init__
+.. automodule:: django_utils
     :members:
     :undoc-members:
     :show-inheritance:
@@ -13,6 +13,14 @@ django_utils Package
 -------------------------
 
 .. automodule:: django_utils.base_models
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+:mod:`choices` Module
+-------------------------
+
+.. automodule:: django_utils.choices
     :members:
     :undoc-members:
     :show-inheritance:
