@@ -21,10 +21,11 @@ setuptools.setup(
     license='BSD',
     packages=setuptools.find_packages(),
     install_requires=[
-        'python-utils>=1.1.1',
+        'python-utils>=1.5.0',
         'anyjson>=0.3.0'
     ],
     long_description=long_description,
     test_suite='nose.collector',
     classifiers=['License :: OSI Approved :: BSD License'],
 )
+
