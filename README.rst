@@ -18,5 +18,5 @@ keep extending it.
 
 The library depends on the Python Utils library.
 
-Documentation is available at: http://django-utils.readthedocs.org/en/latest/
+Documentation is available at: http://django-utils2.readthedocs.org/en/latest/
 
