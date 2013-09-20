@@ -1,0 +1,12 @@
+[run]
+branch = True
+source =
+    django_utils
+    tests
+omit =
+    */mock/*
+    */nose/*
+    */django/*
+[paths]
+source =
+    django_utils
