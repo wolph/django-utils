@@ -7,6 +7,7 @@ omit =
     */mock/*
     */nose/*
     */django/*
+    */tests/*
 [paths]
 source =
     django_utils
