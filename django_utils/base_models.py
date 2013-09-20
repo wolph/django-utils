@@ -1,5 +1,6 @@
 from django.db.models import base
 from django.db import models
+from django.template import defaultfilters
 from python_utils import formatters
 
 
@@ -43,7 +44,6 @@ class CreatedAtModelBase(ModelBase):
 
 
 class NameMixin(object):
-
     '''Mixin to automatically get a unicode and repr string base on the name
 
     >>> x = NameMixin()
@@ -67,6 +67,33 @@ class NameMixin(object):
     def __repr__(self):
         return (u'<%s[%d]: %s>' % (
             self.__class__.__name__,
-            self.pk,
+            self.pk or -1,
             self.name,
         )).encode('utf-8')
+
+
+class SlugMixin(NameMixin):
+    '''Mixin to automatically slugify the name and add both a name and slug to
+    the model
+
+    >>> x = NameMixin()
+    >>> x.pk = 123
+    >>> x.name = 'test'
+    >>> repr(x)
+    '<NameMixin[123]: test>'
+    >>> str(x)
+    'test'
+    >>> unicode(x)
+    u'test'
+
+    '''
+
+    def save(self, *args, **kwargs):
+        if not self.slug and self.name:
+            self.slug = defaultfilters.slugify(self.name)
+
+        super(NameMixin, self).save(*args, **kwargs)
+
+    class Meta(object):
+        unique_together = ('slug',)
+

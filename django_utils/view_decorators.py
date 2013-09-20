@@ -1,8 +1,17 @@
-import anyjson
+import json
 from django import shortcuts as django_shortcuts
 from django import http
 from django.template import RequestContext
 from django.contrib.auth import decorators
+from django.conf import settings
+from django.core import serializers
+from django.db import models
+from django.core import urlresolvers
+
+try:
+    from coffin import shortcuts as coffin_shortcuts
+except ImportError:
+    coffin_shortcuts = None
 
 
 class ViewError(Exception):
@@ -12,10 +21,32 @@ class ViewError(Exception):
 class UnknownViewResponseError(ViewError):
     pass
 
+
+def json_default_handler(obj):
+    if hasattr(obj, 'isoformat'):
+        return obj.isoformat()
+    else:
+        raise TypeError('Object of type %s with value of %s is not JSON '
+                        'serializable' % (type(obj), repr(obj)))
+
+
+def redirect(url, *args, **kwargs):
+    if '/' not in url or args or kwargs:
+        url = urlresolvers.reverse(url, args=args, kwargs=kwargs)
+    return http.HttpResponseRedirect(url)
+
+
+def permanent_redirect(url, *args, **kwargs):
+    if '/' not in url or args or kwargs:
+        url = urlresolvers.reverse(url, args=args, kwargs=kwargs)
+    return http.HttpResponsePermanentRedirect(url)
+
+
 REQUEST_PROPERTIES = {
-    'redirect': http.HttpResponseRedirect,
-    'permanent_redirect': http.HttpResponsePermanentRedirect,
+    'redirect': redirect,
+    'permanent_redirect': permanent_redirect,
     'not_found': http.HttpResponseNotFound,
+    'reverse': urlresolvers.reverse,
 }
 
 
@@ -24,6 +55,7 @@ def _prepare_request(request, app, view):
     request.context = RequestContext(request)
     request.context['view'] = view
     request.context['app'] = app
+    request.context['request'] = request
 
     for k, v in REQUEST_PROPERTIES.iteritems():
         setattr(request, k, v)
@@ -38,12 +70,16 @@ def _process_response(request, response):
     pop = False
 
     try:
-        if isinstance(response, (dict, list)):
+        if isinstance(response, (dict, list, models.query.QuerySet)):
             if request.ajax:
-                output = json = anyjson.serialize(response)
+                if isinstance(response, models.query.QuerySet):
+                    output = serializers.serialize('json', response)
+                else:
+                    output = json.dumps(response, default=json_default_handler)
+
                 callback = request.GET.get('callback', False)
                 if callback:
-                    output = '%s(%s)' % (callback, json)
+                    output = '%s(%s)' % (callback, output)
                 if request.GET.get('debug'):
                     title = 'Rendering %(view)r in module %(app)r' % (
                         request.context)
@@ -82,7 +118,12 @@ def _process_response(request, response):
                 return http.HttpResponse(response)
 
         elif response is None:
-            render_to_response = django_shortcuts.render_to_response
+            if request.jinja:
+                assert coffin_shortcuts, ('To use Jinja the `coffin` module '
+                    'must be installed')
+                render_to_response = coffin_shortcuts.render_to_response
+            else:
+                render_to_response = django_shortcuts.render_to_response
 
             return render_to_response(
                 request.template, context_instance=request.context)
@@ -113,17 +154,12 @@ def env(function=None, login_required=False):
         request.ajax = request.is_ajax() or bool(int(
             request.REQUEST.get('ajax', 0)))
         request.context = None
+        request.jinja = getattr(settings, 'DJANGO_UTILS_USE_JINJA', False)
         try:
             name = function.__name__
             app = function.__module__.split('.')[0]
-
             request = _prepare_request(request, app, name)
-
-            if app:
-                request.template = '%s/%s.html' % (app, name)
-            else:
-                request.template = '%s.html' % name
-
+            request.template = '%s/%s.html' % (app, name)
             response = function(request, *args, **kwargs)
 
             return _process_response(request, response)

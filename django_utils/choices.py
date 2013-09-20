@@ -70,7 +70,7 @@ The Django Utils Choices version:
             Eggs = choices.Choice()
 
         enum = models.IntegerField(
-            choices=Enum.choices, default=SomeModel.Foo)
+            choices=Enum.choices, default=Enum.Foo)
 
 To reference these properties:
 
@@ -125,7 +125,21 @@ class ChoicesDict(object):
 class Choice(object):
 
     '''The choice object has an optional label and value. If the value is not
-    given an autoincrementing id (starting from 1) will be used'''
+    given an autoincrementing id (starting from 1) will be used
+
+    >>> choice = Choice('value', 'label')
+    >>> choice
+    <Choice[1]:label>
+    >>> str(choice)
+    'label'
+
+    >>> choice = Choice()
+    >>> choice
+    <Choice[2]:None>
+    >>> str(choice)
+    'None'
+
+    '''
     order = 0
 
     def __init__(self, value=None, label=None):
@@ -145,11 +159,11 @@ class Choice(object):
         return unicode(self).encode('utf-8', 'replace')
 
     def __unicode__(self):
-        value = self.value
-        if isinstance(value, str):
-            return unicode(value, 'utf-8', 'replace')
+        label = self.label
+        if isinstance(label, str):
+            return unicode(label, 'utf-8', 'replace')
         else:
-            return unicode(value)
+            return unicode(label)
 
 
 class ChoicesMeta(type):
@@ -189,5 +203,30 @@ class ChoicesMeta(type):
 
 class Choices(object):
 
-    '''The choices class is what you should inherit in your Django models'''
+    '''The choices class is what you should inherit in your Django models
+
+    >>> choices = Choices()
+    >>> choices.choices[0]
+    Traceback (most recent call last):
+    ...
+    KeyError: 'Key 0 does not exist'
+    >>> choices.choices
+    OrderedDict()
+    >>> str(choices.choices)
+    'OrderedDict()'
+    >>> choices.choices.items()
+    []
+
+    >>> class ChoiceTest(Choices):
+    ...     a = Choice()
+    >>> choices = ChoiceTest()
+    >>> choices.choices.items()
+    [(0, <Choice[3]:a>)]
+    >>> choices.a
+    0
+    >>> choices.choices['a']
+    <Choice[3]:a>
+    >>> choices.choices[0]
+    <Choice[3]:a>
+    '''
     __metaclass__ = ChoicesMeta

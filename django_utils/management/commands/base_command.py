@@ -11,6 +11,7 @@ VERBOSITY_LOG_MAP = {
 
 
 class CustomBaseCommand(BaseCommand):
+    loggers = ()
 
     def __init__(self):
         self.verbosity = DEFAULT_VERBOSITY
@@ -27,7 +28,9 @@ class CustomBaseCommand(BaseCommand):
     def create_logger(self):
         name = self.__class__.__module__.split('.')[-1]
 
-        logger_name = 'management.commands.%s' % name
-        logger = logging.getLogger(logger_name)
-        logger.setLevel(VERBOSITY_LOG_MAP[self.verbosity])
+        loggers = self.loggers + ('management.commands.%s' % name,)
+        for logger_name in loggers:
+            logger = logging.getLogger(logger_name)
+            logger.setLevel(VERBOSITY_LOG_MAP[self.verbosity])
+
         return logger

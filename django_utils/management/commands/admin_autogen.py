@@ -1,6 +1,6 @@
 import re
 import sys
-from django.core.management.base import BaseCommand
+from . import base_command
 from django.db.models.loading import get_models
 from django.db import models
 
@@ -30,9 +30,10 @@ LIST_FILTER_TRESHOLD = 25
 RAW_ID_THRESHOLD = 100
 
 
-class Command(BaseCommand):
+class Command(base_command.CustomBaseCommand):
 
     def handle(self, *args, **kwargs):
+        super(Command, self).handle(*args, **kwargs)
         self.model_res = []
 
         installed_apps = dict((a.__name__.rsplit('.', 1)[0], a)
@@ -115,10 +116,6 @@ class Command(BaseCommand):
                     model_dict['date_hierarchy'] = field_name
 
             for k, vs in sorted(PREPOPULATED_FIELDS.iteritems()):
-                if field_name in field_names \
-                        and not model_dict['date_hierarchy']:
-                    model_dict['date_hierarchy'] = field_name
-
                 if k in field_names:
                     incomplete = False
                     for v in vs:
