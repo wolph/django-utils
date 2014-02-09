@@ -21,12 +21,15 @@ def test_admin_autogen_command():
 
     command = commands.admin_autogen.Command()
     command.handle()
+    command.handle('tests.test_app')
     command.handle('django.contrib.auth')
     command.handle('django.contrib.auth', 'user')
 
-    commands.admin_autogen.LIST_FILTER_THRESHOLD = 25
-    commands.admin_autogen.RAW_ID_THRESHOLD = 25
+    commands.admin_autogen.LIST_FILTER_THRESHOLD = 250
+    commands.admin_autogen.RAW_ID_THRESHOLD = 250
     command.handle('tests.test_app')
+    command.handle('django.contrib.auth')
+    command.handle('django.contrib.auth', 'user')
 
     sys.stderr = stderr
 

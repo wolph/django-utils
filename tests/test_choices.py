@@ -1,5 +1,15 @@
 from django.db import models
 from django_utils import choices
+from django.utils.translation import ugettext_lazy as _
+
+
+class TranslatedHuman(models.Model):
+    class Gender(choices.Choices):
+        Male = choices.Choice('m', _('Male'))
+        Female = choices.Choice('f', _('Female'))
+        Other = choices.Choice('o', _('Other'))
+
+    gender = models.CharField(max_length=1, choices=Gender.choices)
 
 
 class Human(models.Model):

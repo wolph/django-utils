@@ -24,6 +24,22 @@ class Request(object):
         return self.ajax
 
 
+@view_decorators.env()
+def simple_view(request):
+    return ''
+
+
+@view_decorators.env(login_required=True)
+def simple_logged_in_view(request):
+    return ''
+
+
+def test_other_view():
+    request = Request(ajax=True)
+    simple_logged_in_view(request)
+    simple_view(request)
+
+
 @view_decorators.env
 def some_view(request, return_=None, jinja=False):
     request.jinja = jinja
@@ -37,12 +53,7 @@ def some_view(request, return_=None, jinja=False):
     return return_
 
 
-@view_decorators.env(login_required=True)
-def other_view(request):
-    pass
-
-
-def test_view():
+def test_some_view():
     some_view(Request(), return_='')
     some_view(Request(ajax=True), return_='')
     some_view(Request(ajax=True), return_={})
@@ -76,8 +87,6 @@ def test_view():
 
     some_view(request, return_=http.HttpResponse())
     some_view(request, jinja=True)
-
-    other_view(request)
 
 
 def test_import():
