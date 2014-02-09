@@ -1,4 +1,4 @@
--e git://github.com/akheron/nosedjango@e60b994fcf669af9d74f801947773103d17ba701#egg=nosedjango-dev
+-e git://github.com/akheron/nosedjango@e60b994fcf669af9d74f801947773103d17ba701#egg=nosedjango-origin/nose-and-django-versions
 tissue==0.8
 nose
 coverage
