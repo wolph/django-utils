@@ -26,7 +26,7 @@ PREPOPULATED_FIELDS = {
     'slug': ('name',)
 }
 
-LIST_FILTER_TRESHOLD = 25
+LIST_FILTER_THRESHOLD = 25
 RAW_ID_THRESHOLD = 100
 
 
@@ -79,8 +79,9 @@ class Command(base_command.CustomBaseCommand):
             parent_fields = model._meta.parents.values()
 
             for field in model._meta.local_many_to_many:
-                if(field.related.parent_model.objects.all()[:100].count()
-                        <= 100):
+                related_objects = field.related.parent_model.objects.all()
+                if(related_objects[:RAW_ID_THRESHOLD].count()
+                        < RAW_ID_THRESHOLD):
                     model_dict['raw_id_fields'].append(field.name)
 
             for field in model._meta.fields:
@@ -95,14 +96,14 @@ class Command(base_command.CustomBaseCommand):
                         related_count = (
                             field.related.parent_model.objects
                             .all()
-                            [:max(LIST_FILTER_TRESHOLD, RAW_ID_THRESHOLD)]
+                            [:max(LIST_FILTER_THRESHOLD, RAW_ID_THRESHOLD)]
                             .count()
                         )
 
                         if related_count >= RAW_ID_THRESHOLD:
                             model_dict['raw_id_fields'].append(field.name)
 
-                        if related_count <= LIST_FILTER_TRESHOLD:
+                        if related_count < LIST_FILTER_THRESHOLD:
                             model_dict['list_filter'].append(field.name)
                     else:
                         model_dict['list_filter'].append(field.name)
