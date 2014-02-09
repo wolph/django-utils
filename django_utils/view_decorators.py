@@ -30,7 +30,7 @@ def json_default_handler(obj):
                         'serializable' % (type(obj), repr(obj)))
 
 
-def redirect(url, *args, **kwargs):
+def redirect(url='./', *args, **kwargs):
     if '/' not in url or args or kwargs:
         url = urlresolvers.reverse(url, args=args, kwargs=kwargs)
     return http.HttpResponseRedirect(url)
