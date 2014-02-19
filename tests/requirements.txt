@@ -1,5 +1,5 @@
 -e git://github.com/akheron/nosedjango@e60b994fcf669af9d74f801947773103d17ba701#egg=nosedjango-dev
-tissue==0.8
+tissue==0.9.2
 nose
 coverage
 django
