@@ -1,8 +1,8 @@
-from django.core.management.base import BaseCommand
+from . import base_command
 import pprint
 
 
-class Command(BaseCommand):
+class Command(base_command.CustomBaseCommand):
     help = '''Get a list of the current settings, any arguments given will be
     used to match the settings name (case insensitive).
     '''
@@ -24,3 +24,5 @@ class Command(BaseCommand):
                 if found:
                     print '%s: ' % k,
                     pprint.pprint(v)
+
+        super(Command, self).handle(*args, **options)
