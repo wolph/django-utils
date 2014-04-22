@@ -1,5 +1,6 @@
 import json
 from django import shortcuts as django_shortcuts
+from django.template import loader as django_loader
 from django import http
 from django.template import RequestContext
 from django.contrib.auth import decorators
@@ -63,7 +64,7 @@ def _prepare_request(request, app, view):
     return request
 
 
-def _process_response(request, response):
+def _process_response(request, response, response_class):
     '''Generic response processing function, always returns HttpResponse'''
 
     '''If we add something to the context stack, pop it after adding'''
@@ -94,11 +95,9 @@ def _process_response(request, response):
                         </body>
                     </html>
                     ''' % (title, output)
-                    response = http.HttpResponse(output,
-                                                 mimetype='text/html')
+                    response = response_class(output, mimetype='text/html')
                 else:
-                    response = http.HttpResponse(output,
-                                                 mimetype='text/plain')
+                    response = response_class(output, mimetype='text/plain')
 
                 return response
             else:
@@ -113,20 +112,20 @@ def _process_response(request, response):
 
         elif isinstance(response, basestring):
             if request.ajax:
-                return http.HttpResponse(response, mimetype='text/plain')
+                return response_class(response, mimetype='text/plain')
             else:
-                return http.HttpResponse(response)
+                return response_class(response)
 
         elif response is None:
             if request.jinja:
                 assert coffin_shortcuts, ('To use Jinja the `coffin` module '
                     'must be installed')
-                render_to_response = coffin_shortcuts.render_to_response
+                render_to_string = coffin_shortcuts.render_to_string
             else:
-                render_to_response = django_shortcuts.render_to_response
+                render_to_string = django_loader.render_to_string
 
-            return render_to_response(
-                request.template, context_instance=request.context)
+            return response_class(render_to_string(
+                request.template, context_instance=request.context))
 
         else:
             raise UnknownViewResponseError(
@@ -136,7 +135,7 @@ def _process_response(request, response):
             request.context.pop()
 
 
-def env(function=None, login_required=False):
+def env(function=None, login_required=False, response_class=http.HttpResponse):
     '''
     View decorator that automatically adds context and renders response
 
@@ -162,7 +161,7 @@ def env(function=None, login_required=False):
             request.template = '%s/%s.html' % (app, name)
             response = function(request, *args, **kwargs)
 
-            return _process_response(request, response)
+            return _process_response(request, response, response_class)
         finally:
             '''Remove the context reference from request to prevent leaking'''
             try:
@@ -183,4 +182,4 @@ def env(function=None, login_required=False):
         else:
             return _env
     else:
-        return lambda f: env(f, login_required)
+        return lambda f: env(f, login_required, response_class)
