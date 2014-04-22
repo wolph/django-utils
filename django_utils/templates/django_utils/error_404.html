@@ -1,0 +1,8 @@
+{% extends 'django_utils/base.html' %}
+
+{% block content %}
+<h1>404</h1>
+<p>Unable to find the page at <code>{{ request.path }}</code></p>
+<p><a href="/">Click here to go back to the homepage</a></p>
+{% endblock content %}
+
