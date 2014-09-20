@@ -2,7 +2,7 @@ import sys
 from . import base_command
 
 try:
-    from django_admin_generator.management.commands.django_admin_generator \
+    from django_admin_generator.management.commands.admin_generator \
         import Command
 except ImportError:
     class Command(base_command.CustomBaseCommand):
