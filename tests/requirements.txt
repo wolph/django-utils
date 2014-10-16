@@ -2,7 +2,7 @@
 tissue==0.9.2
 nose
 coverage
-django
+django<1.7
 coffin
 jinja2
 
