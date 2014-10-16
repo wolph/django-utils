@@ -22,7 +22,7 @@ setuptools.setup(
     license='BSD',
     packages=setuptools.find_packages(),
     install_requires=[
-        'python-utils>=1.5.0',
+        'python-utils>=1.6.0',
         'anyjson>=0.3.0'
     ],
     long_description=long_description,
