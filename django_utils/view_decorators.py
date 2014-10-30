@@ -95,9 +95,9 @@ def _process_response(request, response, response_class):
                         </body>
                     </html>
                     ''' % (title, output)
-                    response = response_class(output, mimetype='text/html')
+                    response = response_class(output, content_type='text/html')
                 else:
-                    response = response_class(output, mimetype='text/plain')
+                    response = response_class(output, content_type='text/plain')
 
                 return response
             else:
@@ -112,7 +112,7 @@ def _process_response(request, response, response_class):
 
         elif isinstance(response, basestring):
             if request.ajax:
-                return response_class(response, mimetype='text/plain')
+                return response_class(response, content_type='text/plain')
             else:
                 return response_class(response)
 
