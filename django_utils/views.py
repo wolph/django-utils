@@ -20,4 +20,3 @@ def error_404(request):
 @view_decorators.env(response_class=http.HttpResponseServerError)
 def error_500(request):
     pass
-

@@ -1,3 +1,4 @@
+import six
 from django.db.models import base
 from django.db import models
 from django.template import defaultfilters
@@ -28,9 +29,7 @@ class ModelBaseMeta(base.ModelBase):
         return class_
 
 
-class ModelBase(models.Model):
-    __metaclass__ = ModelBaseMeta
-
+class ModelBase(six.with_metaclass(ModelBaseMeta, models.Model)):
     class Meta:
         abstract = True
 
@@ -44,6 +43,7 @@ class CreatedAtModelBase(ModelBase):
 
 
 class NameMixin(object):
+
     '''Mixin to automatically get a unicode and repr string base on the name
 
     >>> x = NameMixin()
@@ -53,8 +53,8 @@ class NameMixin(object):
     '<NameMixin[123]: test>'
     >>> str(x)
     'test'
-    >>> unicode(x)
-    u'test'
+    >>> str(six.text_type(x))
+    'test'
 
     '''
 
@@ -62,17 +62,24 @@ class NameMixin(object):
         return self.name
 
     def __str__(self):
-        return unicode(self).encode('utf-8', 'replace')
+        out = self.__unicode__()
+        if six.PY2:
+            out = out.encode('utf-8', 'replace')
+        return out
 
     def __repr__(self):
-        return (u'<%s[%d]: %s>' % (
+        repr_ = six.text_type('<%s[%d]: %s>') % (
             self.__class__.__name__,
             self.pk or -1,
             self.name,
-        )).encode('utf-8')
+        )
+        if six.PY2:
+            repr_ = repr_.encode('utf-8')
+        return repr_
 
 
 class SlugMixin(NameMixin):
+
     '''Mixin to automatically slugify the name and add both a name and slug to
     the model
 
@@ -83,8 +90,8 @@ class SlugMixin(NameMixin):
     '<NameMixin[123]: test>'
     >>> str(x)
     'test'
-    >>> unicode(x)
-    u'test'
+    >>> str(six.text_type(x))
+    'test'
 
     '''
 
@@ -96,4 +103,3 @@ class SlugMixin(NameMixin):
 
     class Meta(object):
         unique_together = ('slug',)
-

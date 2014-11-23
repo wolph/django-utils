@@ -4,6 +4,7 @@ from django.utils.translation import ugettext_lazy as _
 
 
 class TranslatedHuman(models.Model):
+
     class Gender(choices.Choices):
         Male = choices.Choice('m', _('Male'))
         Female = choices.Choice('f', _('Female'))
@@ -13,6 +14,7 @@ class TranslatedHuman(models.Model):
 
 
 class Human(models.Model):
+
     class Gender(choices.Choices):
         Male = choices.Choice('m')
         Female = choices.Choice('f')
@@ -22,6 +24,7 @@ class Human(models.Model):
 
 
 class SomeModel(models.Model):
+
     class Enum(choices.Choices):
         Foo = choices.Choice()
         Bar = choices.Choice()
@@ -48,4 +51,3 @@ def test_choices():
 def test_choice():
     repr(Human.Gender.Male)
     str(Human.Gender.Male)
-

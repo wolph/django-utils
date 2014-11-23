@@ -7,4 +7,3 @@ class Spam(models.Model):
 
 class Eggs(Spam):
     b = models.CharField(max_length=100)
-

@@ -1,12 +1,17 @@
+import sys
+import pytest
+import datetime
+
 from django import template
 from django import http
-from django_utils import view_decorators
 from django.contrib.contenttypes import models
 from django.contrib.auth import models as auth_models
-import datetime
+
+from django_utils import view_decorators
 
 
 class Request(object):
+
     def __init__(self, ajax=False):
         self.ajax = ajax
         self.user = auth_models.AnonymousUser()
@@ -53,6 +58,7 @@ def some_view(request, return_=None, jinja=False):
     return return_
 
 
+@pytest.mark.django_db()
 def test_some_view():
     some_view(Request(), return_='')
     some_view(Request(ajax=True), return_='')
@@ -86,18 +92,24 @@ def test_some_view():
         pass
 
     some_view(request, return_=http.HttpResponse())
-    some_view(request, jinja=True)
+    if sys.version_info[0] == 2:
+        # TODO: once coffin has been updated to Python 3, enable this test
+        some_view(request, jinja=True)
 
 
 def test_import():
-    import __builtin__
     import sys
+    if sys.version_info[0] == 2:
+        import __builtin__ as builtins
+    else:
+        import builtins
+
     removed_modules = {}
-    for name in sys.modules.keys():
+    for name in list(sys.modules.keys()):
         if name.startswith('django_utils'):
             removed_modules[name] = sys.modules.pop(name)
 
-    original_import = __builtin__.__import__
+    original_import = builtins.__import__
 
     def import_hook(name, *args, **kwargs):
         if name == 'coffin':
@@ -105,11 +117,10 @@ def test_import():
         else:
             return original_import(name, *args, **kwargs)
 
-    __builtin__.__import__ = import_hook
+    builtins.__import__ = import_hook
     from django_utils.view_decorators import coffin_shortcuts
     assert not coffin_shortcuts
-    __builtin__.__import__ = original_import
+    builtins.__import__ = original_import
 
-    for name, module in removed_modules.iteritems():
+    for name, module in removed_modules.items():
         sys.modules[name] = module
-

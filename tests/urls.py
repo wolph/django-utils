@@ -15,4 +15,3 @@ handler400 = views.error_400
 handler403 = views.error_403
 handler404 = views.error_404
 handler500 = views.error_500
-

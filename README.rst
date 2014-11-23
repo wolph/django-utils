@@ -20,3 +20,25 @@ The library depends on the Python Utils library.
 
 Documentation is available at: http://django-utils2.readthedocs.org/en/latest/
 
+Install
+-------
+
+To install:
+
+ 1. Run `pip install django-utils2` or execute `python setup.py install` in the source directory
+ 2. Add `django_utils` to your `INSTALLED_APPS`
+ 
+If you want to run the tests, run `py.test` (requirements in `tests/requirements.txt`)
+
+Links
+-----
+
+* Documentation
+    - http://django-utils2.readthedocs.org/en/latest/
+* Source
+    - https://github.com/WoLpH/django-utils
+* Bug reports 
+    - https://github.com/WoLpH/django-utils/issues
+* Package homepage
+    - https://pypi.python.org/pypi/django-utils2
+

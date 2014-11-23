@@ -1,10 +1,9 @@
 from django.test import client, TestCase
-from django.test.client import RequestFactory
-
 from django.core import urlresolvers
 
 
 class TestCalls(TestCase):
+
     def setUp(self):
         self.client = client.Client()
 
@@ -25,4 +24,3 @@ class TestCalls(TestCase):
             self.client.get('/error_500')
         except ZeroDivisionError:
             pass
-

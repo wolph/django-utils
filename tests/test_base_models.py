@@ -2,6 +2,7 @@ from django_utils import base_models
 
 
 class SaveableClass(object):
+
     def save(self):
         pass
 
@@ -27,6 +28,6 @@ class ModelBaseTest(base_models.ModelBase):
 
 
 class ModelBaseProxyTest(ModelBaseTest):
+
     class Meta:
         proxy = True
-

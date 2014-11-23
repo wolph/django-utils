@@ -1,5 +1,5 @@
+import six
 import json
-from django import shortcuts as django_shortcuts
 from django.template import loader as django_loader
 from django import http
 from django.template import RequestContext
@@ -58,7 +58,7 @@ def _prepare_request(request, app, view):
     request.context['app'] = app
     request.context['request'] = request
 
-    for k, v in REQUEST_PROPERTIES.iteritems():
+    for k, v in REQUEST_PROPERTIES.items():
         setattr(request, k, v)
 
     return request
@@ -97,7 +97,9 @@ def _process_response(request, response, response_class):
                     ''' % (title, output)
                     response = response_class(output, content_type='text/html')
                 else:
-                    response = response_class(output, content_type='text/plain')
+                    response = response_class(
+                        output,
+                        content_type='text/plain')
 
                 return response
             else:
@@ -110,16 +112,16 @@ def _process_response(request, response, response_class):
         if isinstance(response, http.HttpResponse):
             return response
 
-        elif isinstance(response, basestring):
+        elif isinstance(response, six.string_types):
             if request.ajax:
                 return response_class(response, content_type='text/plain')
             else:
                 return response_class(response)
 
         elif response is None:
-            if request.jinja:
+            if request.jinja:  # pragma: no cover
                 assert coffin_shortcuts, ('To use Jinja the `coffin` module '
-                    'must be installed')
+                                          'must be installed')
                 render_to_string = coffin_shortcuts.render_to_string
             else:
                 render_to_string = django_loader.render_to_string
@@ -166,7 +168,7 @@ def env(function=None, login_required=False, response_class=http.HttpResponse):
             '''Remove the context reference from request to prevent leaking'''
             try:
                 del request.context, request.template
-                for k, v in REQUEST_PROPERTIES.iteritems():
+                for k in REQUEST_PROPERTIES.keys():
                     delattr(request, k)
             except AttributeError:
                 pass

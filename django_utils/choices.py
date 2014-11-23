@@ -79,7 +79,7 @@ To reference these properties:
     SomeModel.create(enum=SomeModel.Enum.Spam)
 
 '''
-
+import six
 import collections
 
 
@@ -109,7 +109,7 @@ class ChoicesDict(object):
         self._by_value[value.value] = value
 
     def __iter__(self):
-        for k, v in self._by_value.iteritems():
+        for k, v in six.iteritems(self._by_value):
             yield k, v
 
     def items(self):
@@ -119,7 +119,7 @@ class ChoicesDict(object):
         return repr(self._by_key)
 
     def __str__(self):
-        return str(self._by_key)
+        return six.text_type(self._by_key)
 
 
 class Choice(object):
@@ -149,21 +149,30 @@ class Choice(object):
         self.order = Choice.order
 
     def __repr__(self):
-        return (u'<%s[%d]:%s>' % (
+        repr_ = (six.text_type('<%s[%d]:%s>') % (
             self.__class__.__name__,
             self.order,
             self.label,
-        )).encode('utf-8', 'replace')
+        ))
+        if six.PY2:
+            repr_ = repr_.encode('utf-8', 'replace')
+        return repr_
 
     def __str__(self):
-        return unicode(self).encode('utf-8', 'replace')
+        value = self.__unicode__()
+        if six.PY2:
+            value = value.encode('utf-8', 'replace')
+        return value
 
     def __unicode__(self):
         label = self.label
-        if isinstance(label, str):
-            return unicode(label, 'utf-8', 'replace')
-        else:
-            return unicode(label)
+        if six.PY2:
+            if isinstance(label, str):
+                return label.decode('utf-8', 'replace')
+            else:
+                return six.text_type(label)
+        elif six.PY3:
+            return six.text_type(label)
 
 
 class ChoicesMeta(type):
@@ -175,7 +184,7 @@ class ChoicesMeta(type):
     def __new__(cls, name, bases, attrs):
         choices = list()
         has_values = False
-        for key, value in attrs.iteritems():
+        for key, value in six.iteritems(attrs):
             if isinstance(value, Choice):
                 if value.value:
                     has_values = True
@@ -201,7 +210,7 @@ class ChoicesMeta(type):
         return super(ChoicesMeta, cls).__new__(cls, name, bases, attrs)
 
 
-class Choices(object):
+class Choices(six.with_metaclass(ChoicesMeta)):
 
     '''The choices class is what you should inherit in your Django models
 
@@ -229,4 +238,4 @@ class Choices(object):
     >>> choices.choices[0]
     <Choice[3]:a>
     '''
-    __metaclass__ = ChoicesMeta
+    pass
