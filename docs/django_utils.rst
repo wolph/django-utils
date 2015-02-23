@@ -45,7 +45,8 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 8
 
-    django_utils.management
-    django_utils.templatetags
+   django_utils.management
+   django_utils.templatetags
 

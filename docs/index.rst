@@ -4,7 +4,7 @@ Welcome to Django Utils's documentation!
 Contents:
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 8
 
    usage
    django_utils
