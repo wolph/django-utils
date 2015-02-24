@@ -317,5 +317,7 @@ intersphinx_mapping = {
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
     'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
     'matplotlib': ('http://matplotlib.sourceforge.net/', None),
-    'django': ('https://docs.djangoproject.com/en/1.7/', None,)
+    'django': ('http://docs.djangoproject.com/en/dev/',
+               'http://docs.djangoproject.com/en/dev/_objects/'),
 }
+
