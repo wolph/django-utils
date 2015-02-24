@@ -311,4 +311,11 @@ epub_copyright = copyright
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'http://docs.python.org/': None}
+intersphinx_mapping = {
+    'python': ('http://docs.python.org/2', None),
+    'python-utils': ('http://python-utils.readthedocs.org/en/latest/', None),
+    'numpy': ('http://docs.scipy.org/doc/numpy/', None),
+    'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
+    'matplotlib': ('http://matplotlib.sourceforge.net/', None),
+    'django': ('https://docs.djangoproject.com/en/1.7/', None,)
+}
