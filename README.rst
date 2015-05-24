@@ -41,4 +41,6 @@ Links
     - https://github.com/WoLpH/django-utils/issues
 * Package homepage
     - https://pypi.python.org/pypi/django-utils2
+* My blog
+    - http://w.wol.ph/
 
