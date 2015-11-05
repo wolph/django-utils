@@ -6,9 +6,9 @@ python:
   - "pypy3"
 # command to install dependencies
 install:
-  - pip install -r tests/requirements.txt --use-mirrors
-  - pip install . --use-mirrors
-  - pip install coveralls --use-mirrors
+  - pip install -r tests/requirements.txt 
+  - pip install . 
+  - pip install coveralls 
 
 # command to run tests
 script:
