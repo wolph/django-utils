@@ -41,6 +41,14 @@ django_utils Package
     :undoc-members:
     :show-inheritance:
 
+:mod:`utils` Module
+-----------------------------
+
+.. automodule:: django_utils.utils
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Subpackages
 -----------
 

@@ -8,6 +8,7 @@ from django.contrib.contenttypes import models
 from django.contrib.auth import models as auth_models
 
 from django_utils import view_decorators
+from django_utils import utils
 
 
 class Request(object):
@@ -27,6 +28,13 @@ class Request(object):
 
     def is_ajax(self):
         return self.ajax
+
+
+def test_to_json():
+    request = Request()
+    utils.to_json(request, {})
+    request.GET['debug'] = True
+    utils.to_json(request, {})
 
 
 @view_decorators.env()

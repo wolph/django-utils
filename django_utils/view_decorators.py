@@ -168,10 +168,10 @@ def env(function=None, login_required=False, response_class=http.HttpResponse):
             '''Remove the context reference from request to prevent leaking'''
             try:
                 del request.context, request.template
-                for k in REQUEST_PROPERTIES.keys():
+                for k in REQUEST_PROPERTIES.keys():  # pragma: no branch
                     delattr(request, k)
             except AttributeError:
-                pass
+                pass  # pragma: no branch
 
     if function:
         _env.__name__ = function.__name__
