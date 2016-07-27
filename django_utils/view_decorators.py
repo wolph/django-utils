@@ -1,5 +1,6 @@
 import six
 import json
+import functools
 from django.template import loader as django_loader
 from django import http
 from django.template import RequestContext
@@ -152,8 +153,11 @@ def env(function=None, login_required=False, response_class=http.HttpResponse):
     '''
 
     def _env(request, *args, **kwargs):
-        request.ajax = request.is_ajax() or bool(int(
-            request.REQUEST.get('ajax', 0)))
+        request.ajax = bool(max(
+            request.is_ajax(),
+            int(request.POST.get('ajax', 0)),
+            int(request.GET.get('ajax', 0)),
+        ))
         request.context = None
         request.jinja = getattr(settings, 'DJANGO_UTILS_USE_JINJA', False)
         try:
@@ -184,4 +188,51 @@ def env(function=None, login_required=False, response_class=http.HttpResponse):
         else:
             return _env
     else:
-        return lambda f: env(f, login_required, response_class)
+        def inner(function):
+            return env(function, login_required, response_class)
+        return inner
+
+
+def class_env(function):
+    '''
+    Class view decorator that automatically adds context and renders response
+
+    Adds a RequestContext (request.context) with the following context items:
+    name -- current function name
+
+    Stores the template in request.template and assumes it to be in
+    <app>/<view>.html
+    '''
+
+    @functools.wraps(function)
+    def _env(self, request, *args, **kwargs):
+        request.ajax = bool(max(
+            request.is_ajax(),
+            int(request.POST.get('ajax', 0)),
+            int(request.GET.get('ajax', 0)),
+        ))
+        request.context = None
+        request.jinja = getattr(settings, 'DJANGO_UTILS_USE_JINJA', False)
+        try:
+            name = function.__name__
+            app = function.__module__.split('.')[0]
+            request = _prepare_request(request, app, name)
+            request.template = '%s/%s.html' % (app, name)
+            response = function(self, request, *args, **kwargs)
+
+            return _process_response(request, response, http.HttpResponse)
+        finally:
+            '''Remove the context reference from request to prevent leaking'''
+            try:
+                del request.context, request.template
+                for k in REQUEST_PROPERTIES.keys():  # pragma: no branch
+                    delattr(request, k)
+            except AttributeError:
+                pass  # pragma: no branch
+
+    _env.__name__ = function.__name__
+    _env.__doc__ = function.__doc__
+    _env.__module__ = function.__module__
+    _env.__dict__ = function.__dict__
+
+    return _env
