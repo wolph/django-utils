@@ -54,8 +54,7 @@ def test_other_view():
 
 
 @view_decorators.env
-def some_view(request, return_=None, jinja=False):
-    request.jinja = jinja
+def some_view(request, return_=None):
     request.redirect('/')
     request.permanent_redirect('/')
     request.redirect('admin:index')
@@ -100,13 +99,10 @@ def test_some_view():
         pass
 
     some_view(request, return_=http.HttpResponse())
-    if sys.version_info[0] == 2:
-        # TODO: once coffin has been updated to Python 3, enable this test
-        some_view(request, jinja=True)
+    some_view(request)
 
 
 def test_import():
-    import sys
     if sys.version_info[0] == 2:
         import __builtin__ as builtins
     else:
@@ -119,15 +115,6 @@ def test_import():
 
     original_import = builtins.__import__
 
-    def import_hook(name, *args, **kwargs):
-        if name == 'coffin':
-            raise ImportError('test case module import failure')
-        else:
-            return original_import(name, *args, **kwargs)
-
-    builtins.__import__ = import_hook
-    from django_utils.view_decorators import coffin_shortcuts
-    assert not coffin_shortcuts
     builtins.__import__ = original_import
 
     for name, module in removed_modules.items():

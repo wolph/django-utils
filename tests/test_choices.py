@@ -12,6 +12,9 @@ class TranslatedHuman(models.Model):
 
     gender = models.CharField(max_length=1, choices=Gender.choices)
 
+    class Meta:
+        app_label = 'tests'
+
 
 class Human(models.Model):
 
@@ -21,6 +24,9 @@ class Human(models.Model):
         Other = choices.Choice('o')
 
     gender = models.CharField(max_length=1, choices=Gender.choices)
+
+    class Meta:
+        app_label = 'tests'
 
 
 class SomeModel(models.Model):
@@ -33,6 +39,9 @@ class SomeModel(models.Model):
 
     enum = models.IntegerField(
         choices=Enum.choices, default=Enum.Foo)
+
+    class Meta:
+        app_label = 'tests'
 
 
 def test_named_choices():

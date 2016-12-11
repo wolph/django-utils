@@ -1,11 +1,9 @@
 six
-django<1.7
 pytest
 pytest-cache
 pytest-cov
 pytest-django
 pytest-flakes
 pytest-pep8
-coffin<2
 jinja2
 pygments

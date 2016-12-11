@@ -1,17 +1,10 @@
 from django.test import client, TestCase
-from django.core import urlresolvers
 
 
 class TestCalls(TestCase):
 
     def setUp(self):
         self.client = client.Client()
-
-    def test_400(self):
-        resolver = urlresolvers.get_resolver(urlresolvers.get_urlconf())
-        view, _ = resolver.resolve400()
-        factory = client.RequestFactory()
-        view(factory.get('/error_400'))
 
     def test_403(self):
         self.client.get('/error_403')

@@ -1,6 +1,7 @@
 import logging
 from python_utils import logger
-from django.core.management.base import BaseCommand
+from django.core.management import base
+
 
 DEFAULT_VERBOSITY = 2
 VERBOSITY_LOG_MAP = {
@@ -11,12 +12,12 @@ VERBOSITY_LOG_MAP = {
 }
 
 
-class CustomBaseCommand(BaseCommand, logger.Logged):
+class CustomBaseCommand(base.BaseCommand, logger.Logged):
     loggers = ()
 
     def __init__(self):
         self.verbosity = DEFAULT_VERBOSITY
-        BaseCommand.__init__(self)
+        base.BaseCommand.__init__(self)
 
     def handle(self, *args, **kwargs):
         self.verbosity = int(kwargs.get('verbosity', DEFAULT_VERBOSITY))
@@ -31,3 +32,7 @@ class CustomBaseCommand(BaseCommand, logger.Logged):
             logger.setLevel(VERBOSITY_LOG_MAP[self.verbosity])
 
         return logger
+
+
+class CustomAppCommand(CustomBaseCommand, base.AppCommand):
+    pass

@@ -24,10 +24,13 @@ def test_slug_mixin():
 
 
 class ModelBaseTest(base_models.ModelBase):
-    pass
+
+    class Meta:
+        app_label = 'tests'
 
 
 class ModelBaseProxyTest(ModelBaseTest):
 
     class Meta:
         proxy = True
+        app_label = 'tests'

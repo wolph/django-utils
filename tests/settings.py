@@ -111,9 +111,33 @@ ROOT_URLCONF = 'tests.urls'
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'tests.wsgi.application'
 
-TEMPLATE_DIRS = (
-    'tests/templates',
-)
+TEMPLATES = [{
+    'BACKEND': 'django.template.backends.jinja2.Jinja2',
+    'APP_DIRS': True,
+    'DIRS': [
+        'tests/jinja2',
+    ],
+    'OPTIONS': {
+        # 'environment': 'your_custom_jinja2.environment',
+        'extensions': [
+            # Add extensions here if needed
+        ],
+    },
+}, {
+    'BACKEND': 'django.template.backends.django.DjangoTemplates',
+    'APP_DIRS': True,
+    'DIRS': [
+        'tests/templates',
+    ],
+    'OPTIONS': {
+        'context_processors': [
+            'django.template.context_processors.debug',
+            'django.template.context_processors.request',
+            'django.contrib.auth.context_processors.auth',
+            'django.contrib.messages.context_processors.messages',
+        ],
+    },
+}]
 
 INSTALLED_APPS = (
     'django.contrib.auth',
