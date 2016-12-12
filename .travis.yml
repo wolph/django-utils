@@ -1,19 +1,31 @@
+sudo: false
 language: python
-python:
-  - "2.7"
-  - "3.4"
-  - "pypy"
-  - "pypy3"
-# command to install dependencies
+python: 2.7
+
+cache: pip
+
+env:
+    - TOX_ENV=coveralls
+    - TOX_ENV=py27-django18
+    - TOX_ENV=py27-django19
+    - TOX_ENV=py27-django110
+    - TOX_ENV=py34-django18
+    - TOX_ENV=py34-django19
+    - TOX_ENV=py34-django110
+    - TOX_ENV=py35-django18
+    - TOX_ENV=py35-django19
+    - TOX_ENV=py35-django110
+    - TOX_ENV=py36-django18
+    - TOX_ENV=py36-django19
+    - TOX_ENV=py36-django110
+    - TOX_ENV=pypy-django18
+    - TOX_ENV=pypy-django19
+    - TOX_ENV=pypy-django110
+
 install:
-  - pip install -r tests/requirements.txt 
-  - pip install . 
-  - pip install coveralls 
+    - pip install --upgrade pip
+    - pip install tox
 
-# command to run tests
 script:
-    - python setup.py test
-
-after_success:
-    - coveralls
+    tox -e $TOX_ENV
 

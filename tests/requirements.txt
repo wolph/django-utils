@@ -1,4 +1,5 @@
 six
+sphinx
 pytest
 pytest-cache
 pytest-cov
