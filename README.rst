@@ -28,7 +28,7 @@ Examples are:
 
 The library depends on the Python Utils library.
 
-Documentation is available at: http://django-utils2.readthedocs.org/en/latest/
+Documentation is available at: http://django-utils-2.readthedocs.io/en/latest/
 
 Install
 -------
@@ -44,7 +44,7 @@ Links
 -----
 
 * Documentation
-    - http://django-utils2.readthedocs.org/en/latest/
+    - http://django-utils-2.readthedocs.org/en/latest/
 * Source
     - https://github.com/WoLpH/django-utils
 * Bug reports 
