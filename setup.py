@@ -45,6 +45,24 @@ if __name__ == '__main__':
             'anyjson>=0.3.0'
             'six',
         ],
+        extras_require={
+            'docs': [
+                'django',
+                'mock',
+                'sphinx',
+            ],
+            'tests': [
+                'sphinx',
+                'pytest',
+                'pytest-cache',
+                'pytest-cov',
+                'pytest-django',
+                'pytest-flakes',
+                'pytest-pep8',
+                'jinja2',
+                'pygments',
+            ],
+        },
         long_description=long_description,
         cmdclass={'test': PyTest},
         classifiers=['License :: OSI Approved :: BSD License'],

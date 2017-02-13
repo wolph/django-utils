@@ -1,5 +1,1 @@
-mock
-sphinx
-python-utils
-django
--r../tests/requirements.txt
+-e.[docs,tests]
