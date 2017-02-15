@@ -4,7 +4,7 @@ django_utils.management.commands package
 Submodules
 ----------
 
-commands.admin_autogen module
+django_utils.management.commands.admin_autogen module
 -----------------------------------------------------
 
 .. automodule:: django_utils.management.commands.admin_autogen
@@ -12,7 +12,7 @@ commands.admin_autogen module
     :undoc-members:
     :show-inheritance:
 
-commands.base_command module
+django_utils.management.commands.base_command module
 ----------------------------------------------------
 
 .. automodule:: django_utils.management.commands.base_command
@@ -20,7 +20,7 @@ commands.base_command module
     :undoc-members:
     :show-inheritance:
 
-commands.settings module
+django_utils.management.commands.settings module
 ------------------------------------------------
 
 .. automodule:: django_utils.management.commands.settings

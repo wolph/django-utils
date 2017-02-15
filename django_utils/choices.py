@@ -81,6 +81,7 @@ To reference these properties:
 '''
 import six
 import collections
+from django.utils import deconstruct
 
 
 class ChoicesDict(object):
@@ -122,6 +123,7 @@ class ChoicesDict(object):
         return six.text_type(self._by_key)
 
 
+@deconstruct.deconstructible
 class Choice(object):
 
     '''The choice object has an optional label and value. If the value is not
