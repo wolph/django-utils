@@ -112,21 +112,20 @@ class NameModelBase(NameMixin, ModelBase):
         abstract = True
 
 
-class SlugModelBase(SlugMixin, ModelBase):
+class SlugModelBase(SlugMixin, NameModelBase):
     slug = models.SlugField(max_length=50)
 
     class Meta:
         abstract = True
 
 
-class NameCreatedAtModelBase(NameMixin, CreatedAtModelBase):
-    name = models.CharField(max_length=100)
+class NameCreatedAtModelBase(NameModelBase, CreatedAtModelBase):
 
     class Meta:
         abstract = True
 
 
-class SlugCreatedAtModelBase(SlugMixin, CreatedAtModelBase):
+class SlugCreatedAtModelBase(SlugModelBase, CreatedAtModelBase):
     slug = models.SlugField(max_length=50)
 
     class Meta:

@@ -32,15 +32,15 @@ def test_recursive_field():
     b = B(some_attribute='b', parent=a)
     c = B(parent=a)
 
-    assert b.get_some_attribute == 'b'
-    assert b.some_attribute_with_other_name == 'b'
-    assert b.get_some_attribute_with_defaults == 'b'
-    assert c.get_some_attribute == 'a'
-    assert c.some_attribute_with_other_name == 'a'
-    assert c.get_some_attribute_with_defaults == 'a'
+    assert b.get_some_attribute() == 'b'
+    assert b.some_attribute_with_other_name() == 'b'
+    assert b.get_some_attribute_with_defaults() == 'b'
+    assert c.get_some_attribute() == 'a'
+    assert c.some_attribute_with_other_name() == 'a'
+    assert c.get_some_attribute_with_defaults() == 'a'
 
     d = A()
     e = B(parent=d)
-    assert e.get_some_attribute is None
-    assert e.some_attribute_with_other_name is None
-    assert e.get_some_attribute_with_defaults == 'some default value'
+    assert e.get_some_attribute() is None
+    assert e.some_attribute_with_other_name() is None
+    assert e.get_some_attribute_with_defaults() == 'some default value'

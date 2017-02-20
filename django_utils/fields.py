@@ -1,3 +1,6 @@
+import functools
+
+
 class RecursiveField(object):
 
     PREFIX = 'get_'
@@ -19,7 +22,7 @@ class RecursiveField(object):
         assert name
 
         value = None
-        while instance and value is None:
+        while instance and not value:
             value = getattr(instance, name, None)
             instance = getattr(instance, self.parent_field, None)
 
@@ -29,6 +32,6 @@ class RecursiveField(object):
         return value
 
     def __get__(self, instance, owner):
-        return self.get(instance)
+        return functools.partial(self.get, instance)
 
 
