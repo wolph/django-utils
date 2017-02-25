@@ -116,7 +116,7 @@ def _process_response(request, response, response_class):
             render_to_string = django_loader.render_to_string
 
             return response_class(render_to_string(
-                request.template, context=request.context))
+                request.template, context=request.context.flatten()))
 
         else:
             raise UnknownViewResponseError(
