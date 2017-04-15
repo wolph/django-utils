@@ -230,7 +230,7 @@ class Choices(six.with_metaclass(ChoicesMeta)):
     ...     a = Choice()
     >>> choices = ChoiceTest()
     >>> choices.choices.items()
-    [(0, <Choice[3]:a>)]
+    [(0, 'a')]
     >>> choices.a
     0
     >>> choices.choices['a']
