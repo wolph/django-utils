@@ -109,8 +109,8 @@ class ChoicesDict(object):
         self._by_value[value.value] = value
 
     def __iter__(self):
-        for k, v in six.iteritems(self._by_value):
-            yield k, v
+        for value, choice in six.iteritems(self._by_value):
+            yield value, choice.label
 
     def items(self):
         return list(self)
@@ -230,7 +230,7 @@ class Choices(six.with_metaclass(ChoicesMeta)):
     ...     a = Choice()
     >>> choices = ChoiceTest()
     >>> choices.choices.items()
-    [(0, <Choice[3]:a>)]
+    [(0, 'a')]
     >>> choices.a
     0
     >>> choices.choices['a']
