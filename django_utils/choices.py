@@ -109,8 +109,8 @@ class ChoicesDict(object):
         self._by_value[value.value] = value
 
     def __iter__(self):
-        for k, v in six.iteritems(self._by_value):
-            yield k, v
+        for value, choice in six.iteritems(self._by_value):
+            yield value, choice.label
 
     def items(self):
         return list(self)
