@@ -126,7 +126,6 @@ class NameCreatedAtModelBase(NameModelBase, CreatedAtModelBase):
 
 
 class SlugCreatedAtModelBase(SlugModelBase, CreatedAtModelBase):
-    slug = models.SlugField(max_length=50)
 
     class Meta:
         abstract = True
