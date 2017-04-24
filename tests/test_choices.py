@@ -60,3 +60,22 @@ def test_choices():
 def test_choice():
     repr(Human.Gender.Male)
     str(Human.Gender.Male)
+
+
+def test_choice_equals():
+    choice_a = choices.Choice(value=123, label='123')
+    choice_b = choices.Choice(value=123)
+    choice_c = choices.Choice(value=456, label='123')
+
+    assert not (choice_a == 'test')
+    assert choice_a == 123
+    assert not choice_a == 456
+    assert choice_a == choice_a
+    assert choice_a == choice_b
+    assert choice_a != choice_c
+
+
+def test_choice_deconstruct():
+    choices.Choice().deconstruct()
+    choices.Choice(value=123).deconstruct()
+    choices.Choice(value=123, label='123').deconstruct()

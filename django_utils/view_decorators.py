@@ -2,7 +2,6 @@ import six
 import json
 from django.template import loader as django_loader
 from django import http
-from django.template import RequestContext
 from django.contrib.auth import decorators
 from django.core import serializers
 from django.db import models
@@ -47,7 +46,7 @@ REQUEST_PROPERTIES = {
 
 def _prepare_request(request, app, view):
     '''Add context and extra methods to the request'''
-    request.context = RequestContext(request)
+    request.context = dict()
     request.context['view'] = view
     request.context['app'] = app
     request.context['request'] = request
@@ -62,68 +61,61 @@ def _process_response(request, response, response_class):
     '''Generic response processing function, always returns HttpResponse'''
 
     '''If we add something to the context stack, pop it after adding'''
-    pop = False
-
-    try:
-        if isinstance(response, (dict, list, models.query.QuerySet)):
-            if request.ajax:
-                if isinstance(response, models.query.QuerySet):
-                    output = serializers.serialize('json', response)
-                else:
-                    output = json.dumps(response, default=json_default_handler)
-
-                callback = request.GET.get('callback', False)
-                if callback:
-                    output = '%s(%s)' % (callback, output)
-                if request.GET.get('debug'):
-                    title = 'Rendering %(view)r in module %(app)r' % (
-                        request.context)
-
-                    output = '''
-                    <html>
-                        <head>
-                            <title>%s</title>
-                        </head>
-                        <body>
-                            <textarea>%s</textarea>
-                        </body>
-                    </html>
-                    ''' % (title, output)
-                    response = response_class(output, content_type='text/html')
-                else:
-                    response = response_class(
-                        output,
-                        content_type='text/plain')
-
-                return response
+    if isinstance(response, (dict, list, models.query.QuerySet)):
+        if request.ajax:
+            if isinstance(response, models.query.QuerySet):
+                output = serializers.serialize('json', response)
             else:
-                '''Add the dictionary to the context and let
-                render_to_response handle it'''
-                request.context.update(response)
-                response = None
-                pop = True
+                output = json.dumps(response, default=json_default_handler)
 
-        if isinstance(response, http.HttpResponse):
+            callback = request.GET.get('callback', False)
+            if callback:
+                output = '%s(%s)' % (callback, output)
+            if request.GET.get('debug'):
+                title = 'Rendering %(view)r in module %(app)r' % (
+                    request.context)
+
+                output = '''
+                <html>
+                    <head>
+                        <title>%s</title>
+                    </head>
+                    <body>
+                        <textarea>%s</textarea>
+                    </body>
+                </html>
+                ''' % (title, output)
+                response = response_class(output, content_type='text/html')
+            else:
+                response = response_class(
+                    output,
+                    content_type='text/plain')
+
             return response
-
-        elif isinstance(response, six.string_types):
-            if request.ajax:
-                return response_class(response, content_type='text/plain')
-            else:
-                return response_class(response)
-
-        elif response is None:
-            render_to_string = django_loader.render_to_string
-
-            return response_class(render_to_string(
-                request.template, context=request.context.flatten()))
-
         else:
-            raise UnknownViewResponseError(
-                '"%s" is an unsupported response type' % type(response))
-    finally:
-        if pop:
-            request.context.pop()
+            '''Add the dictionary to the context and let
+            render_to_response handle it'''
+            request.context.update(response)
+            response = None
+
+    if isinstance(response, http.HttpResponse):
+        return response
+
+    elif isinstance(response, six.string_types):
+        if request.ajax:
+            return response_class(response, content_type='text/plain')
+        else:
+            return response_class(response)
+
+    elif response is None:
+        render_to_string = django_loader.render_to_string
+
+        return response_class(render_to_string(
+            request.template, context=request.context, request=request))
+
+    else:
+        raise UnknownViewResponseError(
+            '"%s" is an unsupported response type' % type(response))
 
 
 def env(function=None, login_required=False, response_class=http.HttpResponse):

@@ -148,9 +148,10 @@ class Choice(object):
         self.order = Choice.order
 
     def __eq__(self, other):
-        if not isinstance(other, Choice):
-            return False
-        return self.value == other.value and self.label == self.label
+        if isinstance(other, Choice):  # pragma: no branch
+            return self.value == other.value
+        else:
+            return self.value == other
 
     def __repr__(self):
         repr_ = (six.text_type('<%s[%d]:%s>') % (
