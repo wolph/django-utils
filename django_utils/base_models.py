@@ -103,3 +103,29 @@ class SlugMixin(NameMixin):
 
     class Meta(object):
         unique_together = ('slug',)
+
+
+class NameModelBase(NameMixin, ModelBase):
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        abstract = True
+
+
+class SlugModelBase(SlugMixin, NameModelBase):
+    slug = models.SlugField(max_length=50)
+
+    class Meta:
+        abstract = True
+
+
+class NameCreatedAtModelBase(NameModelBase, CreatedAtModelBase):
+
+    class Meta:
+        abstract = True
+
+
+class SlugCreatedAtModelBase(SlugModelBase, CreatedAtModelBase):
+
+    class Meta:
+        abstract = True

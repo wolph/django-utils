@@ -1,4 +1,4 @@
-django_utils.management module
+django_utils.management package
 ===============================
 
 Subpackages

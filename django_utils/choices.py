@@ -79,12 +79,12 @@ To reference these properties:
     SomeModel.create(enum=SomeModel.Enum.Spam)
 
 '''
-import six
 import collections
+
+import six
 
 
 class ChoicesDict(object):
-
     '''The choices dict is an object that stores a sorted representation of
     the values by key and database value'''
 
@@ -123,7 +123,6 @@ class ChoicesDict(object):
 
 
 class Choice(object):
-
     '''The choice object has an optional label and value. If the value is not
     given an autoincrementing id (starting from 1) will be used
 
@@ -147,6 +146,12 @@ class Choice(object):
         self.value = value
         self.label = label
         self.order = Choice.order
+
+    def __eq__(self, other):
+        if isinstance(other, Choice):  # pragma: no branch
+            return self.value == other.value
+        else:
+            return self.value == other
 
     def __repr__(self):
         repr_ = (six.text_type('<%s[%d]:%s>') % (
@@ -174,9 +179,15 @@ class Choice(object):
         elif six.PY3:
             return six.text_type(label)
 
+    def deconstruct(self):
+        return (
+            '{}.{}'.format(self.__class__.__module__, self.__class__.__name__),
+            (self.value, self.label),
+            {},
+        )
+
 
 class ChoicesMeta(type):
-
     '''The choices metaclass is where all the magic happens, this
     automatically creates a ChoicesDict to get a sorted list of keys and
     values'''
@@ -211,7 +222,6 @@ class ChoicesMeta(type):
 
 
 class Choices(six.with_metaclass(ChoicesMeta)):
-
     '''The choices class is what you should inherit in your Django models
 
     >>> choices = Choices()
