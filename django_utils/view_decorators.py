@@ -65,12 +65,22 @@ def _process_response(request, response, response_class):
         if request.ajax:
             if isinstance(response, models.query.QuerySet):
                 output = serializers.serialize('json', response)
+            elif request.GET.get('debug'):
+                from django.core.serializers import json as django_json
+                output = json.dumps(
+                    response,
+                    indent=4,
+                    sort_keys=True,
+                    cls=django_json.DjangoJSONEncoder,
+                    default=json_default_handler,
+                )
             else:
                 output = json.dumps(response, default=json_default_handler)
 
             callback = request.GET.get('callback', False)
             if callback:
                 output = '%s(%s)' % (callback, output)
+
             if request.GET.get('debug'):
                 title = 'Rendering %(view)r in module %(app)r' % (
                     request.context)
@@ -79,6 +89,12 @@ def _process_response(request, response, response_class):
                 <html>
                     <head>
                         <title>%s</title>
+                        <style>
+                        textarea{
+                            width: 100%%;
+                            height: 100%%;
+                        }
+                        </style>
                     </head>
                     <body>
                         <textarea>%s</textarea>
