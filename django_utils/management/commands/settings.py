@@ -2,10 +2,11 @@ from __future__ import print_function
 
 import six
 import json
+import pprint
+
 from django.conf import settings
 
 from . import base_command
-import pprint
 
 
 class Command(base_command.CustomBaseCommand):
@@ -18,7 +19,7 @@ class Command(base_command.CustomBaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('keys', nargs='+')
         parser.add_argument(
-            '-o', '--output-type',
+            '-o', '--output-type', default='pprint',
             choices=['pprint', 'print', 'json', 'csv'])
         parser.add_argument('-k', '--show-keys', action='store_true')
 
@@ -62,6 +63,7 @@ class Command(base_command.CustomBaseCommand):
 
                     values[i] = value
 
+                out += values
                 print(','.join(out))
 
         elif output_type == 'json':
@@ -72,7 +74,7 @@ class Command(base_command.CustomBaseCommand):
         args = list(map(str.upper, options.get('keys', [])))
         data = dict()
         for key in dir(settings):
-            if key.upper() == key:
+            if key.isupper():
                 value = getattr(settings, key)
                 found = False
                 for arg in args:
