@@ -1,5 +1,9 @@
 from __future__ import print_function
 
+import six
+import json
+from django.conf import settings
+
 from . import base_command
 import pprint
 
@@ -11,22 +15,72 @@ class Command(base_command.CustomBaseCommand):
     can_import_settings = True
     requires_model_validation = False
 
-    def add_argument(self, parser):
+    def add_arguments(self, parser):
         parser.add_argument('keys', nargs='+')
+        parser.add_argument(
+            '-o', '--output-type',
+            choices=['pprint', 'print', 'json', 'csv'])
+        parser.add_argument('-k', '--show-keys', action='store_true')
+
+    def render_output(self, data, output_type='pprint', show_keys=False,
+                      **options):
+        if output_type == 'pprint':
+            if show_keys:
+                pprint.pprint(data)
+            else:
+                for key, values in data.items():
+                    pprint.pprint(values)
+
+        elif output_type == 'print':
+            for key, values in data.items():
+                if show_keys:
+                    print(key, end='')
+                print(values)
+
+        elif output_type == 'csv':
+            for key, values in data.items():
+                out = []
+                if show_keys:
+                    out.append(key)
+
+                if isinstance(values, six.string_types):
+                    values = [values]
+                elif isinstance(values, dict):
+                    values = ['%s=%s' % item for item in values.items()]
+                else:
+                    try:
+                        values = [str(value) for value in values]
+                    except TypeError:
+                        values = [str(values)]
+
+                for i, value in enumerate(values):
+                    if '"' in value:
+                        value = value.replace('"', '""')
+
+                    if ' ' in value or ',' in value:
+                        value = '"%s"' % value
+
+                    values[i] = value
+
+                print(','.join(out))
+
+        elif output_type == 'json':
+            print(json.dumps(data, indent=4, sort_keys=True))
 
     def handle(self, *args, **options):
-        from django.conf import settings
+        super(Command, self).handle(*args, **options)
         args = list(map(str.upper, options.get('keys', [])))
-        for k in dir(settings):
-            if k.upper() == k:
-                v = getattr(settings, k)
+        data = dict()
+        for key in dir(settings):
+            if key.upper() == key:
+                value = getattr(settings, key)
                 found = False
                 for arg in args:
-                    if arg in k:
+                    if arg in key:
                         found = True
                         break
 
                 if found:
-                    pprint.pprint(v)
+                    data[key] = value
 
-        super(Command, self).handle(*args, **options)
+        self.render_output(data, **options)
