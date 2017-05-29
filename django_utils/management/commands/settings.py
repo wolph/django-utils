@@ -11,9 +11,12 @@ class Command(base_command.CustomBaseCommand):
     can_import_settings = True
     requires_model_validation = False
 
+    def add_argument(self, parser):
+        parser.add_argument('keys', nargs='+')
+
     def handle(self, *args, **options):
         from django.conf import settings
-        args = list(map(str.upper, args))
+        args = list(map(str.upper, options.get('keys', [])))
         for k in dir(settings):
             if k.upper() == k:
                 v = getattr(settings, k)
