@@ -9,18 +9,22 @@ from django.conf import settings
 from . import base_command
 
 
+def json_default(obj):
+    return str(obj)
+
+
 class Command(base_command.CustomBaseCommand):
     help = '''Get a list of the current settings, any arguments given will be
     used to match the settings name (case insensitive).
     '''
     can_import_settings = True
     requires_model_validation = False
+    output_types = ['pprint', 'print', 'json', 'csv']
 
     def add_arguments(self, parser):
         parser.add_argument('keys', nargs='+')
         parser.add_argument(
-            '-o', '--output-type', default='pprint',
-            choices=['pprint', 'print', 'json', 'csv'])
+            '-o', '--output-type', default='pprint', choices=self.output_types)
         parser.add_argument('-k', '--show-keys', action='store_true')
 
     def render_output(self, data, output_type='pprint', show_keys=False,
@@ -67,11 +71,12 @@ class Command(base_command.CustomBaseCommand):
                 print(','.join(out))
 
         elif output_type == 'json':
-            print(json.dumps(data, indent=4, sort_keys=True))
+            print(json.dumps(data, indent=4, sort_keys=True,
+                             default=json_default))
 
     def handle(self, *args, **options):
         super(Command, self).handle(*args, **options)
-        args = list(map(str.upper, options.get('keys', [])))
+        args = list(map(str.upper, options.get('keys', args)))
         data = dict()
         for key in dir(settings):
             if key.isupper():
