@@ -5,7 +5,7 @@ from django import http
 from django.contrib.auth import decorators
 from django.core import serializers
 from django.db import models
-from django.core import urlresolvers
+from django import urls
 
 
 class ViewError(Exception):
@@ -26,13 +26,13 @@ def json_default_handler(obj):
 
 def redirect(url='./', *args, **kwargs):
     if '/' not in url or args or kwargs:
-        url = urlresolvers.reverse(url, args=args, kwargs=kwargs)
+        url = urls.reverse(url, args=args, kwargs=kwargs)
     return http.HttpResponseRedirect(url)
 
 
 def permanent_redirect(url, *args, **kwargs):
     if '/' not in url or args or kwargs:
-        url = urlresolvers.reverse(url, args=args, kwargs=kwargs)
+        url = urls.reverse(url, args=args, kwargs=kwargs)
     return http.HttpResponsePermanentRedirect(url)
 
 
@@ -40,7 +40,7 @@ REQUEST_PROPERTIES = {
     'redirect': redirect,
     'permanent_redirect': permanent_redirect,
     'not_found': http.HttpResponseNotFound,
-    'reverse': urlresolvers.reverse,
+    'reverse': urls.reverse,
 }
 
 

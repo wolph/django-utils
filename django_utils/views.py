@@ -3,12 +3,12 @@ from django import http
 
 
 @view_decorators.env(response_class=http.HttpResponseForbidden)
-def error_403(request):
+def error_403(request, exception):
     pass
 
 
 @view_decorators.env(response_class=http.HttpResponseNotFound)
-def error_404(request):
+def error_404(request, exception):
     pass
 
 

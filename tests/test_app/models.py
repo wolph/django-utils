@@ -11,4 +11,4 @@ class Eggs(Spam):
 
 
 class RecursionTest(models.Model):
-    parent = models.ForeignKey(Spam)
+    parent = models.ForeignKey(Spam, on_delete=models.CASCADE)

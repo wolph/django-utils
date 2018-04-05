@@ -11,7 +11,7 @@ class A(models.Model):
 
 class B(models.Model):
     some_attribute = models.CharField(max_length=100, blank=True, null=True)
-    parent = models.ForeignKey(A)
+    parent = models.ForeignKey(A, on_delete=models.CASCADE)
 
     # By default the fieldname is assumed to be `get_<field_name>`
     get_some_attribute = fields.RecursiveField()
