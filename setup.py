@@ -49,7 +49,7 @@ if __name__ == '__main__':
             'docs': [
                 'django',
                 'mock',
-                'sphinx>=1.5.0',
+                'sphinx>=1.7.2',
             ],
             'tests': [
                 'sphinx',
