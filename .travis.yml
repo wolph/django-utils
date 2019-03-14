@@ -15,7 +15,6 @@ env:
     - TOX_ENV=coveralls
 
 install:
-    - pip install --upgrade pip
     - pip install tox
 
 script:

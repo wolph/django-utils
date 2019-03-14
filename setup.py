@@ -43,7 +43,6 @@ if __name__ == '__main__':
         install_requires=[
             'python-utils>=2.0.1',
             'anyjson>=0.3.0'
-            'six',
         ],
         extras_require={
             'docs': [
