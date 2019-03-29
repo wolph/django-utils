@@ -65,11 +65,13 @@ if __name__ == '__main__':
         long_description=long_description,
         cmdclass={'test': PyTest},
         classifiers=[
+            'Development Status :: 6 - Mature',
             'Environment :: Web Environment',
             'Framework :: Django',
             'Intended Audience :: Developers',
             'License :: OSI Approved :: BSD License',
             'Operating System :: OS Independent',
+            'Natural Language :: English',
             'Programming Language :: Python',
             'Programming Language :: Python :: 2',
             'Programming Language :: Python :: 2.7',
