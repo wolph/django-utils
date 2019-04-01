@@ -197,7 +197,7 @@ class ChoicesMeta(type):
         has_values = False
         for key, value in six.iteritems(attrs):
             if isinstance(value, Choice):
-                if value.value:
+                if value.value is None:
                     has_values = True
 
                 if not value.label:
@@ -209,8 +209,8 @@ class ChoicesMeta(type):
         i = 0
         for key, value in sorted(choices, key=lambda c: c[1].order):
             if has_values:
-                assert value.value, ('Cannot mix choices with and without '
-                                     'values')
+                assert value.value is None, (
+                    'Cannot mix choices with and without values')
             else:
                 value.value = i
                 i += 1
