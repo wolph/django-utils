@@ -1,7 +1,8 @@
 sudo: false
 cache: pip
 language: python
-python: 3.7
+python: 3.6
+dist: xenial
 
 env:
     - TOX_ENV=pypy-django11
