@@ -34,7 +34,7 @@ class ModelBaseMeta(base.ModelBase):
             Meta.db_table = '%s_%s' % (app_label, module_name)
 
         return base.ModelBase.__new__(cls, name, bases, attrs)
-    
+
 
 class ModelBase(six.with_metaclass(ModelBaseMeta, models.Model)):
     class Meta:
