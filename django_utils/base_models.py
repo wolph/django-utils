@@ -18,16 +18,23 @@ class ModelBaseMeta(base.ModelBase):
     '''
 
     def __new__(cls, name, bases, attrs):
-        class_ = base.ModelBase.__new__(cls, name, bases, attrs)
-        module_name = formatters.camel_to_underscore(name)
+        # Get or create Meta
+        if 'Meta' in attrs:
+            Meta = attrs['Meta']
+        else:
+            Meta = type('Meta', (object,), dict(
+                __module__=attrs['__module__'],
+            ))
+            attrs['Meta'] = Meta
 
-        app_label = class_.__module__.split('.')[-2]
-        db_table = '%s_%s' % (app_label, module_name)
-        if not getattr(class_._meta, 'proxy', False):
-            class_._meta.db_table = db_table
+        # Override table name only if not explicitly defined
+        if not hasattr(Meta, 'db_table'):
+            module_name = formatters.camel_to_underscore(name)
+            app_label = attrs['__module__'].split('.')[-2]
+            Meta.db_table = '%s_%s' % (app_label, module_name)
 
-        return class_
-
+        return base.ModelBase.__new__(cls, name, bases, attrs)
+    
 
 class ModelBase(six.with_metaclass(ModelBaseMeta, models.Model)):
     class Meta:
