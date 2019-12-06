@@ -18,19 +18,21 @@ class ModelBaseMeta(base.ModelBase):
     '''
 
     def __new__(cls, name, bases, attrs):
+        module = attrs['__module__']
+
         # Get or create Meta
         if 'Meta' in attrs:
             Meta = attrs['Meta']
         else:
             Meta = type('Meta', (object,), dict(
-                __module__=attrs['__module__'],
+                __module__=module,
             ))
             attrs['Meta'] = Meta
 
         # Override table name only if not explicitly defined
         if not hasattr(Meta, 'db_table'):
             module_name = formatters.camel_to_underscore(name)
-            app_label = attrs['__module__'].split('.')[-2]
+            app_label = module.split('.')[-2]
             Meta.db_table = '%s_%s' % (app_label, module_name)
 
         return base.ModelBase.__new__(cls, name, bases, attrs)
