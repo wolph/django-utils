@@ -32,7 +32,7 @@ class PyTest(TestCommand):
 
 if __name__ == '__main__':
     setuptools.setup(
-        name=about['__package_name__'],
+        name='django-utils2',
         version=about['__version__'],
         author=about['__author__'],
         author_email=about['__author_email__'],
