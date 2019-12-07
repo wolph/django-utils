@@ -30,7 +30,7 @@ class ModelBaseMeta(base.ModelBase):
             attrs['Meta'] = Meta
 
         # Override table name only if not explicitly defined
-        if not hasattr(Meta, 'db_table'):
+        if not hasattr(Meta, 'db_table'):  # pragma: no cover
             module_name = formatters.camel_to_underscore(name)
             app_label = module.split('.')[-2]
             Meta.db_table = '%s_%s' % (app_label, module_name)
