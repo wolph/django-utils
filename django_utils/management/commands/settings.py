@@ -13,6 +13,9 @@ def json_default(obj):
     return str(obj)
 
 
+EXCLUDED_KEYS = {'FILE_CHARSET', 'DEFAULT_CONTENT_TYPE'}
+
+
 class Command(base_command.CustomBaseCommand):
     help = '''Get a list of the current settings, any arguments given will be
     used to match the settings name (case insensitive).
@@ -79,7 +82,7 @@ class Command(base_command.CustomBaseCommand):
         args = list(map(str.upper, options.get('keys', args)))
         data = dict()
         for key in dir(settings):
-            if key.isupper():
+            if key.isupper() and key not in EXCLUDED_KEYS:
                 value = getattr(settings, key)
                 found = False
                 for arg in args:
