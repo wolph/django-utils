@@ -1,5 +1,8 @@
 sudo: false
-cache: pip
+cache:
+  directories:
+    - $HOME/.wheels
+
 language: python
 python: 3.6
 dist: xenial
@@ -8,16 +11,36 @@ env:
     - TOX_ENV=pypy-django11
     - TOX_ENV=py27-django11
     - TOX_ENV=py35-django11
-    - TOX_ENV=py35-django20
+    - TOX_ENV=py35-django22
+    - TOX_ENV=py35-django30
     - TOX_ENV=py36-django11
-    - TOX_ENV=py36-django20
+    - TOX_ENV=py36-django22
+    - TOX_ENV=py36-django30
+    - TOX_ENV=py37-django11
+    - TOX_ENV=py37-django22
+    - TOX_ENV=py37-django30
+    - TOX_ENV=py38-django11
+    - TOX_ENV=py38-django22
+    - TOX_ENV=py38-django30
+    - TOX_ENV=py39-django11
+    - TOX_ENV=py39-django22
+    - TOX_ENV=py39-django30
     - TOX_ENV=flake8
     - TOX_ENV=docs
     - TOX_ENV=coveralls
 
+    global:
+        - PIP_WHEEL_DIR=$HOME/.wheels
+        - PIP_FIND_LINKS=file://$PIP_WHEEL_DIR
+        -
 install:
     - pip install tox
 
 script:
     tox -e $TOX_ENV
+
+notifications:
+  email:
+    on_success: never
+    on_failure: change
 
