@@ -1,6 +1,10 @@
 from django.db import models
 from django_utils import choices
-from django.utils.translation import ugettext_lazy as _
+
+try:
+    from django.utils.translation import gettext_lazy as _
+except ImportError:
+    from django.utils.translation import ugettext_lazy as _
 
 
 class TranslatedHuman(models.Model):

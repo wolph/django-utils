@@ -32,7 +32,7 @@ The Django Utils Choices version:
             Female = choices.Choice('f')
             Other = choices.Choice('o')
 
-        gender = models.CharField(max_length=1, choices=Gender.choices)
+        gender = models.CharField(max_length=1, choices=Gender)
 
 To reference these properties:
 
@@ -70,7 +70,7 @@ The Django Utils Choices version:
             Eggs = choices.Choice()
 
         enum = models.IntegerField(
-            choices=Enum.choices, default=Enum.Foo)
+            choices=Enum, default=Enum.Foo)
 
 To reference these properties:
 
@@ -109,11 +109,17 @@ class ChoicesDict(object):
         self._by_value[value.value] = value
 
     def __iter__(self):
-        for k, v in six.iteritems(self._by_value):
-            yield k, v
+        for key, value in six.iteritems(self._by_value):
+            yield key, value
 
     def items(self):
         return list(self)
+
+    def values(self):
+        return list(self._by_key.keys())
+
+    def keys(self):
+        return list(self._by_value.keys())
 
     def __repr__(self):
         return repr(self._by_key)
@@ -220,6 +226,10 @@ class ChoicesMeta(type):
 
         return super(ChoicesMeta, cls).__new__(cls, name, bases, attrs)
 
+    def __iter__(self):
+        for item in self.choices:
+            yield item
+
 
 class Choices(six.with_metaclass(ChoicesMeta)):
     '''The choices class is what you should inherit in your Django models
@@ -235,17 +245,35 @@ class Choices(six.with_metaclass(ChoicesMeta)):
     'OrderedDict()'
     >>> choices.choices.items()
     []
+    >>> choices.choices.keys()
+    []
+    >>> choices.choices.values()
+    []
+    >>> list(choices)
+    []
 
     >>> class ChoiceTest(Choices):
     ...     a = Choice()
     >>> choices = ChoiceTest()
     >>> choices.choices.items()
-    [(0, <Choice[3]:a>)]
+    [(0, <Choice[...]:a>)]
     >>> choices.a
     0
     >>> choices.choices['a']
-    <Choice[3]:a>
+    <Choice[...]:a>
     >>> choices.choices[0]
-    <Choice[3]:a>
+    <Choice[...]:a>
+    >>> choices.choices.keys()
+    [0]
+    >>> choices.choices.values()
+    ['a']
+    >>> list(choices)
+    [(0, <Choice[...]:a>)]
+    >>> list(ChoiceTest)
+    [(0, <Choice[...]:a>)]
     '''
-    pass
+    choices = ChoicesDict()
+
+    def __iter__(self):
+        for item in self.choices:
+            yield item
