@@ -201,6 +201,14 @@ class ChoicesMeta(type):
     def __new__(cls, name, bases, attrs):
         choices = list()
         has_values = False
+
+        # Chicken-Egg problem, can't check for something that doesn't exist yet
+        literal = False
+        for base in bases:
+            if base.__name__ == 'LiteralChoices':
+                literal = True
+                break
+
         for key, value in six.iteritems(attrs):
             if isinstance(value, Choice):
                 if value.value is not None:
@@ -217,6 +225,8 @@ class ChoicesMeta(type):
             if has_values:
                 assert value.value is not None, (
                     'Cannot mix choices with and without values')
+            elif literal:
+                value.value = value.label
             else:
                 value.value = i
                 i += 1
@@ -277,3 +287,18 @@ class Choices(six.with_metaclass(ChoicesMeta)):
     def __iter__(self):
         for item in self.choices:
             yield item
+
+
+class LiteralChoices(Choices):
+    '''Special version of the Choices class that uses the label as the value
+
+    >>> class Role(LiteralChoices):
+    ...     admin = Choice()
+    ...     user = Choice()
+    ...     guest = Choice()
+
+    >>> Role.choices.values()
+    ['admin', 'user', 'guest']
+    >>> Role.choices.keys()
+    ['admin', 'user', 'guest']
+    '''
