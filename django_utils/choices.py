@@ -210,12 +210,20 @@ class ChoicesMeta(type):
                 break
 
         for key, value in six.iteritems(attrs):
+            # Skip private and protected values
+            if key.startswith('_'):
+                continue
+
+            if isinstance(value, (str, int, float)):
+                value = Choice(value, key.lower())
+                setattr(cls, key, value)
+
             if isinstance(value, Choice):
                 if value.value is not None:
                     has_values = True
 
                 if not value.label:
-                    value.label = key
+                    value.label = key.lower()
 
                 choices.append((key, value))
 
@@ -301,4 +309,19 @@ class LiteralChoices(Choices):
     ['admin', 'user', 'guest']
     >>> Role.choices.keys()
     ['admin', 'user', 'guest']
+
+
+    >>> class RoleWithImplicitChoice(LiteralChoices):
+    ...     ADMIN = 'admin'
+    ...     USER = 'user'
+    ...     GUEST = 'guest'
+
+    >>> Role.choices.values()
+    ['admin', 'user', 'guest']
+    >>> Role.choices.keys()
+    ['admin', 'user', 'guest']
+    >>> Role.ADMIN
+    <Choice[1]:admin>
+    >>> Role.admin
+    'admin'
     '''
