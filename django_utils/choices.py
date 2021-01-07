@@ -202,7 +202,9 @@ class ChoicesMeta(type):
         choices = list()
         has_values = False
 
-        # Chicken-Egg problem, can't check for something that doesn't exist yet
+        # Chicken-Egg problem, can't check for something that doesn't exist
+        # yet. That's why we check for the name of the class instead of a
+        # `issubclass`
         literal = False
         for base in bases:
             if base.__name__ == 'LiteralChoices':
@@ -210,12 +212,20 @@ class ChoicesMeta(type):
                 break
 
         for key, value in six.iteritems(attrs):
+            # Skip private and protected values
+            if key.startswith('_'):
+                continue
+
+            if isinstance(value, (str, int, float)):
+                value = Choice(value, key.lower())
+                setattr(cls, key, value)
+
             if isinstance(value, Choice):
                 if value.value is not None:
                     has_values = True
 
                 if not value.label:
-                    value.label = key
+                    value.label = key.lower()
 
                 choices.append((key, value))
 
@@ -301,4 +311,17 @@ class LiteralChoices(Choices):
     ['admin', 'user', 'guest']
     >>> Role.choices.keys()
     ['admin', 'user', 'guest']
+
+
+    >>> class RoleWithImplicitChoice(LiteralChoices):
+    ...     ADMIN = 'admin'
+    ...     USER = 'user'
+    ...     GUEST = 'guest'
+
+    >>> Role.choices.values()
+    ['admin', 'user', 'guest']
+    >>> Role.choices.keys()
+    ['admin', 'user', 'guest']
+    >>> Role.admin
+    'admin'
     '''
