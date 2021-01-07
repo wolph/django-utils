@@ -3,12 +3,12 @@ Introduction
 
 Travis status:
 
-.. image:: https://travis-ci.org/WoLpH/django-utils.png?branch=master
+.. image:: https://travis-ci.org/WoLpH/django-utils.svg?branch=master
   :target: https://travis-ci.org/WoLpH/django-utils
 
 Coverage:
 
-.. image:: https://coveralls.io/repos/WoLpH/django-utils/badge.png?branch=master
+.. image:: https://coveralls.io/repos/WoLpH/django-utils/badge.svg?branch=master
   :target: https://coveralls.io/r/WoLpH/django-utils?branch=master
 
 Django Utils is a collection of small Django helper functions, utilities and
