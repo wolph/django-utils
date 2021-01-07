@@ -46,41 +46,39 @@ Usage
 
 To enable easy to use choices which are more convenient than the Django 3.0 choices system you can use this:
 
-```python
+.. code-block:: python
 
-from django_utils import choices
-
-
-# For manually specifying the value (automatically detects `str`, `int` and `float`):
-class Human(models.Model):
-    class Gender(choices.Choices):
-        MALE = 'm'
-        FEMALE = 'f'
-        OTHER = 'o'
-
-    gender = models.CharField(max_length=1, choices=Gender)
+    from django_utils import choices
 
 
-# To define the values as `male` implicitly:
-class Human(models.Model):
-    class Gender(choices.Choices):
-        MALE = choices.Choice()
-        FEMALE = choices.Choice()
-        OTHER = choices.Choice()
+    # For manually specifying the value (automatically detects `str`, `int` and `float`):
+    class Human(models.Model):
+        class Gender(choices.Choices):
+            MALE = 'm'
+            FEMALE = 'f'
+            OTHER = 'o'
 
-    gender = models.CharField(max_length=1, choices=Gender)
+        gender = models.CharField(max_length=1, choices=Gender)
 
 
-# Or explicitly define them
-class Human(models.Model):
-    class Gender(choices.Choices):
-        MALE = choices.Choice('m', 'male')
-        FEMALE = choices.Choice('f', 'female')
-        OTHER = choices.Choice('o', 'other')
+    # To define the values as `male` implicitly:
+    class Human(models.Model):
+        class Gender(choices.Choices):
+            MALE = choices.Choice()
+            FEMALE = choices.Choice()
+            OTHER = choices.Choice()
 
-    gender = models.CharField(max_length=1, choices=Gender)
+        gender = models.CharField(max_length=1, choices=Gender)
 
-```
+
+    # Or explicitly define them
+    class Human(models.Model):
+        class Gender(choices.Choices):
+            MALE = choices.Choice('m', 'male')
+            FEMALE = choices.Choice('f', 'female')
+            OTHER = choices.Choice('o', 'other')
+
+        gender = models.CharField(max_length=1, choices=Gender)
 
 A PostgreSQL ENUM field will be coming soon to automatically facilitate the creation of the enum if needed.
 

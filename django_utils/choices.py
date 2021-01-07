@@ -202,7 +202,9 @@ class ChoicesMeta(type):
         choices = list()
         has_values = False
 
-        # Chicken-Egg problem, can't check for something that doesn't exist yet
+        # Chicken-Egg problem, can't check for something that doesn't exist
+        # yet. That's why we check for the name of the class instead of a
+        # `issubclass`
         literal = False
         for base in bases:
             if base.__name__ == 'LiteralChoices':
@@ -320,8 +322,6 @@ class LiteralChoices(Choices):
     ['admin', 'user', 'guest']
     >>> Role.choices.keys()
     ['admin', 'user', 'guest']
-    >>> Role.ADMIN
-    <Choice[1]:admin>
     >>> Role.admin
     'admin'
     '''
