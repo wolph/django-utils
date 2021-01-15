@@ -40,6 +40,7 @@ if __name__ == '__main__':
         url=about['__url__'],
         license='BSD',
         packages=setuptools.find_packages(exclude=['tests']),
+        include_package_data=True,
         install_requires=[
             'python-utils>=2.5.0',
             'anyjson>=0.3.0'
