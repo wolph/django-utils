@@ -41,7 +41,7 @@ if __name__ == '__main__':
         license='BSD',
         packages=setuptools.find_packages(exclude=['tests']),
         install_requires=[
-            'python-utils>=2.0.1',
+            'python-utils>=2.5.0',
             'anyjson>=0.3.0'
         ],
         extras_require={
