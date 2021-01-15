@@ -6,19 +6,12 @@ Subpackages
 
 .. toctree::
 
+    django_utils.admin
     django_utils.management
     django_utils.templatetags
 
 Submodules
 ----------
-
-django_utils.admin module
--------------------------
-
-.. automodule:: django_utils.admin
-    :members:
-    :undoc-members:
-    :show-inheritance:
 
 django_utils.base_models module
 -------------------------------
