@@ -1,0 +1,7 @@
+{% extends 'django_utils/admin/dropdown_filter.html' %}
+
+{% block post %}
+    <script type="text/javascript">
+django.jQuery(document).ready($ => $('#{{ spec.select_html_id }}').select2());
+    </script>
+{% endblock %}

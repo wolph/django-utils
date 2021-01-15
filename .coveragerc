@@ -23,6 +23,7 @@ omit =
     */nose/*
     */django/*
     */tests/*
+    django_utils/admin/filters.py
 
 [paths]
 source =

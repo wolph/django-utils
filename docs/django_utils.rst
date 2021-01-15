@@ -6,6 +6,7 @@ Subpackages
 
 .. toctree::
 
+    django_utils.admin
     django_utils.management
     django_utils.templatetags
 

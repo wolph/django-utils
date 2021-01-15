@@ -9,7 +9,6 @@ dist: xenial
 
 env:
   # generate with: tox -l
-  - TOX_ENV=py35-django22
   - TOX_ENV=py36-django22
   - TOX_ENV=py37-django22
   - TOX_ENV=py37-django30
