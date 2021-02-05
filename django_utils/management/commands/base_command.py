@@ -24,9 +24,12 @@ class CustomBaseCommand(base.BaseCommand, logger.Logged):
         self.log = self.logger = self.create_logger()
 
     def create_logger(self):
-        name = self.__class__.__module__.split('.')[-1]
+        module = self.__class__.__module__
 
-        loggers = self.loggers + ('management.commands.%s' % name,)
+        loggers = (
+            'management.commands.%s' % module.split('.')[-1],
+            module,
+        ) + self.loggers
         for logger_name in loggers:
             logger = logging.getLogger(logger_name)
             logger.setLevel(VERBOSITY_LOG_MAP[self.verbosity])
