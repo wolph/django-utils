@@ -161,8 +161,8 @@ def env(function=None, login_required=False, response_class=http.HttpResponse):
             request = _prepare_request(request, app, name)
             request.template = '%s/%s.html' % (app, name)
             response = function(request, *args, **kwargs)
-
-            return _process_response(request, response, response_class)
+            response = _process_response(request, response, response_class)
+            return response  # pragma: no branch
         finally:
             '''Remove the context reference from request to prevent leaking'''
             try:

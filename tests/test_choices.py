@@ -77,6 +77,8 @@ def test_choice_equals():
     assert choice_a == choice_a
     assert choice_a == choice_b
     assert choice_a != choice_c
+    assert hash(choice_a) != hash(choice_c)
+    assert hash(choice_a) == hash(choice_b)
 
 
 def test_choice_deconstruct():

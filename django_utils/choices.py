@@ -143,7 +143,6 @@ class Choice(object):
     <Choice[2]:None>
     >>> str(choice)
     'None'
-
     '''
     order = 0
 
@@ -184,6 +183,9 @@ class Choice(object):
                 return six.text_type(label)
         elif six.PY3:
             return six.text_type(label)
+
+    def __hash__(self):
+        return hash(self.value)
 
     def deconstruct(self):
         return (
