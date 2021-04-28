@@ -11,17 +11,17 @@ env:
   # generate with: tox -l
   - TOX_ENV=py36-django22
   - TOX_ENV=py37-django22
-  - TOX_ENV=py37-django30
   - TOX_ENV=py37-django31
+  - TOX_ENV=py37-django32
   - TOX_ENV=py38-django22
-  - TOX_ENV=py38-django30
   - TOX_ENV=py38-django31
+  - TOX_ENV=py38-django32
   - TOX_ENV=py39-django22
-  - TOX_ENV=py39-django30
   - TOX_ENV=py39-django31
+  - TOX_ENV=py39-django32
   - TOX_ENV=py310-django22
-  - TOX_ENV=py310-django30
   - TOX_ENV=py310-django31
+  - TOX_ENV=py310-django32
   - TOX_ENV=flake8
   - TOX_ENV=docs
   - TOX_ENV=coveralls
