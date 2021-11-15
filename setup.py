@@ -42,8 +42,7 @@ if __name__ == '__main__':
         packages=setuptools.find_packages(exclude=['tests']),
         include_package_data=True,
         install_requires=[
-            'python-utils>=2.5.0',
-            'anyjson>=0.3.0'
+            'python-utils>=2.5.6',
         ],
         extras_require={
             'docs': [
