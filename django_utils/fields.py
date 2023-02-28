@@ -33,5 +33,3 @@ class RecursiveField(object):
 
     def __get__(self, instance, owner):
         return functools.partial(self.get, instance)
-
-

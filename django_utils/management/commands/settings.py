@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-import six
 import json
 import pprint
 
@@ -27,11 +26,14 @@ class Command(base_command.CustomBaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('keys', nargs='+')
         parser.add_argument(
-            '-o', '--output-type', default='pprint', choices=self.output_types)
+            '-o', '--output-type', default='pprint', choices=self.output_types
+        )
         parser.add_argument('-k', '--show-keys', action='store_true')
 
-    def render_output(self, data, output_type='pprint', show_keys=False,
-                      **options):
+    def render_output(
+        self, data, output_type='pprint', show_keys=False,
+        **options
+    ):
         if output_type == 'pprint':
             if show_keys:
                 pprint.pprint(data)
@@ -51,10 +53,10 @@ class Command(base_command.CustomBaseCommand):
                 if show_keys:
                     out.append(key)
 
-                if isinstance(values, six.string_types):
+                if isinstance(values, str):
                     values = [values]
                 elif isinstance(values, dict):
-                    values = ['%s=%s' % item for item in values.items()]
+                    values = [f'{k}={v}' for k, v in values.items()]
                 else:
                     try:
                         values = [str(value) for value in values]
@@ -66,7 +68,7 @@ class Command(base_command.CustomBaseCommand):
                         value = value.replace('"', '""')
 
                     if ' ' in value or ',' in value:
-                        value = '"%s"' % value
+                        value = f'"{value}"'
 
                     values[i] = value
 
@@ -74,8 +76,12 @@ class Command(base_command.CustomBaseCommand):
                 print(','.join(out))
 
         elif output_type == 'json':
-            print(json.dumps(data, indent=4, sort_keys=True,
-                             default=json_default))
+            print(
+                json.dumps(
+                    data, indent=4, sort_keys=True,
+                    default=json_default
+                )
+            )
 
     def handle(self, *args, **options):
         super(Command, self).handle(*args, **options)

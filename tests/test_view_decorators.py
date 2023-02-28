@@ -14,8 +14,8 @@ from django_utils import utils
 class Request(object):
 
     def __init__(self, ajax=False):
-        self.ajax = ajax
         self.user = auth_models.AnonymousUser()
+        self.headers = {'x-requested-with': 'XMLHttpRequest'} if ajax else {}
         self.REQUEST = dict()
         self.POST = dict()
         self.GET = dict()
@@ -25,9 +25,6 @@ class Request(object):
 
     def get_full_path(self):
         return '/'
-
-    def is_ajax(self):
-        return self.ajax
 
 
 def test_to_json():

@@ -81,8 +81,6 @@ To reference these properties:
 '''
 import collections
 
-import six
-
 
 class ChoicesDict(object):
     '''The choices dict is an object that stores a sorted representation of
@@ -102,14 +100,14 @@ class ChoicesDict(object):
         elif key in self._by_key:
             return self._by_key[key]
         else:
-            raise KeyError('Key %r does not exist' % key)
+            raise KeyError(f'Key {key!r} does not exist')
 
     def __setitem__(self, key, value):
         self._by_key[key] = value
         self._by_value[value.value] = value
 
     def __iter__(self):
-        for key, value in six.iteritems(self._by_value):
+        for key, value in self._by_value.items():
             yield key, value
 
     def items(self):
@@ -125,7 +123,7 @@ class ChoicesDict(object):
         return repr(self._by_key)
 
     def __str__(self):
-        return six.text_type(self._by_key)
+        return str(self._by_key)
 
 
 class Choice(object):
@@ -159,30 +157,14 @@ class Choice(object):
             return self.value == other
 
     def __repr__(self):
-        repr_ = (six.text_type('<%s[%d]:%s>') % (
-            self.__class__.__name__,
-            self.order,
-            self.label,
-        ))
-        if six.PY2:
-            repr_ = repr_.encode('utf-8', 'replace')
-        return repr_
+        return f'<{self.__class__.__name__}[{self.order:d}]:{self.label}>'
 
     def __str__(self):
         value = self.__unicode__()
-        if six.PY2:
-            value = value.encode('utf-8', 'replace')
         return value
 
     def __unicode__(self):
-        label = self.label
-        if six.PY2:
-            if isinstance(label, str):
-                return label.decode('utf-8', 'replace')
-            else:
-                return six.text_type(label)
-        elif six.PY3:
-            return six.text_type(label)
+        return str(self.label)
 
     def __hash__(self):
         return hash(self.value)
@@ -213,7 +195,7 @@ class ChoicesMeta(type):
                 literal = True
                 break
 
-        for key, value in six.iteritems(attrs):
+        for key, value in attrs.items():
             # Skip private and protected values
             if key.startswith('_'):
                 continue
@@ -253,7 +235,7 @@ class ChoicesMeta(type):
             yield item
 
 
-class Choices(six.with_metaclass(ChoicesMeta)):
+class Choices(metaclass=ChoicesMeta):
     '''The choices class is what you should inherit in your Django models
 
     >>> choices = Choices()

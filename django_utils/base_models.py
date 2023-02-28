@@ -1,6 +1,5 @@
-import six
-from django.db.models import base
 from django.db import models
+from django.db.models import base
 from django.template import defaultfilters
 from python_utils import formatters
 
@@ -24,21 +23,23 @@ class ModelBaseMeta(base.ModelBase):
         if 'Meta' in attrs:
             Meta = attrs['Meta']
         else:
-            Meta = type('Meta', (object,), dict(
-                __module__=module,
-            ))
+            Meta = type(
+                'Meta', (object,), dict(
+                    __module__=module,
+                )
+            )
             attrs['Meta'] = Meta
 
         # Override table name only if not explicitly defined
         if not hasattr(Meta, 'db_table'):  # pragma: no cover
             module_name = formatters.camel_to_underscore(name)
             app_label = module.split('.')[-2]
-            Meta.db_table = '%s_%s' % (app_label, module_name)
+            Meta.db_table = f'{app_label}_{module_name}'
 
         return base.ModelBase.__new__(cls, name, bases, attrs)
 
 
-class ModelBase(six.with_metaclass(ModelBaseMeta, models.Model)):
+class ModelBase(models.Model, metaclass=ModelBaseMeta):
     class Meta:
         abstract = True
 
@@ -62,7 +63,7 @@ class NameMixin(object):
     '<NameMixin[123]: test>'
     >>> str(x)
     'test'
-    >>> str(six.text_type(x))
+    >>> str(str(x))
     'test'
 
     '''
@@ -71,20 +72,10 @@ class NameMixin(object):
         return self.name
 
     def __str__(self):
-        out = self.__unicode__()
-        if six.PY2:
-            out = out.encode('utf-8', 'replace')
-        return out
+        return self.__unicode__()
 
     def __repr__(self):
-        repr_ = six.text_type('<%s[%d]: %s>') % (
-            self.__class__.__name__,
-            self.pk or -1,
-            self.name,
-        )
-        if six.PY2:
-            repr_ = repr_.encode('utf-8')
-        return repr_
+        return f'<{self.__class__.__name__}[{self.pk or -1:d}]: {self.name}>'
 
 
 class SlugMixin(NameMixin):
@@ -99,7 +90,7 @@ class SlugMixin(NameMixin):
     '<NameMixin[123]: test>'
     >>> str(x)
     'test'
-    >>> str(six.text_type(x))
+    >>> str(str(x))
     'test'
 
     '''

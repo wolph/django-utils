@@ -1,11 +1,10 @@
-import six
 import json
-from django.template import loader as django_loader
-from django import http
+
+from django import http, urls
 from django.contrib.auth import decorators
 from django.core import serializers
 from django.db import models
-from django import urls
+from django.template import loader as django_loader
 
 
 class ViewError(Exception):
@@ -20,8 +19,10 @@ def json_default_handler(obj):
     if hasattr(obj, 'isoformat'):
         return obj.isoformat()
     else:
-        raise TypeError('Object of type %s with value of %s is not JSON '
-                        'serializable' % (type(obj), repr(obj)))
+        raise TypeError(
+            f'Object of type {type(obj)} with value of {obj!r} is not JSON '
+            'serializable'
+        )
 
 
 def redirect(url='./', *args, **kwargs):
@@ -79,33 +80,34 @@ def _process_response(request, response, response_class):
 
             callback = request.GET.get('callback', False)
             if callback:
-                output = '%s(%s)' % (callback, output)
+                output = f'{callback}({output})'
 
             if request.GET.get('debug'):
-                title = 'Rendering %(view)r in module %(app)r' % (
-                    request.context)
+                title = f'Rendering {request.context!r} in module ' \
+                        f'{request.context!r}'
 
-                output = '''
+                output = f'''
                 <html>
                     <head>
-                        <title>%s</title>
+                        <title>{title}</title>
                         <style>
-                        textarea{
-                            width: 100%%;
-                            height: 100%%;
-                        }
+                        textarea{{
+                            width: 100%;
+                            height: 100%;
+                        }}
                         </style>
                     </head>
                     <body>
-                        <textarea>%s</textarea>
+                        <textarea>{output}</textarea>
                     </body>
                 </html>
-                ''' % (title, output)
+                '''
                 response = response_class(output, content_type='text/html')
             else:
                 response = response_class(
                     output,
-                    content_type='text/plain')
+                    content_type='text/plain'
+                )
 
             return response
         else:
@@ -117,7 +119,7 @@ def _process_response(request, response, response_class):
     if isinstance(response, http.HttpResponse):
         return response
 
-    elif isinstance(response, six.string_types):
+    elif isinstance(response, str):
         if request.ajax:
             return response_class(response, content_type='text/plain')
         else:
@@ -126,12 +128,16 @@ def _process_response(request, response, response_class):
     elif response is None:
         render_to_string = django_loader.render_to_string
 
-        return response_class(render_to_string(
-            request.template, context=request.context, request=request))
+        return response_class(
+            render_to_string(
+                request.template, context=request.context, request=request
+            )
+        )
 
     else:
         raise UnknownViewResponseError(
-            '"%s" is an unsupported response type' % type(response))
+            f'"{type(response)}" is an unsupported response type'
+        )
 
 
 def env(function=None, login_required=False, response_class=http.HttpResponse):
@@ -149,17 +155,19 @@ def env(function=None, login_required=False, response_class=http.HttpResponse):
     '''
 
     def _env(request, *args, **kwargs):
-        request.ajax = bool(max(
-            request.is_ajax(),
-            int(request.POST.get('ajax', 0)),
-            int(request.GET.get('ajax', 0)),
-        ))
+        request.ajax = bool(
+            max(
+                request.headers.get('x-requested-with') == 'XMLHttpRequest',
+                int(request.POST.get('ajax', 0)),
+                int(request.GET.get('ajax', 0)),
+            )
+        )
         request.context = None
         try:
             name = function.__name__
             app = function.__module__.split('.')[0]
             request = _prepare_request(request, app, name)
-            request.template = '%s/%s.html' % (app, name)
+            request.template = f'{app}/{name}.html'
             response = function(request, *args, **kwargs)
             response = _process_response(request, response, response_class)
             return response  # pragma: no branch
@@ -185,4 +193,5 @@ def env(function=None, login_required=False, response_class=http.HttpResponse):
     else:
         def inner(function):
             return env(function, login_required, response_class)
+
         return inner
