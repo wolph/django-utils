@@ -1,10 +1,11 @@
 Introduction
 ============
 
-Travis status:
+Build status:
 
-.. image:: https://travis-ci.org/WoLpH/django-utils.svg?branch=master
-  :target: https://travis-ci.org/WoLpH/django-utils
+.. image:: https://github.com/WoLpH/django-utils/actions/workflows/main.yml/badge.svg
+    :alt: django-utils test status
+    :target: https://github.com/WoLpH/django-utils/actions
 
 Coverage:
 
