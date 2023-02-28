@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.abspath(os.path.pardir))
 from django_utils import __about__
 
 import django
+
 django.setup()
 
 # -- General configuration -----------------------------------------------
@@ -56,10 +57,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = __about__.__package_name__.replace('-', ' ').capitalize()
-copyright = u'%s,  <a href="http://wol.ph/">%s</a>' % (
-    datetime.date.today().year,
-    __about__.__author__,
-)
+copyright = f'{datetime.date.today().year},  <a href="http://wol.ph/">' \
+            f'{__about__.__author__}</a>'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -202,29 +201,29 @@ html_static_path = ['_static']
 # Output file base name for HTML help builder.
 htmlhelp_basename = __about__.__package_name__ + '-doc'
 
-
 # -- Options for LaTeX output --------------------------------------------
 
 latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
-    #'papersize': 'letterpaper',
+    # 'papersize': 'letterpaper',
 
     # The font size ('10pt', '11pt' or '12pt').
-    #'pointsize': '10pt',
+    # 'pointsize': '10pt',
 
     # Additional stuff for the LaTeX preamble.
-    #'preamble': '',
+    # 'preamble': '',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [(
     'index',
-    '%s.tex' % __about__.__package_name__,
-    u'%s Documentation' % __about__.__package_name__.replace('-', ' ').capitalize(),
-                   __about__.__author__,
-                   'manual',
-                   )]
+    f'{__about__.__package_name__}.tex',
+    f'{__about__.__package_name__.replace("-", " ").capitalize()} '
+    f'Documentation',
+    __about__.__author__,
+    'manual',
+)]
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
@@ -254,7 +253,8 @@ latex_documents = [(
 man_pages = [(
     'index',
     __about__.__package_name__,
-    u'%s Documentation' % __about__.__package_name__.replace('-', ' ').capitalize(),
+    f'{__about__.__package_name__.replace("-", " ").capitalize()} '
+    f'Documentation',
     [__about__.__author__],
     1,
 )]
@@ -271,7 +271,8 @@ man_pages = [(
 texinfo_documents = [(
     'index',
     __about__.__package_name__,
-    u'%s Documentation' % __about__.__package_name__.replace('-', ' ').capitalize(),
+    f'{__about__.__package_name__.replace("-", " ").capitalize()} '
+    f'Documentation',
     __about__.__author__,
     __about__.__package_name__,
     __about__.__description__,
@@ -341,4 +342,3 @@ intersphinx_mapping = {
     'django': ('http://docs.djangoproject.com/en/dev/',
                'http://docs.djangoproject.com/en/dev/_objects/'),
 }
-

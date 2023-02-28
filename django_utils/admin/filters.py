@@ -5,17 +5,30 @@ from datetime import timedelta
 from django import http
 from django.contrib import admin
 from django.contrib.admin import widgets
-from django.contrib.admin.filters import AllValuesFieldListFilter
-from django.contrib.admin.filters import BooleanFieldListFilter
-from django.contrib.admin.filters import ChoicesFieldListFilter
-from django.contrib.admin.filters import DateFieldListFilter
-from django.contrib.admin.filters import FieldListFilter
-from django.contrib.admin.filters import ListFilter
-from django.contrib.admin.filters import RelatedFieldListFilter
-from django.contrib.admin.filters import RelatedOnlyFieldListFilter
-from django.contrib.admin.filters import SimpleListFilter
+from django.contrib.admin.filters import (
+    AllValuesFieldListFilter,
+    BooleanFieldListFilter,
+    ChoicesFieldListFilter,
+    DateFieldListFilter,
+    FieldListFilter,
+    ListFilter,
+    RelatedFieldListFilter,
+    RelatedOnlyFieldListFilter,
+    SimpleListFilter,
+)
 from django.core.cache import cache
 from django.db import models
+from django.utils import text
+
+assert AllValuesFieldListFilter
+assert BooleanFieldListFilter
+assert ChoicesFieldListFilter
+assert DateFieldListFilter
+assert FieldListFilter
+assert ListFilter
+assert RelatedFieldListFilter
+assert RelatedOnlyFieldListFilter
+assert SimpleListFilter
 
 __all__ = (
     'AllValuesFieldListFilter',
@@ -28,8 +41,6 @@ __all__ = (
     'RelatedOnlyFieldListFilter',
     'SimpleListFilter',
 )
-
-from django.utils import text
 
 CACHE_TIMEOUT = timedelta(minutes=10)
 
@@ -100,8 +111,11 @@ class JSONFieldFilter(FilterBase):
 
         return lookups
 
-    def queryset(self, request: http.HttpRequest, queryset: models.QuerySet) \
-            -> models.QuerySet:
+    def queryset(
+        self,
+        request: http.HttpRequest,
+        queryset: models.QuerySet,
+    ) -> models.QuerySet:
         value = self.value()
         if value:
             return queryset.filter(**{self.field_path: self.cast(value)})
@@ -109,14 +123,16 @@ class JSONFieldFilter(FilterBase):
             return queryset
 
     @classmethod
-    def create(cls,
-               field_path: str,
-               title: str = None,
-               parameter_name: str = None,
-               template: str = None,
-               formatter: typing.Callable[[typing.Any], str] = None,
-               cast: typing.Callable[[str], typing.Any] = None,
-               timeout: timedelta = None) -> typing.Type['JSONFieldFilter']:
+    def create(
+        cls,
+        field_path: str,
+        title: str = None,
+        parameter_name: str = None,
+        template: str = None,
+        formatter: typing.Callable[[typing.Any], str] = None,
+        cast: typing.Callable[[str], typing.Any] = None,
+        timeout: timedelta = None
+    ) -> typing.Type['JSONFieldFilter']:
 
         class Filter(cls):
             pass
@@ -159,8 +175,10 @@ class RelatedFieldListFilterSelect2(Select2Mixin, RelatedFieldListFilter):
     pass
 
 
-class RelatedOnlyFieldListFilterSelect2(Select2Mixin,
-                                        RelatedOnlyFieldListFilter):
+class RelatedOnlyFieldListFilterSelect2(
+    Select2Mixin,
+    RelatedOnlyFieldListFilter
+):
     pass
 
 
@@ -172,8 +190,10 @@ class SimpleListFilterDropdown(DropdownMixin, SimpleListFilter, ABC):
     pass
 
 
-class AllValuesFieldListFilterDropdown(DropdownMixin,
-                                       AllValuesFieldListFilter):
+class AllValuesFieldListFilterDropdown(
+    DropdownMixin,
+    AllValuesFieldListFilter
+):
     pass
 
 
@@ -185,6 +205,8 @@ class RelatedFieldListFilterDropdown(DropdownMixin, RelatedFieldListFilter):
     pass
 
 
-class RelatedOnlyFieldListFilterDropdown(DropdownMixin,
-                                         RelatedOnlyFieldListFilter):
+class RelatedOnlyFieldListFilterDropdown(
+    DropdownMixin,
+    RelatedOnlyFieldListFilter
+):
     pass

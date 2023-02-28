@@ -1,16 +1,16 @@
+import copy
+import datetime
+import pprint
+
 from django import template
+from django.db import models
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
-from django.db import models
-import six
-import copy
-import pprint
-import datetime
 
 register = template.Library()
 
 
-class _Formatter(object):
+class _Formatter:
     formatters_type = {}
     formatters_instance = []
 
@@ -32,6 +32,7 @@ class Formatter(_Formatter):
         :param types: The type(s) to handle
         :return: The unmodified decorated function
         '''
+
         def _register(func):
             for type_ in types:
                 _Formatter.formatters_type[type_] = func
@@ -41,7 +42,7 @@ class Formatter(_Formatter):
 
         return _register
 
-    @_register(*six.integer_types)
+    @_register(int)
     def format_int(self, value, depth, show_protected, show_special):
         '''Format an integer/long
 
@@ -57,7 +58,7 @@ class Formatter(_Formatter):
         '''
         return value
 
-    @_register(six.binary_type)
+    @_register(bytes)
     def format_str(self, value, depth, show_protected, show_special):
         '''Format a string
 
@@ -68,13 +69,15 @@ class Formatter(_Formatter):
         >>> formatter = Formatter()
         >>> str(formatter('test'))
         'test'
-        >>> str(formatter(six.b('test')))
+        >>> str(formatter(b'test'))
         'test'
         '''
-        return self.format_unicode(value.decode('utf-8', 'replace'), depth,
-                                   show_protected, show_special)
+        return self.format_unicode(
+            value.decode('utf-8', 'replace'), depth,
+            show_protected, show_special
+        )
 
-    @_register(six.text_type)
+    @_register(str)
     def format_unicode(self, value, depth, show_protected, show_special):
         '''Format a string
 
@@ -108,8 +111,12 @@ class Formatter(_Formatter):
         '''
         values = []
         for i, v in enumerate(value):
-            values.append(self.format(v, depth - 1, show_protected,
-                                      show_special))
+            values.append(
+                self.format(
+                    v, depth - 1, show_protected,
+                    show_special
+                )
+            )
 
         return values
 
@@ -127,10 +134,7 @@ class Formatter(_Formatter):
         >>> formatter(datetime.datetime(2000, 1, 2, 3, 4, 5, 6))
         '<datetime:2000-01-02 03:04:05.000006>'
         '''
-        return '<%s:%s>' % (
-            value.__class__.__name__,
-            value,
-        )
+        return f'<{value.__class__.__name__}:{value}>'
 
     @_register(dict)
     def format_dict(self, value, depth, show_protected, show_special):
@@ -144,6 +148,7 @@ class Formatter(_Formatter):
         >>> formatter({'a': 1, 'b': 2}, 5)
         '{a: 1, b: 2}'
         '''
+
         def key(key):
             '''Make sure that hidden/protected variables end up at the end'''
             key = key[0]
@@ -154,11 +159,12 @@ class Formatter(_Formatter):
 
         output = []
         for k, v in sorted(value.items(), key=key):
-            output.append('%s: %s' % (
-                k, self(v, depth - 1, show_protected, show_special)))
+            formatted = self(v, depth - 1, show_protected, show_special)
+            output.append(f'{k}: {formatted}')
 
         return '{%s}' % self.format_unicode(
-            ', '.join(output), depth - 1, show_protected, show_special)
+            ', '.join(output), depth - 1, show_protected, show_special
+        )
 
     @_register(models.Model)
     def format_model(self, value, depth, show_protected, show_special):
@@ -195,10 +201,10 @@ class Formatter(_Formatter):
         ...     __hidden_ = 4
         >>> spam = Spam()
 
-        >>> str(formatter(spam, show_protected=True, show_special=True))
-        '<Spam {x: 1, _Spam__hidden_: 4, _Spam__z: 3, __dict__:...}>'
         >>> str(formatter(spam, show_protected=False, show_special=False))
         '<Spam {x: 1}>'
+        >>> str(formatter(spam, show_protected=True, show_special=True))
+        '<Spam {x: 1, _Spam__hidden_: 4, _Spam__z: 3, __dict__:...}>'
 
         >>> formatter.MAX_LENGTH = original_max_length
         '''
@@ -219,21 +225,16 @@ class Formatter(_Formatter):
             elif k.startswith('_') and not show_protected:
                 dict_.pop(k)
 
-        # Difference between Python 2 and 3, the results are covered by tests
-        # regardless so the no cover is not important :)
         if hasattr(value, '__name__'):  # pragma: no cover
             name = value.__name__
-        elif(hasattr(value, '__class__') and
-                hasattr(value.__class__, '__name__')):  # pragma: no cover
+        elif getattr(getattr(value, '__class__', None), '__name__', None):
             name = value.__class__.__name__
         else:  # pragma: no cover
             module = __name__
             name = str(value).replace(module + '.', '', 1)
 
-        return '<%s %s>' % (
-            name,
-            self.format(dict_, depth - 1, show_protected, show_special),
-        )
+        formatted = self.format(dict_, depth - 1, show_protected, show_special)
+        return f'<{name} {formatted}>'
 
     def format(self, value, depth, show_protected, show_special):
         '''Call the formatter with the given value to format and optional depth
@@ -247,8 +248,10 @@ class Formatter(_Formatter):
         if depth is None:
             depth = self.max_depth
         elif depth <= 0:
-            return self.format_unicode(six.text_type(value), depth - 1,
-                                       show_protected, show_special)
+            return self.format_unicode(
+                str(value), depth - 1,
+                show_protected, show_special
+            )
 
         formatter = self.formatters_type.get(type(value))
 
@@ -263,10 +266,12 @@ class Formatter(_Formatter):
 
         return formatter(self, value, depth, show_protected, show_special)
 
-    def __call__(self, value, depth=None, show_protected=True,
-                 show_special=False):
+    def __call__(
+        self, value, depth=None, show_protected=True,
+        show_special=False
+    ):
         formatted = self.format(value, depth, show_protected, show_special)
-        if not isinstance(formatted, six.string_types):
+        if not isinstance(formatted, str):
             formatted = pprint.pformat(formatted)
 
         return formatted
@@ -281,7 +286,10 @@ def debug(value, max_depth=3):
     '''
     value = copy.deepcopy(value)
     formatter = Formatter(max_depth=max_depth)
-    formatted_safe = mark_safe('''
-    <pre style="border: 1px solid #fcc; background-color: #ccc;">%s</pre>
-    ''' % conditional_escape(formatter(value)))
+    formatted_safe = mark_safe(
+        f'''
+    <pre style="border: 1px solid #fcc; background-color: #ccc;">{
+        conditional_escape(formatter(value))}</pre>
+    '''
+    )
     return formatted_safe
