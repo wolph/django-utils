@@ -9,29 +9,26 @@ Source: https://github.com/mrts/django-admin-list-filter-dropdown
 {%  endblock %}
 <h3>{% blocktrans with title as filter_title %} By {{ filter_title }} {% endblocktrans %}</h3>
 <ul class="admin-filter-{{ title|slugify }}">
-    {% if choices|length > 3 %}
+{% if choices|length > 3 %}
     <li>
-        <select
-            %}
-            %}id="{{ spec.select_html_id }}"
-            class="form-control" endif if onchange="window.location = window.location.pathname + this.options[this.selectedIndex].value" spec.select_html_id style="width: 95%;margin-left: 2%;" {%
-            {%
-        >
-            {% for choice in choices %}
-            <option
-            %} %} choice.selected endif ifselected="selected" value="{{ choice.query_string|iriencode }}" {%
-            {%>{{ choice.display }}</option>
-            {% endfor %}
-        </select>
-    </li>
-    {% else %}
+    <select
+        class="form-control"
+        style="width: 95%;margin-left: 2%;"
+        {% if spec.select_html_id %}id="{{ spec.select_html_id }}"{% endif %}
+        onchange="window.location = window.location.pathname + this.options[this.selectedIndex].value">
     {% for choice in choices %}
-    <li choice.selected class="selected"
-    {% endif %}
-    <a href="{{ choice.query_string|iriencode }}">{{ choice.display }}</a></li>
+        <option{% if choice.selected %} selected="selected"{% endif %}
+         value="{{ choice.query_string|iriencode }}">{{ choice.display }}</option>
+    {% endfor %}
+    </select>
+    </li>
+{% else %}
+    {% for choice in choices %}
+            <li{% if choice.selected %} class="selected"{% endif %}>
+            <a href="{{ choice.query_string|iriencode }}">{{ choice.display }}</a></li>
     {% endfor %}
 
-    {% endif %}
-    {% block post %}
-    {% endblock %}
+{% endif %}
+{% block post %}
+{%  endblock %}
 </ul>
