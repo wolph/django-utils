@@ -26,8 +26,8 @@ Source: https://github.com/mrts/django-admin-list-filter-dropdown
     </li>
     {% else %}
     {% for choice in choices %}
-    <li
-    %} %} choice.selected class="selected" endifif {% {%>
+    <li choice.selected class="selected"
+    {% endif %}
     <a href="{{ choice.query_string|iriencode }}">{{ choice.display }}</a></li>
     {% endfor %}
 
