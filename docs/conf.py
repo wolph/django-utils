@@ -30,6 +30,7 @@ class __about__:  # noqa: N801 - minimal shim, conf.py is rewritten in Task 17
     __package_name__ = _metadata["Name"]
     __author__ = _metadata["Author-email"].split(" <")[0]
     __version__ = importlib.metadata.version("django-utils2")
+    __description__ = _metadata["Summary"]
 
 
 import django
