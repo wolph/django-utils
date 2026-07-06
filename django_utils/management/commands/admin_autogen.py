@@ -1,4 +1,5 @@
 import sys
+from typing import Any
 
 from . import base_command
 
@@ -8,8 +9,8 @@ try:
     )
 except ImportError:
 
-    class Command(base_command.CustomBaseCommand):
-        def handle(self, *args, **kwargs):
+    class Command(base_command.CustomBaseCommand):  # type: ignore[no-redef]
+        def handle(self, *args: Any, **kwargs: Any) -> None:
             sys.stderr.write(
                 'This command has been moved to the'
                 ' `django_admin_generator` package. Please use'

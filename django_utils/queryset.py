@@ -1,7 +1,15 @@
 import gc
+from collections.abc import Callable, Iterator
+from typing import Any
+
+from django.db.models import QuerySet
 
 
-def queryset_iterator(queryset, chunksize=1000, getfunc=getattr):
+def queryset_iterator(
+    queryset: QuerySet[Any],
+    chunksize: int = 1000,
+    getfunc: Callable[[Any, str], Any] = getattr,
+) -> Iterator[Any]:
     """''
     Iterate over a Django Queryset ordered by the primary key
 

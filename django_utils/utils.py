@@ -1,9 +1,10 @@
 import json
+from typing import Any
 
 from django import http
 
 
-def to_json(request, data):
+def to_json(request: http.HttpRequest, data: Any) -> http.HttpResponse:
     if request.GET.get('debug'):  # pragma: no cover
         response = json.dumps(data, indent=4)
         try:

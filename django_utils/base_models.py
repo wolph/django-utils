@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING, Any
+
 from django.db import models
 from django.db.models import base
 from django.template import defaultfilters
@@ -15,7 +17,13 @@ class ModelBaseMeta(base.ModelBase):
     Table name with this base: `app_foo_bar_object`
     """
 
-    def __new__(cls, name, bases, attrs):
+    def __new__(
+        cls,
+        name: str,
+        bases: tuple[type, ...],
+        attrs: dict[str, Any],
+        **kwargs: Any,
+    ) -> type:
         module = attrs['__module__']
 
         # Get or create Meta
@@ -37,7 +45,7 @@ class ModelBaseMeta(base.ModelBase):
             app_label = module.split('.')[-2]
             meta.db_table = f'{app_label}_{module_name}'
 
-        return base.ModelBase.__new__(cls, name, bases, attrs)
+        return base.ModelBase.__new__(cls, name, bases, attrs, **kwargs)
 
 
 class ModelBase(models.Model, metaclass=ModelBaseMeta):
@@ -68,13 +76,17 @@ class NameMixin:
 
     """
 
-    def __unicode__(self):
+    if TYPE_CHECKING:
+        pk: Any
+        name: Any
+
+    def __unicode__(self) -> str:
         return self.name
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.__unicode__()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<{self.__class__.__name__}[{self.pk or -1:d}]: {self.name}>'
 
 
@@ -94,11 +106,20 @@ class SlugMixin(NameMixin):
 
     """
 
-    def save(self, *args, **kwargs):
+    if TYPE_CHECKING:
+        slug: Any
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug and self.name:
             self.slug = defaultfilters.slugify(self.name)
 
-        super(NameMixin, self).save(*args, **kwargs)
+        # `save` isn't defined on NameMixin/object; it's provided by the
+        # concrete Model subclass this mixin is combined with at runtime
+        # (e.g. SlugModelBase). mypy can't see that cooperative-mixin MRO
+        # when checking SlugMixin in isolation.
+        super(NameMixin, self).save(  # type: ignore[misc]
+            *args, **kwargs
+        )
 
     class Meta:
         unique_together = ('slug',)
