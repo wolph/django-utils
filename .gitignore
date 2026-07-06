@@ -1,6 +1,35 @@
-*.egg-info
+# Byte-code / build artifacts
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
 *.egg
-build
-dist
-.*
-cover
+
+# Test / coverage
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.pytest_cache/
+tmp/
+
+# Type checkers / linters
+.mypy_cache/
+.ruff_cache/
+
+# Environments
+.venv/
+venv/
+
+# Docs
+docs/_build/
+
+# Local tooling / editor / OS
+.DS_Store
+.zshhistory
+.remember/
+.claude/
+gpgit/
+git-flow.log
+database.sqlite3
