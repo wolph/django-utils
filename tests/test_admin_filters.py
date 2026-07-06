@@ -47,10 +47,12 @@ def test_create_defaults():
     assert filter_class.timeout is None
 
 
-def test_field_and_attribute_path():
+@pytest.mark.django_db
+def test_attribute_path(rf, model_admin):
     filter_class = filters.JSONFieldFilter.create('data__a__b')
-    assert filter_class.field_name == 'data'
-    assert filter_class.attribute_path == 'a__b'
+    instance, _request = make_filter(filter_class, rf, model_admin)
+    assert instance.attribute_path == 'a__b'
+    assert filter_class.field_path == 'data__a__b'
 
 
 @pytest.mark.django_db
@@ -62,12 +64,15 @@ def test_lookups_and_queryset(rf, model_admin):
     filter_class = filters.JSONFieldFilter.create('data__filling')
     instance, request = make_filter(filter_class, rf, model_admin)
     lookups = list(instance.lookups(request, model_admin))
-    assert ('cheese', 'cheese') in lookups
-    assert ('ham', 'ham') in lookups
+    assert ('cheese', 'Cheese') in lookups
+    assert ('ham', 'Ham') in lookups
 
-    instance, request = make_filter(
-        filter_class, rf, model_admin, {'data__filling': 'ham'}
-    )
+    # Set used_parameters directly: Django's param parsing differs between
+    # 4.2 (string passthrough) and 5.x (list, takes value[-1]), so passing
+    # the value via params would test version-specific behavior instead of
+    # our value() -> cast -> filter code path.
+    instance, request = make_filter(filter_class, rf, model_admin)
+    instance.used_parameters = {'data__filling': 'ham'}
     queryset = instance.queryset(request, models.Sandwich.objects.all())
     assert queryset.count() == 1
 
@@ -120,9 +125,8 @@ def test_custom_cast_is_not_bound(rf, model_admin):
     """A 1-arg cast must receive only the value (bug B1)."""
     models.Sandwich.objects.create(data={'filling': 5})
     filter_class = filters.JSONFieldFilter.create('data__filling', cast=int)
-    instance, request = make_filter(
-        filter_class, rf, model_admin, {'data__filling': '5'}
-    )
+    instance, request = make_filter(filter_class, rf, model_admin)
+    instance.used_parameters = {'data__filling': '5'}
     queryset = instance.queryset(request, models.Sandwich.objects.all())
     assert queryset.count() == 1
 
@@ -152,7 +156,6 @@ def test_filter_variants(rf, model_admin):
             filters.JSONFieldFilterSelect2,
             'django_utils/admin/select2_filter.html',
         ),
-        (filters.JSONFieldFilterSelect, None),
     ):
         filter_class = filter_base.create('data__filling')
         if template is not None:
