@@ -7,7 +7,8 @@ def to_json(request, data):
     if request.GET.get('debug'):  # pragma: no cover
         response = json.dumps(data, indent=4)
         try:
-            from pygments import highlight, lexers, formatters
+            from pygments import formatters, highlight, lexers
+
             return http.HttpResponse(
                 highlight(
                     response,

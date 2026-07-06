@@ -1,7 +1,7 @@
 from django import urls
 from django.contrib import admin
-
 from django_utils import views
+
 from tests import views as test_views
 
 admin.autodiscover()

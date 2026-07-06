@@ -1,8 +1,7 @@
 from django_utils import base_models
 
 
-class SaveableClass(object):
-
+class SaveableClass:
     def save(self):
         pass
 
@@ -24,13 +23,11 @@ def test_slug_mixin():
 
 
 class ModelBaseTest(base_models.ModelBase):
-
     class Meta:
         app_label = 'tests'
 
 
 class ModelBaseProxyTest(ModelBaseTest):
-
     class Meta:
         proxy = True
         app_label = 'tests'

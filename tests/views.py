@@ -7,4 +7,4 @@ def error_403(request):
 
 def error_500(request):
     # Zero division error
-    1 / 0
+    _ = 1 / 0

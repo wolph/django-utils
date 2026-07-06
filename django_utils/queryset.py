@@ -2,7 +2,7 @@ import gc
 
 
 def queryset_iterator(queryset, chunksize=1000, getfunc=getattr):
-    '''''
+    """''
     Iterate over a Django Queryset ordered by the primary key
 
     This method loads a maximum of chunksize (default: 1000) rows in it's
@@ -12,11 +12,11 @@ def queryset_iterator(queryset, chunksize=1000, getfunc=getattr):
 
     Note that the implementation of the iterator does not support ordered
     query sets.
-    '''
+    """
     pk = 0
 
     try:
-        '''In the case of an empty list, return'''
+        """In the case of an empty list, return"""
         last_pk = getfunc(queryset.order_by('-pk')[0], 'pk')
     except IndexError:
         return

@@ -5,8 +5,7 @@ from python_utils import formatters
 
 
 class ModelBaseMeta(base.ModelBase):
-
-    '''
+    """
     Model base with more readable naming convention
 
     Example:
@@ -14,27 +13,29 @@ class ModelBaseMeta(base.ModelBase):
 
     Default Django table name: `app_foobarobject`
     Table name with this base: `app_foo_bar_object`
-    '''
+    """
 
     def __new__(cls, name, bases, attrs):
         module = attrs['__module__']
 
         # Get or create Meta
         if 'Meta' in attrs:
-            Meta = attrs['Meta']
+            meta = attrs['Meta']
         else:
-            Meta = type(
-                'Meta', (object,), dict(
+            meta = type(
+                'Meta',
+                (object,),
+                dict(
                     __module__=module,
-                )
+                ),
             )
-            attrs['Meta'] = Meta
+            attrs['Meta'] = meta
 
         # Override table name only if not explicitly defined
-        if not hasattr(Meta, 'db_table'):  # pragma: no cover
+        if not hasattr(meta, 'db_table'):  # pragma: no cover
             module_name = formatters.camel_to_underscore(name)
             app_label = module.split('.')[-2]
-            Meta.db_table = f'{app_label}_{module_name}'
+            meta.db_table = f'{app_label}_{module_name}'
 
         return base.ModelBase.__new__(cls, name, bases, attrs)
 
@@ -52,9 +53,8 @@ class CreatedAtModelBase(ModelBase):
         abstract = True
 
 
-class NameMixin(object):
-
-    '''Mixin to automatically get a unicode and repr string base on the name
+class NameMixin:
+    """Mixin to automatically get a unicode and repr string base on the name
 
     >>> x = NameMixin()
     >>> x.pk = 123
@@ -66,7 +66,7 @@ class NameMixin(object):
     >>> str(str(x))
     'test'
 
-    '''
+    """
 
     def __unicode__(self):
         return self.name
@@ -79,8 +79,7 @@ class NameMixin(object):
 
 
 class SlugMixin(NameMixin):
-
-    '''Mixin to automatically slugify the name and add both a name and slug to
+    """Mixin to automatically slugify the name and add both a name and slug to
     the model
 
     >>> x = NameMixin()
@@ -93,7 +92,7 @@ class SlugMixin(NameMixin):
     >>> str(str(x))
     'test'
 
-    '''
+    """
 
     def save(self, *args, **kwargs):
         if not self.slug and self.name:
@@ -101,7 +100,7 @@ class SlugMixin(NameMixin):
 
         super(NameMixin, self).save(*args, **kwargs)
 
-    class Meta(object):
+    class Meta:
         unique_together = ('slug',)
 
 
@@ -120,12 +119,10 @@ class SlugModelBase(SlugMixin, NameModelBase):
 
 
 class NameCreatedAtModelBase(NameModelBase, CreatedAtModelBase):
-
     class Meta:
         abstract = True
 
 
 class SlugCreatedAtModelBase(SlugModelBase, CreatedAtModelBase):
-
     class Meta:
         abstract = True

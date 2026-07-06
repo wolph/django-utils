@@ -1,18 +1,15 @@
-import sys
-import pytest
+import contextlib
 import datetime
+import sys
 
-from django import template
-from django import http
-from django.contrib.contenttypes import models
+import pytest
+from django import http, template
 from django.contrib.auth import models as auth_models
+from django.contrib.contenttypes import models
+from django_utils import utils, view_decorators
 
-from django_utils import view_decorators
-from django_utils import utils
 
-
-class Request(object):
-
+class Request:
     def __init__(self, ajax=False):
         self.user = auth_models.AnonymousUser()
         self.headers = {'x-requested-with': 'XMLHttpRequest'} if ajax else {}
@@ -67,43 +64,40 @@ def test_some_view():
     some_view(Request(), return_='')
     some_view(Request(ajax=True), return_='')
     some_view(Request(ajax=True), return_={})
-    some_view(Request(
-        ajax=True),
+    some_view(
+        Request(ajax=True),
         return_=models.ContentType.objects.all(),
     )
     request = Request(ajax=True)
     request.GET['callback'] = 'call_me'
     request.GET['debug'] = 'debug'
-    some_view(request, return_={
-        'now': datetime.datetime.now(),
-    })
+    some_view(
+        request,
+        return_={
+            'now': datetime.datetime.now(),
+        },
+    )
 
-    try:
-        some_view(request, return_={
-            'request': request,
-        })
-    except TypeError:
-        pass
+    with contextlib.suppress(TypeError):
+        some_view(
+            request,
+            return_={
+                'request': request,
+            },
+        )
 
-    try:
+    with contextlib.suppress(template.TemplateDoesNotExist):
         some_view(Request(), return_=[])
-    except template.TemplateDoesNotExist:
-        pass
 
-    try:
+    with contextlib.suppress(view_decorators.UnknownViewResponseError):
         some_view(Request(), return_=request)
-    except view_decorators.UnknownViewResponseError:
-        pass
 
     some_view(request, return_=http.HttpResponse())
     some_view(request)
 
 
 def test_import():
-    if sys.version_info[0] == 2:
-        import __builtin__ as builtins
-    else:
-        import builtins
+    import builtins
 
     removed_modules = {}
     for name in list(sys.modules.keys()):

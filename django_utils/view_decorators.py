@@ -46,7 +46,7 @@ REQUEST_PROPERTIES = {
 
 
 def _prepare_request(request, app, view):
-    '''Add context and extra methods to the request'''
+    """Add context and extra methods to the request"""
     request.context = dict()
     request.context['view'] = view
     request.context['app'] = app
@@ -58,35 +58,36 @@ def _prepare_request(request, app, view):
     return request
 
 
-def _process_response(request, response, response_class):
-    '''Generic response processing function, always returns HttpResponse'''
+def _serialize_ajax_response(request, response):
+    """Serialize a dict/list/QuerySet response body for an ajax request"""
+    if isinstance(response, models.query.QuerySet):
+        return serializers.serialize('json', response)
+    elif request.GET.get('debug'):
+        from django.core.serializers import json as django_json
 
-    '''If we add something to the context stack, pop it after adding'''
-    if isinstance(response, (dict, list, models.query.QuerySet)):
-        if request.ajax:
-            if isinstance(response, models.query.QuerySet):
-                output = serializers.serialize('json', response)
-            elif request.GET.get('debug'):
-                from django.core.serializers import json as django_json
-                output = json.dumps(
-                    response,
-                    indent=4,
-                    sort_keys=True,
-                    cls=django_json.DjangoJSONEncoder,
-                    default=json_default_handler,
-                )
-            else:
-                output = json.dumps(response, default=json_default_handler)
+        return json.dumps(
+            response,
+            indent=4,
+            sort_keys=True,
+            cls=django_json.DjangoJSONEncoder,
+            default=json_default_handler,
+        )
+    else:
+        return json.dumps(response, default=json_default_handler)
 
-            callback = request.GET.get('callback', False)
-            if callback:
-                output = f'{callback}({output})'
 
-            if request.GET.get('debug'):
-                title = f'Rendering {request.context!r} in module ' \
-                        f'{request.context!r}'
+def _process_ajax_response(request, response, response_class):
+    """Turn a dict/list/QuerySet response into an HttpResponse for ajax"""
+    output = _serialize_ajax_response(request, response)
 
-                output = f'''
+    callback = request.GET.get('callback', False)
+    if callback:
+        output = f'{callback}({output})'
+
+    if request.GET.get('debug'):
+        title = f'Rendering {request.context!r} in module {request.context!r}'
+
+        output = f"""
                 <html>
                     <head>
                         <title>{title}</title>
@@ -101,18 +102,22 @@ def _process_response(request, response, response_class):
                         <textarea>{output}</textarea>
                     </body>
                 </html>
-                '''
-                response = response_class(output, content_type='text/html')
-            else:
-                response = response_class(
-                    output,
-                    content_type='text/plain'
-                )
+                """
+        return response_class(output, content_type='text/html')
+    else:
+        return response_class(output, content_type='text/plain')
 
-            return response
+
+def _process_response(request, response, response_class):
+    """Generic response processing function, always returns HttpResponse"""
+
+    """If we add something to the context stack, pop it after adding"""
+    if isinstance(response, (dict, list, models.query.QuerySet)):
+        if request.ajax:
+            return _process_ajax_response(request, response, response_class)
         else:
-            '''Add the dictionary to the context and let
-            render_to_response handle it'''
+            """Add the dictionary to the context and let
+            render_to_response handle it"""
             request.context.update(response)
             response = None
 
@@ -141,7 +146,7 @@ def _process_response(request, response, response_class):
 
 
 def env(function=None, login_required=False, response_class=http.HttpResponse):
-    '''
+    """
     View decorator that automatically adds context and renders response
 
     Keyword arguments:
@@ -152,7 +157,7 @@ def env(function=None, login_required=False, response_class=http.HttpResponse):
 
     Stores the template in request.template and assumes it to be in
     <app>/<view>.html
-    '''
+    """
 
     def _env(request, *args, **kwargs):
         request.ajax = bool(
@@ -169,13 +174,14 @@ def env(function=None, login_required=False, response_class=http.HttpResponse):
             request = _prepare_request(request, app, name)
             request.template = f'{app}/{name}.html'
             response = function(request, *args, **kwargs)
-            response = _process_response(request, response, response_class)
-            return response  # pragma: no branch
+            return _process_response(
+                request, response, response_class
+            )  # pragma: no branch
         finally:
-            '''Remove the context reference from request to prevent leaking'''
+            """Remove the context reference from request to prevent leaking"""
             try:
                 del request.context, request.template
-                for k in REQUEST_PROPERTIES.keys():  # pragma: no branch
+                for k in REQUEST_PROPERTIES:  # pragma: no branch
                     delattr(request, k)
             except AttributeError:
                 pass  # pragma: no branch
@@ -191,6 +197,7 @@ def env(function=None, login_required=False, response_class=http.HttpResponse):
         else:
             return _env
     else:
+
         def inner(function):
             return env(function, login_required, response_class)
 

@@ -20,16 +20,6 @@ from django.core.cache import cache
 from django.db import models
 from django.utils import text
 
-assert AllValuesFieldListFilter
-assert BooleanFieldListFilter
-assert ChoicesFieldListFilter
-assert DateFieldListFilter
-assert FieldListFilter
-assert ListFilter
-assert RelatedFieldListFilter
-assert RelatedOnlyFieldListFilter
-assert SimpleListFilter
-
 __all__ = (
     'AllValuesFieldListFilter',
     'BooleanFieldListFilter',
@@ -60,12 +50,14 @@ class Select2Mixin:
 
 
 class FilterBase(admin.SimpleListFilter):
-    timeout: timedelta = None
+    timeout: timedelta | None = None
 
     def get_lookups_cache_timeout(self):
         timeout = self.timeout or CACHE_TIMEOUT
         if timeout:
             return timeout.total_seconds()
+
+        return None
 
     def get_lookups_cache_key(self, request: http.HttpRequest):
         return request.get_full_path() + self.title
@@ -79,7 +71,7 @@ class FilterBase(admin.SimpleListFilter):
         return cache.get(self.get_lookups_cache_key(request))
 
     def formatter(self, value):
-        '''Formatter to convert the value in human readable output'''
+        """Formatter to convert the value in human readable output"""
         return str(value).title()
 
 
@@ -95,16 +87,21 @@ class JSONFieldFilter(FilterBase):
         return self.field_path.split('__', 1)[1]
 
     def lookups(self, request, model_admin):
-        '''The list of value/label pairs for the filter bar with caching'''
+        """The list of value/label pairs for the filter bar with caching"""
         assert self.field_path, '`field_path` is required'
 
         cache = self.get_lookups_cache(request)
         if cache:
             return cache
 
-        values = model_admin.model.objects.values_list(
-            self.field_path, flat=True,
-        ).order_by(self.field_path).distinct()
+        values = (
+            model_admin.model.objects.values_list(
+                self.field_path,
+                flat=True,
+            )
+            .order_by(self.field_path)
+            .distinct()
+        )
 
         lookups = [(value, self.formatter(value)) for value in values]
         self.set_lookups_cache(request, lookups)
@@ -126,13 +123,13 @@ class JSONFieldFilter(FilterBase):
     def create(
         cls,
         field_path: str,
-        title: str = None,
-        parameter_name: str = None,
-        template: str = None,
-        formatter: typing.Callable[[typing.Any], str] = None,
-        cast: typing.Callable[[str], typing.Any] = None,
-        timeout: timedelta = None
-    ) -> typing.Type['JSONFieldFilter']:
+        title: str | None = None,
+        parameter_name: str | None = None,
+        template: str | None = None,
+        formatter: typing.Callable[[typing.Any], str] | None = None,
+        cast: typing.Callable[[str], typing.Any] | None = None,
+        timeout: timedelta | None = None,
+    ) -> type['JSONFieldFilter']:
 
         class Filter(cls):
             pass
@@ -176,8 +173,7 @@ class RelatedFieldListFilterSelect2(Select2Mixin, RelatedFieldListFilter):
 
 
 class RelatedOnlyFieldListFilterSelect2(
-    Select2Mixin,
-    RelatedOnlyFieldListFilter
+    Select2Mixin, RelatedOnlyFieldListFilter
 ):
     pass
 
@@ -191,8 +187,7 @@ class SimpleListFilterDropdown(DropdownMixin, SimpleListFilter, ABC):
 
 
 class AllValuesFieldListFilterDropdown(
-    DropdownMixin,
-    AllValuesFieldListFilter
+    DropdownMixin, AllValuesFieldListFilter
 ):
     pass
 
@@ -206,7 +201,6 @@ class RelatedFieldListFilterDropdown(DropdownMixin, RelatedFieldListFilter):
 
 
 class RelatedOnlyFieldListFilterDropdown(
-    DropdownMixin,
-    RelatedOnlyFieldListFilter
+    DropdownMixin, RelatedOnlyFieldListFilter
 ):
     pass

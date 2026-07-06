@@ -1,8 +1,9 @@
-from django.test import client, TestCase
+import contextlib
+
+from django.test import TestCase, client
 
 
 class TestCalls(TestCase):
-
     def setUp(self):
         self.client = client.Client()
 
@@ -13,7 +14,5 @@ class TestCalls(TestCase):
         self.client.get('/error_404')
 
     def test_500(self):
-        try:
+        with contextlib.suppress(ZeroDivisionError):
             self.client.get('/error_500')
-        except ZeroDivisionError:
-            pass

@@ -21,7 +21,8 @@ class B(models.Model):
 
     # And defaults, in the case of None
     get_some_attribute_with_defaults = fields.RecursiveField(
-        field_name='some_attribute', default='some default value')
+        field_name='some_attribute', default='some default value'
+    )
 
     class Meta:
         app_label = 'tests'

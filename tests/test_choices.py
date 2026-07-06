@@ -8,7 +8,6 @@ except ImportError:
 
 
 class TranslatedHuman(models.Model):
-
     class Gender(choices.Choices):
         Male = choices.Choice('m', _('Male'))
         Female = choices.Choice('f', _('Female'))
@@ -21,7 +20,6 @@ class TranslatedHuman(models.Model):
 
 
 class Human(models.Model):
-
     class Gender(choices.Choices):
         Male = choices.Choice('m')
         Female = choices.Choice('f')
@@ -34,15 +32,13 @@ class Human(models.Model):
 
 
 class SomeModel(models.Model):
-
     class Enum(choices.Choices):
         Foo = choices.Choice()
         Bar = choices.Choice()
         Spam = choices.Choice()
         Eggs = choices.Choice()
 
-    enum = models.IntegerField(
-        choices=Enum.choices, default=Enum.Foo)
+    enum = models.IntegerField(choices=Enum.choices, default=Enum.Foo)
 
     class Meta:
         app_label = 'tests'
@@ -71,9 +67,9 @@ def test_choice_equals():
     choice_b = choices.Choice(value=123)
     choice_c = choices.Choice(value=456, label='123')
 
-    assert not (choice_a == 'test')
+    assert choice_a != 'test'
     assert choice_a == 123
-    assert not choice_a == 456
+    assert choice_a != 456
     assert choice_a == choice_a
     assert choice_a == choice_b
     assert choice_a != choice_c

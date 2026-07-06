@@ -1,4 +1,4 @@
-'''
+"""
 Usage
 ------------------------------------------------------------------------------
 
@@ -25,6 +25,7 @@ The Django Utils Choices version:
 .. code-block:: python
 
     from django_utils import choices
+
 
     class Human(models.Model):
         class Gender(choices.Choices):
@@ -62,6 +63,7 @@ The Django Utils Choices version:
 
     from django_utils import choices
 
+
     class SomeModel(models.Model):
         class Enum(choices.Choices):
             Foo = choices.Choice()
@@ -69,8 +71,7 @@ The Django Utils Choices version:
             Spam = choices.Choice()
             Eggs = choices.Choice()
 
-        enum = models.IntegerField(
-            choices=Enum, default=Enum.Foo)
+        enum = models.IntegerField(choices=Enum, default=Enum.Foo)
 
 To reference these properties:
 
@@ -78,13 +79,14 @@ To reference these properties:
 
     SomeModel.create(enum=SomeModel.Enum.Spam)
 
-'''
+"""
+
 import collections
 
 
-class ChoicesDict(object):
-    '''The choices dict is an object that stores a sorted representation of
-    the values by key and database value'''
+class ChoicesDict:
+    """The choices dict is an object that stores a sorted representation of
+    the values by key and database value"""
 
     def __init__(self):
         self._by_value = collections.OrderedDict()
@@ -107,8 +109,7 @@ class ChoicesDict(object):
         self._by_value[value.value] = value
 
     def __iter__(self):
-        for key, value in self._by_value.items():
-            yield key, value
+        yield from self._by_value.items()
 
     def items(self):
         return list(self)
@@ -126,8 +127,8 @@ class ChoicesDict(object):
         return str(self._by_key)
 
 
-class Choice(object):
-    '''The choice object has an optional label and value. If the value is not
+class Choice:
+    """The choice object has an optional label and value. If the value is not
     given an autoincrementing id (starting from 1) will be used
 
     >>> choice = Choice('value', 'label')
@@ -141,7 +142,8 @@ class Choice(object):
     <Choice[2]:None>
     >>> str(choice)
     'None'
-    '''
+    """
+
     order = 0
 
     def __init__(self, value=None, label=None):
@@ -160,8 +162,7 @@ class Choice(object):
         return f'<{self.__class__.__name__}[{self.order:d}]:{self.label}>'
 
     def __str__(self):
-        value = self.__unicode__()
-        return value
+        return self.__unicode__()
 
     def __unicode__(self):
         return str(self.label)
@@ -171,29 +172,35 @@ class Choice(object):
 
     def deconstruct(self):
         return (
-            '{}.{}'.format(self.__class__.__module__, self.__class__.__name__),
+            f'{self.__class__.__module__}.{self.__class__.__name__}',
             (self.value, self.label),
             {},
         )
 
 
 class ChoicesMeta(type):
-    '''The choices metaclass is where all the magic happens, this
+    """The choices metaclass is where all the magic happens, this
     automatically creates a ChoicesDict to get a sorted list of keys and
-    values'''
+    values"""
 
     def __new__(cls, name, bases, attrs):
-        choices = list()
-        has_values = False
+        literal = cls._is_literal_choices(bases)
+        choices, has_values = cls._collect_choices(cls, attrs)
+        cls._assign_values(attrs, choices, has_values, literal)
 
+        return super().__new__(cls, name, bases, attrs)
+
+    @staticmethod
+    def _is_literal_choices(bases):
         # Chicken-Egg problem, can't check for something that doesn't exist
         # yet. That's why we check for the name of the class instead of a
         # `issubclass`
-        literal = False
-        for base in bases:
-            if base.__name__ == 'LiteralChoices':
-                literal = True
-                break
+        return any(base.__name__ == 'LiteralChoices' for base in bases)
+
+    @staticmethod
+    def _collect_choices(cls, attrs):
+        choices = []
+        has_values = False
 
         for key, value in attrs.items():
             # Skip private and protected values
@@ -213,12 +220,17 @@ class ChoicesMeta(type):
 
                 choices.append((key, value))
 
+        return choices, has_values
+
+    @staticmethod
+    def _assign_values(attrs, choices, has_values, literal):
         attrs['choices'] = ChoicesDict()
         i = 0
         for key, value in sorted(choices, key=lambda c: c[1].order):
             if has_values:
                 assert value.value is not None, (
-                    'Cannot mix choices with and without values')
+                    'Cannot mix choices with and without values'
+                )
             elif literal:
                 value.value = value.label
             else:
@@ -228,15 +240,12 @@ class ChoicesMeta(type):
             attrs[key] = value.value
             attrs['choices'][key] = value
 
-        return super(ChoicesMeta, cls).__new__(cls, name, bases, attrs)
-
-    def __iter__(self):
-        for item in self.choices:
-            yield item
+    def __iter__(cls):
+        yield from cls.choices
 
 
 class Choices(metaclass=ChoicesMeta):
-    '''The choices class is what you should inherit in your Django models
+    """The choices class is what you should inherit in your Django models
 
     >>> choices = Choices()
     >>> choices.choices[0]
@@ -275,16 +284,16 @@ class Choices(metaclass=ChoicesMeta):
     [(0, <Choice[...]:a>)]
     >>> list(ChoiceTest)
     [(0, <Choice[...]:a>)]
-    '''
+    """
+
     choices = ChoicesDict()
 
     def __iter__(self):
-        for item in self.choices:
-            yield item
+        yield from self.choices
 
 
 class LiteralChoices(Choices):
-    '''Special version of the Choices class that uses the label as the value
+    """Special version of the Choices class that uses the label as the value
 
     >>> class Role(LiteralChoices):
     ...     admin = Choice()
@@ -308,4 +317,4 @@ class LiteralChoices(Choices):
     ['admin', 'user', 'guest']
     >>> Role.admin
     'admin'
-    '''
+    """

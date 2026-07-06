@@ -1,8 +1,7 @@
 import functools
 
 
-class RecursiveField(object):
-
+class RecursiveField:
     PREFIX = 'get_'
 
     def __init__(self, field_name=None, parent_field='parent', default=None):
