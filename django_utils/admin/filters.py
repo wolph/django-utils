@@ -53,11 +53,10 @@ class FilterBase(admin.SimpleListFilter):
     timeout: timedelta | None = None
 
     def get_lookups_cache_timeout(self):
-        timeout = self.timeout or CACHE_TIMEOUT
-        if timeout:
-            return timeout.total_seconds()
-
-        return None
+        timeout = self.timeout
+        if timeout is None:
+            timeout = CACHE_TIMEOUT
+        return timeout.total_seconds()
 
     def get_lookups_cache_key(self, request: http.HttpRequest):
         return request.get_full_path() + self.title
@@ -90,9 +89,9 @@ class JSONFieldFilter(FilterBase):
         """The list of value/label pairs for the filter bar with caching"""
         assert self.field_path, '`field_path` is required'
 
-        cache = self.get_lookups_cache(request)
-        if cache:
-            return cache
+        cached = self.get_lookups_cache(request)
+        if cached:
+            return cached
 
         values = (
             model_admin.model.objects.values_list(
@@ -130,26 +129,23 @@ class JSONFieldFilter(FilterBase):
         cast: typing.Callable[[str], typing.Any] | None = None,
         timeout: timedelta | None = None,
     ) -> type['JSONFieldFilter']:
-
-        class Filter(cls):
-            pass
-
-        assert '__' in field_path, 'Paths require both the field and parameter'
-        Filter.field_path = field_path
-        Filter.title = title or (' '.join(field_path.split('_'))).title()
-        Filter.parameter_name = parameter_name or field_path
-        Filter.timeout = timeout
-
-        if formatter:
-            Filter.formatter = formatter
-
-        if template:
-            Filter.template = template
-
-        if cast:
-            Filter.cast = cast
-
-        return Filter
+        assert '__' in field_path, (
+            'Paths require both the field and parameter. For example: '
+            '`some_json_field__some_parameter`'
+        )
+        namespace = {
+            'field_path': field_path,
+            'title': title or ' '.join(field_path.split('_')).title(),
+            'parameter_name': parameter_name or field_path,
+            'timeout': timeout,
+        }
+        if template is not None:
+            namespace['template'] = template
+        if formatter is not None:
+            namespace['formatter'] = staticmethod(formatter)
+        if cast is not None:
+            namespace['cast'] = staticmethod(cast)
+        return type('Filter', (cls,), namespace)
 
 
 class JSONFieldFilterSelect2(Select2Mixin, JSONFieldFilter):

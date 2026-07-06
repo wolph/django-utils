@@ -12,3 +12,7 @@ class Eggs(Spam):
 
 class RecursionTest(models.Model):
     parent = models.ForeignKey(Spam, on_delete=models.CASCADE)
+
+
+class Sandwich(models.Model):
+    data = models.JSONField(default=dict)
