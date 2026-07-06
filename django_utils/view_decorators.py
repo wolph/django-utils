@@ -1,10 +1,33 @@
+import functools
 import json
+import typing
+from collections.abc import Callable
+from typing import Any
 
 from django import http, urls
 from django.contrib.auth import decorators
 from django.core import serializers
 from django.db import models
 from django.template import loader as django_loader
+
+
+class EnvRequest(http.HttpRequest):
+    """A request as seen inside an ``env``-decorated view.
+
+    The ``env`` decorator injects these attributes at runtime; this
+    subclass exists so type checkers know about them.
+    """
+
+    ajax: bool
+    context: dict[str, Any] | None
+    template: str
+    redirect: Callable[..., http.HttpResponseRedirect]
+    permanent_redirect: Callable[..., http.HttpResponsePermanentRedirect]
+    not_found: type[http.HttpResponseNotFound]
+    reverse: Callable[..., str]
+
+
+ViewFunction = Callable[..., Any]
 
 
 class ViewError(Exception):
@@ -15,7 +38,7 @@ class UnknownViewResponseError(ViewError):
     pass
 
 
-def json_default_handler(obj):
+def json_default_handler(obj: Any) -> str | None:
     if hasattr(obj, 'isoformat'):
         return obj.isoformat()
     else:
@@ -25,19 +48,23 @@ def json_default_handler(obj):
         )
 
 
-def redirect(url='./', *args, **kwargs):
+def redirect(
+    url: str = './', *args: Any, **kwargs: Any
+) -> http.HttpResponseRedirect:
     if '/' not in url or args or kwargs:
         url = urls.reverse(url, args=args, kwargs=kwargs)
     return http.HttpResponseRedirect(url)
 
 
-def permanent_redirect(url, *args, **kwargs):
+def permanent_redirect(
+    url: str, *args: Any, **kwargs: Any
+) -> http.HttpResponsePermanentRedirect:
     if '/' not in url or args or kwargs:
         url = urls.reverse(url, args=args, kwargs=kwargs)
     return http.HttpResponsePermanentRedirect(url)
 
 
-REQUEST_PROPERTIES = {
+REQUEST_PROPERTIES: dict[str, Any] = {
     'redirect': redirect,
     'permanent_redirect': permanent_redirect,
     'not_found': http.HttpResponseNotFound,
@@ -45,7 +72,7 @@ REQUEST_PROPERTIES = {
 }
 
 
-def _prepare_request(request, app, view):
+def _prepare_request(request: EnvRequest, app: str, view: str) -> EnvRequest:
     """Add context and extra methods to the request"""
     request.context = dict()
     request.context['view'] = view
@@ -58,7 +85,7 @@ def _prepare_request(request, app, view):
     return request
 
 
-def _serialize_ajax_response(request, response):
+def _serialize_ajax_response(request: EnvRequest, response: Any) -> str:
     """Serialize a dict/list/QuerySet response body for an ajax request"""
     if isinstance(response, models.query.QuerySet):
         return serializers.serialize('json', response)
@@ -76,7 +103,11 @@ def _serialize_ajax_response(request, response):
         return json.dumps(response, default=json_default_handler)
 
 
-def _process_ajax_response(request, response, response_class):
+def _process_ajax_response(
+    request: EnvRequest,
+    response: Any,
+    response_class: type[http.HttpResponse],
+) -> http.HttpResponse:
     """Turn a dict/list/QuerySet response into an HttpResponse for ajax"""
     output = _serialize_ajax_response(request, response)
 
@@ -108,7 +139,11 @@ def _process_ajax_response(request, response, response_class):
         return response_class(output, content_type='text/plain')
 
 
-def _process_response(request, response, response_class):
+def _process_response(
+    request: EnvRequest,
+    response: Any,
+    response_class: type[http.HttpResponse],
+) -> http.HttpResponse:
     """Generic response processing function, always returns HttpResponse"""
 
     """If we add something to the context stack, pop it after adding"""
@@ -118,6 +153,7 @@ def _process_response(request, response, response_class):
         else:
             """Add the dictionary to the context and let
             render_to_response handle it"""
+            assert request.context is not None
             request.context.update(response)
             response = None
 
@@ -145,7 +181,23 @@ def _process_response(request, response, response_class):
         )
 
 
-def env(function=None, login_required=False, response_class=http.HttpResponse):
+@typing.overload
+def env(function: ViewFunction) -> Callable[..., http.HttpResponse]: ...
+
+
+@typing.overload
+def env(
+    function: None = None,
+    login_required: bool = False,
+    response_class: type[http.HttpResponse] = http.HttpResponse,
+) -> Callable[[ViewFunction], Callable[..., http.HttpResponse]]: ...
+
+
+def env(
+    function: ViewFunction | None = None,
+    login_required: bool = False,
+    response_class: type[http.HttpResponse] = http.HttpResponse,
+) -> Any:
     """
     View decorator that automatically adds context and renders response
 
@@ -159,38 +211,39 @@ def env(function=None, login_required=False, response_class=http.HttpResponse):
     <app>/<view>.html
     """
 
-    def _env(request, *args, **kwargs):
-        request.ajax = bool(
+    def _env(
+        request: http.HttpRequest, *args: Any, **kwargs: Any
+    ) -> http.HttpResponse:
+        req = typing.cast(EnvRequest, request)
+        req.ajax = bool(
             max(
-                request.headers.get('x-requested-with') == 'XMLHttpRequest',
-                int(request.POST.get('ajax', 0)),
-                int(request.GET.get('ajax', 0)),
+                req.headers.get('x-requested-with') == 'XMLHttpRequest',
+                int(req.POST.get('ajax', 0)),
+                int(req.GET.get('ajax', 0)),
             )
         )
-        request.context = None
+        req.context = None
         try:
+            assert function is not None
             name = function.__name__
             app = function.__module__.split('.')[0]
-            request = _prepare_request(request, app, name)
-            request.template = f'{app}/{name}.html'
-            response = function(request, *args, **kwargs)
+            req = _prepare_request(req, app, name)
+            req.template = f'{app}/{name}.html'
+            response = function(req, *args, **kwargs)
             return _process_response(
-                request, response, response_class
+                req, response, response_class
             )  # pragma: no branch
         finally:
             """Remove the context reference from request to prevent leaking"""
             try:
-                del request.context, request.template
+                del req.context, req.template
                 for k in REQUEST_PROPERTIES:  # pragma: no branch
-                    delattr(request, k)
+                    delattr(req, k)
             except AttributeError:
                 pass  # pragma: no branch
 
     if function:
-        _env.__name__ = function.__name__
-        _env.__doc__ = function.__doc__
-        _env.__module__ = function.__module__
-        _env.__dict__ = function.__dict__
+        functools.update_wrapper(_env, function)
 
         if login_required:
             return decorators.login_required(_env)
@@ -198,7 +251,15 @@ def env(function=None, login_required=False, response_class=http.HttpResponse):
             return _env
     else:
 
-        def inner(function):
-            return env(function, login_required, response_class)
+        def inner(function: ViewFunction) -> Callable[..., http.HttpResponse]:
+            # The two overloads above only cover the public call shapes
+            # (bare `@env` / `@env(login_required=..., response_class=...)`
+            # with function=None). This recursive self-call supplies a
+            # non-None function alongside login_required/response_class,
+            # a shape neither overload matches, so mypy can't resolve it
+            # against the overloaded `env` name from inside its own body.
+            return env(  # type: ignore[call-overload]
+                function, login_required, response_class
+            )
 
         return inner
