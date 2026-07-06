@@ -83,7 +83,10 @@ To reference these properties:
 
 import collections
 from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from django.utils.functional import Promise as StrPromise
 
 
 class ChoicesDict:
@@ -102,7 +105,7 @@ class ChoicesDict:
         # after processing the choices
         Choice.order = 0
 
-    def __getitem__(self, key: Any) -> Any:
+    def __getitem__(self, key: Any) -> 'Choice':
         if key in self._by_value:
             return self._by_value[key]
         elif key in self._by_key:
@@ -154,10 +157,12 @@ class Choice:
     # not a `ClassVar`: instances shadow it with their own `order`.
     order: int = 0
 
-    def __init__(self, value: Any = None, label: str | None = None) -> None:
+    def __init__(
+        self, value: Any = None, label: 'str | StrPromise | None' = None
+    ) -> None:
         Choice.order += 1
         self.value: Any = value
-        self.label: str | None = label
+        self.label: str | StrPromise | None = label
         self.order = Choice.order
 
     def __eq__(self, other: object) -> bool:
@@ -180,7 +185,7 @@ class Choice:
 
     def deconstruct(
         self,
-    ) -> tuple[str, tuple[Any, str | None], dict[str, Any]]:
+    ) -> tuple[str, tuple[Any, 'str | StrPromise | None'], dict[str, Any]]:
         return (
             f'{self.__class__.__module__}.{self.__class__.__name__}',
             (self.value, self.label),
