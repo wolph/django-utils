@@ -124,7 +124,11 @@ def test_custom_formatter_is_not_bound(rf, model_admin):
 def test_custom_cast_is_not_bound(rf, model_admin):
     """A 1-arg cast must receive only the value (bug B1)."""
     models.Sandwich.objects.create(data={'filling': 5})
-    filter_class = filters.JSONFieldFilter.create('data__filling', cast=int)
+    # A lambda (unlike the builtin `int`) gets bound as a method if
+    # `create()` drops the staticmethod wrapping, so this catches B1.
+    filter_class = filters.JSONFieldFilter.create(
+        'data__filling', cast=lambda value: int(value)
+    )
     instance, request = make_filter(filter_class, rf, model_admin)
     instance.used_parameters = {'data__filling': '5'}
     queryset = instance.queryset(request, models.Sandwich.objects.all())
