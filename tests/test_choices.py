@@ -81,3 +81,11 @@ def test_choice_deconstruct():
     choices.Choice().deconstruct()
     choices.Choice(value=123).deconstruct()
     choices.Choice(value=123, label='123').deconstruct()
+
+
+def test_choices_meta_is_not_polluted():
+    class Pollution(choices.LiteralChoices):
+        UNIQUE_POLLUTION_PROBE = 'probe'
+
+    assert Pollution.UNIQUE_POLLUTION_PROBE == 'probe'
+    assert not hasattr(choices.ChoicesMeta, 'UNIQUE_POLLUTION_PROBE')

@@ -209,7 +209,6 @@ class ChoicesMeta(type):
 
             if isinstance(value, (str, int, float)):
                 value = Choice(value, key.lower())
-                setattr(cls, key, value)
 
             if isinstance(value, Choice):
                 if value.value is not None:
