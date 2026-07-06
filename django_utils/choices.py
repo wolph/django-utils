@@ -82,21 +82,27 @@ To reference these properties:
 """
 
 import collections
+from collections.abc import Iterator
+from typing import Any
 
 
 class ChoicesDict:
     """The choices dict is an object that stores a sorted representation of
     the values by key and database value"""
 
-    def __init__(self):
-        self._by_value = collections.OrderedDict()
-        self._by_key = collections.OrderedDict()
+    def __init__(self) -> None:
+        self._by_value: collections.OrderedDict[Any, Choice] = (
+            collections.OrderedDict()
+        )
+        self._by_key: collections.OrderedDict[str, Choice] = (
+            collections.OrderedDict()
+        )
 
         # Reset the choice creation counter since this will only be accessed
         # after processing the choices
         Choice.order = 0
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Any) -> Any:
         if key in self._by_value:
             return self._by_value[key]
         elif key in self._by_key:
@@ -104,26 +110,26 @@ class ChoicesDict:
         else:
             raise KeyError(f'Key {key!r} does not exist')
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: 'Choice') -> None:
         self._by_key[key] = value
         self._by_value[value.value] = value
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[tuple[Any, 'Choice']]:
         yield from self._by_value.items()
 
-    def items(self):
+    def items(self) -> list[tuple[Any, 'Choice']]:
         return list(self)
 
-    def values(self):
+    def values(self) -> list[str]:
         return list(self._by_key.keys())
 
-    def keys(self):
+    def keys(self) -> list[Any]:
         return list(self._by_value.keys())
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self._by_key)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self._by_key)
 
 
@@ -144,33 +150,37 @@ class Choice:
     'None'
     """
 
-    order = 0
+    # Class-level counter used to preserve definition order. Deliberately
+    # not a `ClassVar`: instances shadow it with their own `order`.
+    order: int = 0
 
-    def __init__(self, value=None, label=None):
+    def __init__(self, value: Any = None, label: str | None = None) -> None:
         Choice.order += 1
-        self.value = value
-        self.label = label
+        self.value: Any = value
+        self.label: str | None = label
         self.order = Choice.order
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Choice):  # pragma: no branch
             return self.value == other.value
         else:
             return self.value == other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<{self.__class__.__name__}[{self.order:d}]:{self.label}>'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.__unicode__()
 
-    def __unicode__(self):
+    def __unicode__(self) -> str:
         return str(self.label)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.value)
 
-    def deconstruct(self):
+    def deconstruct(
+        self,
+    ) -> tuple[str, tuple[Any, str | None], dict[str, Any]]:
         return (
             f'{self.__class__.__module__}.{self.__class__.__name__}',
             (self.value, self.label),
@@ -183,23 +193,38 @@ class ChoicesMeta(type):
     automatically creates a ChoicesDict to get a sorted list of keys and
     values"""
 
-    def __new__(cls, name, bases, attrs):
+    # Declared on the metaclass so `SomeChoices.choices` type-checks on
+    # classes using this metaclass; the actual value is assigned in
+    # `_assign_values` during class creation.
+    choices: ChoicesDict
+
+    def __new__(
+        cls,
+        name: str,
+        bases: tuple[type, ...],
+        attrs: dict[str, Any],
+    ) -> 'ChoicesMeta':
         literal = cls._is_literal_choices(bases)
-        choices, has_values = cls._collect_choices(cls, attrs)
+        choices, has_values = cls._collect_choices(attrs)
         cls._assign_values(attrs, choices, has_values, literal)
 
+        # No `typing.cast` needed: typeshed types the 4-argument form of
+        # `type.__new__` as returning `Self`, and mypy strict flags a cast
+        # here as redundant.
         return super().__new__(cls, name, bases, attrs)
 
     @staticmethod
-    def _is_literal_choices(bases):
+    def _is_literal_choices(bases: tuple[type, ...]) -> bool:
         # Chicken-Egg problem, can't check for something that doesn't exist
         # yet. That's why we check for the name of the class instead of a
         # `issubclass`
         return any(base.__name__ == 'LiteralChoices' for base in bases)
 
     @staticmethod
-    def _collect_choices(cls, attrs):
-        choices = []
+    def _collect_choices(
+        attrs: dict[str, Any],
+    ) -> tuple[list[tuple[str, Choice]], bool]:
+        choices: list[tuple[str, Choice]] = []
         has_values = False
 
         for key, value in attrs.items():
@@ -222,7 +247,12 @@ class ChoicesMeta(type):
         return choices, has_values
 
     @staticmethod
-    def _assign_values(attrs, choices, has_values, literal):
+    def _assign_values(
+        attrs: dict[str, Any],
+        choices: list[tuple[str, Choice]],
+        has_values: bool,
+        literal: bool,
+    ) -> None:
         attrs['choices'] = ChoicesDict()
         i = 0
         for key, value in sorted(choices, key=lambda c: c[1].order):
@@ -239,7 +269,7 @@ class ChoicesMeta(type):
             attrs[key] = value.value
             attrs['choices'][key] = value
 
-    def __iter__(cls):
+    def __iter__(cls) -> Iterator[tuple[Any, Choice]]:
         yield from cls.choices
 
 
@@ -287,7 +317,7 @@ class Choices(metaclass=ChoicesMeta):
 
     choices = ChoicesDict()
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[tuple[Any, Choice]]:
         yield from self.choices
 
 
