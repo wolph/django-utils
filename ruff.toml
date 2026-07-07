@@ -3,7 +3,7 @@
 
 target-version = 'py310'
 src = ['django_utils']
-exclude = ['.tox', '.venv', 'docs/_theme']
+exclude = ['.tox', '.venv']
 line-length = 79
 
 [lint]
