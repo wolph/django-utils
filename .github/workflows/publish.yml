@@ -20,6 +20,12 @@ jobs:
           activate-environment: true
       - name: Build
         run: uv build
+      - name: Smoke test wheel
+        run: |
+          uv run --isolated --no-project --with dist/django_utils2-*.whl \
+            python -c "import django_utils, django_utils.choices, django_utils.view_decorators; print('wheel import OK')"
+          unzip -l dist/django_utils2-*.whl | grep -q 'admin/dropdown_filter.html'
+          unzip -l dist/django_utils2-*.whl | grep -q 'py.typed'
       - uses: actions/upload-artifact@v4
         with:
           name: dist

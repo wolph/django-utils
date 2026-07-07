@@ -38,7 +38,7 @@ class UnknownViewResponseError(ViewError):
     pass
 
 
-def json_default_handler(obj: Any) -> str | None:
+def json_default_handler(obj: Any) -> str:
     if hasattr(obj, 'isoformat'):
         return obj.isoformat()
     else:

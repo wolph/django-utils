@@ -2,7 +2,7 @@
 
 ## 4.0.0 (unreleased)
 
-Modernization release. Runtime behavior of all retained APIs is unchanged; the removals below are packaging/metadata modules.
+Modernization release. Runtime behavior of retained APIs is unchanged except for the documented fixes below; the removed modules were packaging/metadata only.
 
 ### Breaking
 
@@ -11,6 +11,8 @@ Modernization release. Runtime behavior of all retained APIs is unchanged; the r
 - Removed `django_utils.__about__`; package metadata now lives in
   `pyproject.toml` (use `importlib.metadata.version('django-utils2')`).
 - Removed the empty `django_utils/models.py` module.
+- Django is now an explicit install dependency (`django>=4.2`); 3.x
+  releases only declared `python-utils`.
 
 ### Fixed
 
@@ -23,6 +25,8 @@ Modernization release. Runtime behavior of all retained APIs is unchanged; the r
   `LiteralChoices` subclass defined in the process.
 - Admin filters module is now fully covered by tests (it previously had
   none and was excluded from coverage).
+- The `settings` management command no longer reports the deprecated
+  `USE_L10N` setting on Django 4.2.
 
 ### Changed
 

@@ -1,6 +1,7 @@
 # Pre-commit hooks for django-utils2 development
 # Install: brew install lefthook && lefthook install
 # Or: pip install lefthook && lefthook install
+# Hooks need the project dev deps: uv pip install -e '.[dev]'
 
 pre-commit:
   parallel: true

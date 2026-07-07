@@ -19,7 +19,6 @@ classifiers = [
     "Framework :: Django :: 5.2",
     "Framework :: Django :: 6.0",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Natural Language :: English",
     "Programming Language :: Python",
@@ -64,12 +63,11 @@ dev = [
     "django-stubs[compatible-mypy]>=5.1",
     "basedpyright>=1.0",
     "pyrefly>=0.1",
-    "ty",
+    "ty>=0.0.56",
 ]
 tox = [
     "tox>=4.0",
     "tox-uv>=1.0",
-    "tox-gh-actions>=3.0",
 ]
 
 [tool.uv.build-backend]

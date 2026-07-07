@@ -1,6 +1,5 @@
 import contextlib
 import datetime
-import sys
 
 import pytest
 from django import http, template
@@ -94,19 +93,3 @@ def test_some_view():
 
     some_view(request, return_=http.HttpResponse())
     some_view(request)
-
-
-def test_import():
-    import builtins
-
-    removed_modules = {}
-    for name in list(sys.modules.keys()):
-        if name.startswith('django_utils'):
-            removed_modules[name] = sys.modules.pop(name)
-
-    original_import = builtins.__import__
-
-    builtins.__import__ = original_import
-
-    for name, module in removed_modules.items():
-        sys.modules[name] = module

@@ -12,8 +12,6 @@ import django
 
 django.setup()
 
-_metadata = importlib.metadata.metadata('django-utils2')
-
 project = 'Django Utils 2'
 author = 'Rick van Hattem (wolph)'
 copyright = f'2012-{datetime.date.today().year}, {author}'
