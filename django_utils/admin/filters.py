@@ -1,6 +1,8 @@
 import typing
 from abc import ABC
+from collections.abc import Iterable
 from datetime import timedelta
+from typing import TYPE_CHECKING, Any
 
 from django import http
 from django.contrib import admin
@@ -42,50 +44,72 @@ class DropdownMixin:
 class Select2Mixin:
     template = 'django_utils/admin/select2_filter.html'
 
-    def select_html_id(self):
+    if TYPE_CHECKING:
+        # Provided by whichever `ListFilter` subclass this is mixed into.
+        title: Any
+
+    def select_html_id(self) -> str:
         return text.slugify(self.title)
 
     # Quick hack to re-use the admin select2 files
-    Media = widgets.AutocompleteMixin(None, None).media
+    Media = widgets.AutocompleteMixin(
+        typing.cast(Any, None), typing.cast(Any, None)
+    ).media
 
 
 class FilterBase(admin.SimpleListFilter):
     timeout: timedelta | None = None
 
-    def get_lookups_cache_timeout(self):
+    def get_lookups_cache_timeout(self) -> float:
         timeout = self.timeout
         if timeout is None:
             timeout = CACHE_TIMEOUT
         return timeout.total_seconds()
 
-    def get_lookups_cache_key(self, request: http.HttpRequest):
-        return request.get_full_path() + self.title
+    def get_lookups_cache_key(self, request: http.HttpRequest) -> str:
+        return request.get_full_path() + str(self.title)
 
-    def set_lookups_cache(self, request: http.HttpRequest, lookups):
+    def set_lookups_cache(
+        self,
+        request: http.HttpRequest,
+        lookups: list[tuple[Any, str]],
+    ) -> None:
         timeout = self.get_lookups_cache_timeout()
         if timeout:
             cache.set(self.get_lookups_cache_key(request), lookups, timeout)
 
-    def get_lookups_cache(self, request: http.HttpRequest):
-        return cache.get(self.get_lookups_cache_key(request))
+    def get_lookups_cache(
+        self, request: http.HttpRequest
+    ) -> list[tuple[Any, str]] | None:
+        return typing.cast(
+            'list[tuple[Any, str]] | None',
+            cache.get(self.get_lookups_cache_key(request)),
+        )
 
-    def formatter(self, value):
+    def formatter(self, value: Any) -> str:
         """Formatter to convert the value in human readable output"""
         return str(value).title()
 
 
 class JSONFieldFilter(FilterBase):
-    field_path = None
+    field_path: str | None = None
 
     @staticmethod
-    def cast(value):
+    def cast(value: str) -> Any:
         return value
 
     @property
-    def attribute_path(self):
-        return self.field_path.split('__', 1)[1]
+    def attribute_path(self) -> str:
+        return typing.cast(str, self.field_path).split('__', 1)[1]
 
-    def lookups(self, request, model_admin):
+    def lookups(
+        self,
+        request: http.HttpRequest,
+        # Quoted: `admin.ModelAdmin` has no runtime `__class_getitem__`,
+        # only django-stubs' stub-only generic. An unquoted subscript
+        # would raise TypeError at class-body evaluation time.
+        model_admin: 'admin.ModelAdmin[Any]',
+    ) -> Iterable[tuple[Any, str]]:
         """The list of value/label pairs for the filter bar with caching"""
         assert self.field_path, '`field_path` is required'
 
@@ -110,11 +134,12 @@ class JSONFieldFilter(FilterBase):
     def queryset(
         self,
         request: http.HttpRequest,
-        queryset: models.QuerySet,
-    ) -> models.QuerySet:
+        queryset: models.QuerySet[Any],
+    ) -> models.QuerySet[Any]:
         value = self.value()
         if value:
-            return queryset.filter(**{self.field_path: self.cast(value)})
+            field_path = typing.cast(str, self.field_path)
+            return queryset.filter(**{field_path: self.cast(value)})
         else:
             return queryset
 
@@ -133,7 +158,7 @@ class JSONFieldFilter(FilterBase):
             'Paths require both the field and parameter. For example: '
             '`some_json_field__some_parameter`'
         )
-        namespace = {
+        namespace: dict[str, Any] = {
             'field_path': field_path,
             'title': title or ' '.join(field_path.split('_')).title(),
             'parameter_name': parameter_name or field_path,
@@ -145,7 +170,9 @@ class JSONFieldFilter(FilterBase):
             namespace['formatter'] = staticmethod(formatter)
         if cast is not None:
             namespace['cast'] = staticmethod(cast)
-        return type('Filter', (cls,), namespace)
+        return typing.cast(
+            'type[JSONFieldFilter]', type('Filter', (cls,), namespace)
+        )
 
 
 class JSONFieldFilterSelect2(Select2Mixin, JSONFieldFilter):

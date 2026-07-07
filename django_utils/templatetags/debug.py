@@ -2,49 +2,68 @@ import copy
 import datetime
 import pprint
 import typing
+from collections.abc import Callable
+from typing import Any, ClassVar, TypeVar
 
 from django import template
 from django.db import models
 from django.utils.html import conditional_escape
-from django.utils.safestring import mark_safe
+from django.utils.safestring import SafeString, mark_safe
 
 register = template.Library()
 
+_F = TypeVar('_F', bound=Callable[..., Any])
+
+# The formatter methods are stored unbound and invoked as
+# ``formatter(self, value, depth, show_protected, show_special)``.
+FormatterFunction = Callable[['Formatter', Any, int, bool, bool], Any]
+
 
 class _Formatter:
-    formatters_type: typing.ClassVar[dict] = {}
-    formatters_instance: typing.ClassVar[list] = []
+    formatters_type: ClassVar[dict[type, FormatterFunction]] = {}
+    formatters_instance: ClassVar[list[tuple[type, FormatterFunction]]] = []
+
+
+def _register(*types: type) -> Callable[[_F], _F]:
+    """Register a handler for the given type(s)
+
+    :param types: The type(s) to handle
+    :return: The unmodified decorated function
+    """
+
+    def _register_inner(func: _F) -> _F:
+        for type_ in types:
+            _Formatter.formatters_type[type_] = typing.cast(
+                FormatterFunction, func
+            )
+            _Formatter.formatters_instance.append(
+                (type_, typing.cast(FormatterFunction, func))
+            )
+
+        return func
+
+    return _register_inner
 
 
 class Formatter(_Formatter):
     MAX_LENGTH = 100
     MAX_LENGTH_DOTS = 3
 
-    def __init__(self, max_depth=3):
+    def __init__(self, max_depth: int = 3) -> None:
         """Initialize the formatter with a given maximum default depth
 
         :param max_depth: The maximum depth to print
         """
         self.max_depth = max_depth
 
-    def _register(*types):
-        """Register a handler for the given type(s)
-
-        :param types: The type(s) to handle
-        :return: The unmodified decorated function
-        """
-
-        def _register(func):
-            for type_ in types:
-                _Formatter.formatters_type[type_] = func
-                _Formatter.formatters_instance.append((type_, func))
-
-            return func
-
-        return _register
-
     @_register(int)
-    def format_int(self, value, depth, show_protected, show_special):
+    def format_int(
+        self,
+        value: int,
+        depth: int,
+        show_protected: bool,
+        show_special: bool,
+    ) -> Any:
         """Format an integer/long
 
         :param value: an int/long to format
@@ -60,7 +79,13 @@ class Formatter(_Formatter):
         return value
 
     @_register(bytes)
-    def format_str(self, value, depth, show_protected, show_special):
+    def format_str(
+        self,
+        value: bytes,
+        depth: int,
+        show_protected: bool,
+        show_special: bool,
+    ) -> Any:
         """Format a string
 
         :param value: a str value to format
@@ -81,7 +106,13 @@ class Formatter(_Formatter):
         )
 
     @_register(str)
-    def format_unicode(self, value, depth, show_protected, show_special):
+    def format_unicode(
+        self,
+        value: str,
+        depth: int,
+        show_protected: bool,
+        show_special: bool,
+    ) -> str:
         """Format a string
 
         :param value: a unicode value to format
@@ -101,7 +132,13 @@ class Formatter(_Formatter):
         return value
 
     @_register(list)
-    def format_list(self, value, depth, show_protected, show_special):
+    def format_list(
+        self,
+        value: list[Any],
+        depth: int,
+        show_protected: bool,
+        show_special: bool,
+    ) -> list[Any]:
         """Format a string
 
         :param value: a list to format
@@ -118,7 +155,13 @@ class Formatter(_Formatter):
         ]
 
     @_register(datetime.datetime, datetime.date)
-    def format_datetime(self, value, depth, show_protected, show_special):
+    def format_datetime(
+        self,
+        value: datetime.date,
+        depth: int,
+        show_protected: bool,
+        show_special: bool,
+    ) -> str:
         """Format a date
 
         :param value: a date to format
@@ -134,7 +177,13 @@ class Formatter(_Formatter):
         return f'<{value.__class__.__name__}:{value}>'
 
     @_register(dict)
-    def format_dict(self, value, depth, show_protected, show_special):
+    def format_dict(
+        self,
+        value: dict[Any, Any],
+        depth: int,
+        show_protected: bool,
+        show_special: bool,
+    ) -> str:
         """Format a string
 
         :param value: a str value to format
@@ -146,13 +195,13 @@ class Formatter(_Formatter):
         '{a: 1, b: 2}'
         """
 
-        def key(key):
+        def key(item: tuple[Any, Any]) -> tuple[int, Any]:
             """Make sure that hidden/protected variables end up at the end"""
-            key = key[0]
-            if 'a' <= key[0].lower() <= 'z' or '0' <= key[0] <= '9':
-                return 0, key
+            k = item[0]
+            if 'a' <= k[0].lower() <= 'z' or '0' <= k[0] <= '9':
+                return 0, k
             else:
-                return 1, key
+                return 1, k
 
         output = []
         for k, v in sorted(value.items(), key=key):
@@ -165,7 +214,13 @@ class Formatter(_Formatter):
         return f'{{{formatted}}}'
 
     @_register(models.Model)
-    def format_model(self, value, depth, show_protected, show_special):
+    def format_model(
+        self,
+        value: models.Model,
+        depth: int,
+        show_protected: bool,
+        show_special: bool,
+    ) -> Any:
         """Format a string
 
         :param value: a str value to format
@@ -181,7 +236,13 @@ class Formatter(_Formatter):
         """
         return self.format_object(value, depth, False, False)
 
-    def format_object(self, value, depth, show_protected, show_special):
+    def format_object(
+        self,
+        value: Any,
+        depth: int,
+        show_protected: bool,
+        show_special: bool,
+    ) -> str:
         """Format an object
 
         :param value: an object to format
@@ -234,7 +295,13 @@ class Formatter(_Formatter):
         formatted = self.format(dict_, depth - 1, show_protected, show_special)
         return f'<{name} {formatted}>'
 
-    def format(self, value, depth, show_protected, show_special):
+    def format(
+        self,
+        value: Any,
+        depth: int | None,
+        show_protected: bool,
+        show_special: bool,
+    ) -> Any:
         """Call the formatter with the given value to format and optional depth
 
         >>> formatter = Formatter()
@@ -251,7 +318,9 @@ class Formatter(_Formatter):
                 str(value), depth - 1, show_protected, show_special
             )
 
-        formatter = self.formatters_type.get(type(value))
+        formatter: FormatterFunction | None = self.formatters_type.get(
+            type(value)
+        )
 
         if not formatter:
             for k, v in self.formatters_instance:
@@ -265,8 +334,12 @@ class Formatter(_Formatter):
         return formatter(self, value, depth, show_protected, show_special)
 
     def __call__(
-        self, value, depth=None, show_protected=True, show_special=False
-    ):
+        self,
+        value: Any,
+        depth: int | None = None,
+        show_protected: bool = True,
+        show_special: bool = False,
+    ) -> str:
         formatted = self.format(value, depth, show_protected, show_special)
         if not isinstance(formatted, str):
             formatted = pprint.pformat(formatted)
@@ -275,7 +348,7 @@ class Formatter(_Formatter):
 
 
 @register.filter
-def debug(value, max_depth=3):
+def debug(value: Any, max_depth: int = 3) -> SafeString:
     """Debug template filter to print variables in a pretty way
 
     >>> str(debug(123).strip())

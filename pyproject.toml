@@ -101,6 +101,7 @@ exclude_lines = [
 ]
 
 [tool.mypy]
+packages = ["django_utils"]
 plugins = ["mypy_django_plugin.main"]
 strict = true
 local_partial_types = true
