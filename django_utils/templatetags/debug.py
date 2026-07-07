@@ -203,7 +203,7 @@ class Formatter(_Formatter):
             else:
                 return 1, k
 
-        output = []
+        output: list[str] = []
         for k, v in sorted(value.items(), key=key):
             formatted = self(v, depth - 1, show_protected, show_special)
             output.append(f'{k}: {formatted}')

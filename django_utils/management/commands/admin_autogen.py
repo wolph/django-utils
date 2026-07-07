@@ -4,8 +4,8 @@ from typing import Any
 from . import base_command
 
 try:
-    from django_admin_generator.management.commands.admin_generator import (
-        Command,
+    from django_admin_generator.management.commands.admin_generator import (  # pyright: ignore[reportMissingImports]
+        Command as Command,
     )
 except ImportError:
 

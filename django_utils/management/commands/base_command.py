@@ -25,7 +25,7 @@ class CustomBaseCommand(base.BaseCommand, logger.Logged):
         self.logger = self.create_logger()
         # `log` is a classmethod on `logger.Logged`; shadowing it with the
         # instance's `logging.Logger` is intentional.
-        self.log = self.logger  # type: ignore[method-assign,assignment]
+        self.log = self.logger  # type: ignore[method-assign,assignment]  # ty: ignore[invalid-assignment]
         return None
 
     def create_logger(self) -> logging.Logger:

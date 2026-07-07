@@ -181,6 +181,57 @@ def _process_response(
         )
 
 
+def _build_view(
+    function: ViewFunction,
+    login_required: bool,
+    response_class: type[http.HttpResponse],
+) -> Callable[..., http.HttpResponse]:
+    """Wrap ``function`` in the ``env`` request/response machinery.
+
+    Shared by both public call shapes of ``env`` so the overloaded name
+    never has to be called recursively (which would match no overload).
+    """
+
+    def _env(
+        request: http.HttpRequest, *args: Any, **kwargs: Any
+    ) -> http.HttpResponse:
+        req = typing.cast(EnvRequest, request)
+        req.ajax = bool(
+            max(
+                req.headers.get('x-requested-with') == 'XMLHttpRequest',
+                int(req.POST.get('ajax', 0)),
+                int(req.GET.get('ajax', 0)),
+            )
+        )
+        req.context = None
+        try:
+            # `function` is a real view function here; ty treats the generic
+            # `Callable` alias as not guaranteed to expose `__name__`.
+            name = function.__name__  # ty: ignore[unresolved-attribute]
+            app = function.__module__.split('.')[0]
+            req = _prepare_request(req, app, name)
+            req.template = f'{app}/{name}.html'
+            response = function(req, *args, **kwargs)
+            return _process_response(
+                req, response, response_class
+            )  # pragma: no branch
+        finally:
+            """Remove the context reference from request to prevent leaking"""
+            try:
+                del req.context, req.template
+                for k in REQUEST_PROPERTIES:  # pragma: no branch
+                    delattr(req, k)
+            except AttributeError:
+                pass  # pragma: no branch
+
+    functools.update_wrapper(_env, function)
+
+    if login_required:
+        return decorators.login_required(_env)
+    else:
+        return _env
+
+
 @typing.overload
 def env(function: ViewFunction) -> Callable[..., http.HttpResponse]: ...
 
@@ -210,56 +261,10 @@ def env(
     Stores the template in request.template and assumes it to be in
     <app>/<view>.html
     """
+    if function is not None:
+        return _build_view(function, login_required, response_class)
 
-    def _env(
-        request: http.HttpRequest, *args: Any, **kwargs: Any
-    ) -> http.HttpResponse:
-        req = typing.cast(EnvRequest, request)
-        req.ajax = bool(
-            max(
-                req.headers.get('x-requested-with') == 'XMLHttpRequest',
-                int(req.POST.get('ajax', 0)),
-                int(req.GET.get('ajax', 0)),
-            )
-        )
-        req.context = None
-        try:
-            assert function is not None
-            name = function.__name__
-            app = function.__module__.split('.')[0]
-            req = _prepare_request(req, app, name)
-            req.template = f'{app}/{name}.html'
-            response = function(req, *args, **kwargs)
-            return _process_response(
-                req, response, response_class
-            )  # pragma: no branch
-        finally:
-            """Remove the context reference from request to prevent leaking"""
-            try:
-                del req.context, req.template
-                for k in REQUEST_PROPERTIES:  # pragma: no branch
-                    delattr(req, k)
-            except AttributeError:
-                pass  # pragma: no branch
+    def inner(function: ViewFunction) -> Callable[..., http.HttpResponse]:
+        return _build_view(function, login_required, response_class)
 
-    if function:
-        functools.update_wrapper(_env, function)
-
-        if login_required:
-            return decorators.login_required(_env)
-        else:
-            return _env
-    else:
-
-        def inner(function: ViewFunction) -> Callable[..., http.HttpResponse]:
-            # The two overloads above only cover the public call shapes
-            # (bare `@env` / `@env(login_required=..., response_class=...)`
-            # with function=None). This recursive self-call supplies a
-            # non-None function alongside login_required/response_class,
-            # a shape neither overload matches, so mypy can't resolve it
-            # against the overloaded `env` name from inside its own body.
-            return env(  # type: ignore[call-overload]
-                function, login_required, response_class
-            )
-
-        return inner
+    return inner

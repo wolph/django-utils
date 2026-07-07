@@ -123,3 +123,39 @@ ignore_missing_imports = true
 
 [tool.django-stubs]
 django_settings_module = "tests.settings"
+
+[tool.pyright]
+pythonPlatform = "All"
+include = ["django_utils"]
+ignore = [".venv", ".tox"]
+typeCheckingMode = "strict"
+reportPrivateUsage = false
+reportUnusedParameter = false
+reportUnusedVariable = false
+# django-stubs ships no basedpyright plugin, so every abstract base
+# redeclares a nested ``Meta`` class that reads as an incompatible
+# override even though the runtime metaclass merges them; the mypy
+# django-stubs plugin special-cases this, pyright cannot.
+reportIncompatibleVariableOverride = false
+# Without the django-stubs plugin, model field descriptors resolve to
+# ``Field[Unknown, Unknown]`` and managers/QuerySets to
+# ``QuerySet[Unknown, Unknown]``; partially-typed third-party deps
+# (e.g. pygments) surface the same way. These reportUnknown* diagnostics
+# are stubs-without-plugin noise under strict mode, not real type errors.
+reportUnknownVariableType = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false
+
+[tool.pyrefly]
+project-includes = ["django_utils"]
+ignore-missing-imports = [
+    "django_admin_generator",
+    "django_admin_generator.*",
+]
+
+# django-stubs ships no plugin for ty, so the optional
+# `django_admin_generator` import (guarded by try/except at runtime) and
+# other dynamically-resolved imports read as unresolved; silence at the
+# rule level rather than per-line since it is a stubs-without-plugin gap.
+[tool.ty.rules]
+unresolved-import = "ignore"

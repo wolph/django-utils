@@ -26,6 +26,11 @@ class ModelBaseMeta(base.ModelBase):
     ) -> type:
         module = attrs['__module__']
 
+        # `meta` is either a user-defined ``Meta`` class or a ``type``
+        # synthesized below, so its attribute surface is only known at
+        # runtime; ``Any`` keeps the dynamic ``db_table`` assignment valid
+        # across every checker (django-stubs' plugin is mypy-only).
+        meta: Any
         # Get or create Meta
         if 'Meta' in attrs:
             meta = attrs['Meta']
@@ -117,7 +122,7 @@ class SlugMixin(NameMixin):
         # concrete Model subclass this mixin is combined with at runtime
         # (e.g. SlugModelBase). mypy can't see that cooperative-mixin MRO
         # when checking SlugMixin in isolation.
-        super(NameMixin, self).save(  # type: ignore[misc]
+        super(NameMixin, self).save(  # type: ignore[misc]  # ty: ignore[unresolved-attribute]
             *args, **kwargs
         )
 

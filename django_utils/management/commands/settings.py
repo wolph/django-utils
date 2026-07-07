@@ -83,7 +83,7 @@ class Command(base_command.CustomBaseCommand):
 
     def _render_csv(self, data: dict[str, Any], show_keys: bool) -> None:
         for key, values in data.items():
-            out = []
+            out: list[str] = []
             if show_keys:
                 out.append(key)
 
