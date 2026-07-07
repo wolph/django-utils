@@ -2,7 +2,7 @@
 
 ## 4.0.0 (unreleased)
 
-Modernization release. No intentional runtime API changes.
+Modernization release. Runtime behavior of all retained APIs is unchanged; the removals below are packaging/metadata modules.
 
 ### Breaking
 
@@ -29,7 +29,8 @@ Modernization release. No intentional runtime API changes.
 - Packaging: `pyproject.toml` with the `uv_build` backend; added a
   proper BSD-3-Clause `LICENSE` file and a `py.typed` marker (the whole
   package is strictly typed and checked by mypy, basedpyright, pyrefly
-  and ty).
+  and ty). Views decorated with `env` can now be typed against the new
+  `django_utils.view_decorators.EnvRequest` request class.
 - Linting/formatting: ruff (replaces flake8).
 - CI: split into ci/codeql/publish workflows; releases publish to PyPI
   via Trusted Publishing on `v*` tags.
