@@ -19,6 +19,13 @@ def test_settings_command_no_type(settings_command):
     settings_command.render_output(None, output_type=None)
 
 
+def test_settings_command_unknown_type(settings_command):
+    # An output_type that matches none of the known renderers should be a
+    # silent no-op (argparse `choices` prevents this via the CLI, but
+    # render_output() is public API and can be called directly).
+    settings_command.render_output({'a': 1}, output_type='unknown')
+
+
 @pytest.mark.parametrize('output_type', settings.Command.output_types)
 @pytest.mark.parametrize('show_keys', [True, False])
 def test_settings_command_arg(settings_command, output_type, show_keys):
