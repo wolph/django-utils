@@ -62,7 +62,10 @@ class CreatedAtModelBase(ModelBase):
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
+    # Django's metaclass merges nested ``Meta`` classes from every base at
+    # runtime, so redeclaring ``Meta`` here is not really an override;
+    # django-stubs' mypy plugin models this, basedpyright cannot.
+    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
         abstract = True
 
 
@@ -133,22 +136,22 @@ class SlugMixin(NameMixin):
 class NameModelBase(NameMixin, ModelBase):
     name = models.CharField(max_length=100)
 
-    class Meta:
+    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
         abstract = True
 
 
 class SlugModelBase(SlugMixin, NameModelBase):
     slug = models.SlugField(max_length=50)
 
-    class Meta:
+    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
         abstract = True
 
 
 class NameCreatedAtModelBase(NameModelBase, CreatedAtModelBase):
-    class Meta:
+    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
         abstract = True
 
 
 class SlugCreatedAtModelBase(SlugModelBase, CreatedAtModelBase):
-    class Meta:
+    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
         abstract = True

@@ -132,11 +132,6 @@ typeCheckingMode = "strict"
 reportPrivateUsage = false
 reportUnusedParameter = false
 reportUnusedVariable = false
-# django-stubs ships no basedpyright plugin, so every abstract base
-# redeclares a nested ``Meta`` class that reads as an incompatible
-# override even though the runtime metaclass merges them; the mypy
-# django-stubs plugin special-cases this, pyright cannot.
-reportIncompatibleVariableOverride = false
 # Without the django-stubs plugin, model field descriptors resolve to
 # ``Field[Unknown, Unknown]`` and managers/QuerySets to
 # ``QuerySet[Unknown, Unknown]``; partially-typed third-party deps
