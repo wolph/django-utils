@@ -2,6 +2,7 @@ import datetime
 
 import pytest
 from django.contrib import admin
+from django.contrib.auth.models import User
 from django.core.cache import cache as django_cache
 from django.core.cache.backends.base import memcache_key_warnings
 from django.test import RequestFactory
@@ -216,3 +217,22 @@ def test_select2_html_id_and_media(rf, model_admin):
     instance, _request = make_filter(filter_class, rf, model_admin)
     assert instance.select_html_id() == 'data-filling'
     assert filters.Select2Mixin.Media is not None
+
+
+@pytest.mark.django_db
+def test_queryset_via_admin_changelist(rf):
+    """Exercise Django's own request -> value parsing end to end."""
+    models.Sandwich.objects.create(data={'filling': 'ham'})
+    models.Sandwich.objects.create(data={'filling': 'cheese'})
+
+    filter_class = filters.JSONFieldFilter.create('data__filling')
+
+    class SandwichAdmin(admin.ModelAdmin):
+        list_filter = (filter_class,)
+
+    model_admin = SandwichAdmin(models.Sandwich, admin.AdminSite())
+    request = rf.get('/admin/test_app/sandwich/', {'data__filling': 'ham'})
+    request.user = User(is_superuser=True, is_active=True, is_staff=True)
+
+    changelist = model_admin.get_changelist_instance(request)
+    assert changelist.get_queryset(request).count() == 1
