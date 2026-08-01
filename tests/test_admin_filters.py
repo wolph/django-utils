@@ -3,6 +3,7 @@ import datetime
 import pytest
 from django.contrib import admin
 from django.core.cache import cache as django_cache
+from django.core.cache.backends.base import memcache_key_warnings
 from django.test import RequestFactory
 from django_utils.admin import filters
 
@@ -45,6 +46,47 @@ def test_create_defaults():
     assert filter_class.parameter_name == 'data__filling'
     assert filter_class.title == 'Data  Filling'
     assert filter_class.timeout is None
+
+
+@pytest.mark.django_db
+def test_cache_key_is_memcached_safe(rf, model_admin):
+    """The default auto-title contains spaces (see test_create_defaults);
+    the cache key must still be a valid memcached key."""
+    filter_class = filters.JSONFieldFilter.create('data__filling')
+    instance, request = make_filter(filter_class, rf, model_admin)
+    key = instance.get_lookups_cache_key(request)
+    assert list(memcache_key_warnings(key)) == []
+    assert len(key) <= 250
+
+    long_querystring = '&'.join(f'param{i}=value{i}' for i in range(40))
+    long_request = rf.get(f'/admin/test_app/sandwich/?{long_querystring}')
+    assert len(long_request.get_full_path()) > 400
+    long_key = instance.get_lookups_cache_key(long_request)
+    assert list(memcache_key_warnings(long_key)) == []
+    assert len(long_key) <= 250
+
+
+@pytest.mark.django_db
+def test_cache_key_is_stable_and_distinct(rf, model_admin):
+    filter_class = filters.JSONFieldFilter.create('data__filling')
+    instance_a, request = make_filter(filter_class, rf, model_admin)
+    instance_b, _request = make_filter(filter_class, rf, model_admin)
+    assert instance_a.get_lookups_cache_key(
+        request
+    ) == instance_b.get_lookups_cache_key(request)
+
+    other_request = rf.get('/admin/test_app/sandwich/?foo=bar')
+    assert instance_a.get_lookups_cache_key(
+        request
+    ) != instance_a.get_lookups_cache_key(other_request)
+
+    other_title_class = filters.JSONFieldFilter.create(
+        'data__filling', title='Other'
+    )
+    other_instance, _request = make_filter(other_title_class, rf, model_admin)
+    assert instance_a.get_lookups_cache_key(
+        request
+    ) != other_instance.get_lookups_cache_key(request)
 
 
 @pytest.mark.django_db

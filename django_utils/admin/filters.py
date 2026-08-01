@@ -1,3 +1,4 @@
+import hashlib
 import typing
 from abc import ABC
 from collections.abc import Iterable
@@ -67,7 +68,12 @@ class FilterBase(admin.SimpleListFilter):
         return timeout.total_seconds()
 
     def get_lookups_cache_key(self, request: http.HttpRequest) -> str:
-        return request.get_full_path() + str(self.title)
+        # Hashed so the key is valid for every cache backend: the raw
+        # path + title can contain spaces and exceed memcached's 250
+        # byte limit.
+        raw = f'{request.get_full_path()}\n{self.title}'
+        digest = hashlib.sha256(raw.encode('utf-8')).hexdigest()
+        return f'django_utils.lookups.{digest}'
 
     def set_lookups_cache(
         self,

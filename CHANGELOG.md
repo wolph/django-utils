@@ -39,6 +39,10 @@ Modernization release. Runtime behavior of retained APIs is unchanged except for
 - CI: split into ci/codeql/publish workflows; releases publish to PyPI
   via Trusted Publishing on `v*` tags.
 - Docs: furo theme, README converted to Markdown.
+- Filter lookup cache keys are now hashed (`django_utils.lookups.<sha256>`)
+  so they are valid on every cache backend; previously the raw request
+  path and filter title were concatenated, producing keys with spaces
+  that memcached rejects. Cached lookups are invalidated once on upgrade.
 
 ## 3.0.2 and earlier
 
