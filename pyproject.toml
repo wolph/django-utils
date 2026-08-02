@@ -85,6 +85,9 @@ addopts = [
     "--no-cov-on-fail",
     "--ignore=build",
     "--ignore=docs",
+    # Syncthing conflict copies are not source files; collecting them
+    # duplicates modules and breaks the run outright.
+    "--ignore-glob=*sync-conflict*",
 ]
 
 [tool.coverage.run]
