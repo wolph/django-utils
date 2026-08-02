@@ -15,11 +15,12 @@ Examples are:
 - Admin Select (Dropdown) filters
 - Admin Select2 (Autocomplete dropdown) filters
 - Admin JSON sub-field filters
-- Enum based choicefields
+- Enum based choicefields that can carry arbitrary metadata and convert to a
+  real `enum.Enum` on demand
 - Models with automatic `__str__`, `__unicode__` and `__repr__` functions
   based on names and/or slugs using simple mixins.
 - Models with automatic `updated_at` and `created_at` fields
-- Models with automatic slugs based on the `name` property.
+- Models with automatic, collision-free slugs based on the `name` property.
 - Iterating through querysets in predefined chunks to prevent out of memory
   errors
 
@@ -111,6 +112,23 @@ class Human(models.Model):
         OTHER = choices.Choice('o', 'other')
 
     gender = models.CharField(max_length=1, choices=Gender)
+```
+
+`Choice` also accepts arbitrary keyword metadata, reachable as attributes on
+the resolved choice, and `Choices.as_enum()` builds a real `enum.Enum` from
+the class without touching the original (so model fields keep using the
+raw-value class while application code gets `isinstance`/`match` support):
+
+```python
+class Status(choices.Choices):
+    ACTIVE = choices.Choice('a', 'Active', color='green')
+    INACTIVE = choices.Choice('i', 'Inactive', color='red')
+
+
+Status.choices['a'].color  # 'green'
+
+StatusEnum = Status.as_enum()
+StatusEnum('a') is StatusEnum.ACTIVE  # True
 ```
 
 A PostgreSQL ENUM field will be coming soon to automatically facilitate the

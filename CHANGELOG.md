@@ -1,5 +1,40 @@
 # Changelog
 
+## 4.1.0
+
+### Added
+
+- `Choice` accepts arbitrary keyword metadata, reachable as attributes:
+  `Choice('a', 'Active', color='green')` gives `Status.choices['a'].color`.
+  Django's `TextChoices` has no equivalent.
+- `Choices.as_enum()` returns a real `enum.Enum` built from the choices, so
+  application code can use `isinstance` and `match` exhaustiveness while
+  model fields keep taking the raw-value class.
+- `ChoicesDict.by_key()` exposes the choices keyed by attribute name,
+  returning a copy so callers can't mutate the original mapping.
+- `ChoicesDict.grouped()` returns choices nested into Django's `<optgroup>`
+  structure (`[(group_label, [(value, label), ...]), ...]`), verified
+  against a real Django model field and form widget.
+- `SlugMixin` now resolves slug collisions with a numeric suffix
+  (`my-thing`, `my-thing-2`, ...) instead of raising `IntegrityError`.
+  Override `slugify_max_attempts` to change the retry ceiling.
+
+### Fixed
+
+- `to_json` serialises `datetime`, `date`, `Decimal` and `UUID` via
+  `DjangoJSONEncoder` instead of raising `TypeError`.
+
+### Changed
+
+- `queryset_iterator` was benchmarked against
+  `QuerySet.iterator(chunk_size=...)` (see `benchmarks/queryset_iterator.py`)
+  and lost: on SQLite it is 1.57x-1.70x slower and uses ~1.85x the peak
+  memory. Its docstring now documents the benchmark and recommends
+  `QuerySet.iterator(chunk_size=...)` for the general case; the function
+  itself is unchanged and still has a narrow use (a new query per chunk
+  rather than one long-lived cursor, useful when a connection may be reset
+  or recycled mid-iteration).
+
 ## 4.0.0 (unreleased)
 
 Modernization release. Runtime behavior of retained APIs is unchanged except for the documented fixes below; the removed modules were packaging/metadata only.
