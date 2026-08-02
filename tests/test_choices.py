@@ -176,3 +176,34 @@ def test_choice_unknown_attribute_raises_attribute_error():
     choice = choices.Choice('v', 'l')
     with pytest.raises(AttributeError):
         _ = choice.nonexistent
+
+
+def test_as_enum_produces_real_enum_members():
+    import enum
+
+    class Gender(choices.Choices):
+        Male = choices.Choice('m', 'Male')
+        Female = choices.Choice('f', 'Female')
+
+    # PascalCase: this is bound to a class (a dynamically built `Enum`
+    # subclass), not a regular variable.
+    GenderEnum = Gender.as_enum()  # noqa: N806
+
+    assert issubclass(GenderEnum, enum.Enum)
+    assert GenderEnum.Male.value == 'm'
+    assert GenderEnum('f') is GenderEnum.Female
+    assert GenderEnum['Male'] is GenderEnum.Male
+    assert isinstance(GenderEnum.Male, GenderEnum)
+    assert [member.name for member in GenderEnum] == ['Male', 'Female']
+
+
+def test_as_enum_leaves_the_original_class_untouched():
+    class Gender(choices.Choices):
+        Male = choices.Choice('m')
+
+    Gender.as_enum()
+
+    assert Gender.Male == 'm'
+    # No explicit label was given, so the pre-existing (unchanged) default
+    # applies: the lowercased attribute name, not 'Male'.
+    assert Gender.choices['m'].label == 'male'

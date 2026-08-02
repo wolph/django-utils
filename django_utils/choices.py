@@ -122,11 +122,29 @@ extra data, reachable as attributes:
 
     Status.choices['a'].color  # 'green'
 
+Getting a real ``Enum``
+==============================================================================
+
+Members of a :py:class:`Choices` class are raw values, so they can be passed
+straight to Django fields. When you want ``isinstance`` checks or ``match``
+exhaustiveness, ask for an enum:
+
+.. code-block:: python
+
+    class Gender(choices.Choices):
+        Male = choices.Choice('m', 'Male')
+        Female = choices.Choice('f', 'Female')
+
+
+    GenderEnum = Gender.as_enum()
+    GenderEnum('m') is GenderEnum.Male  # True
+
 """
 
 import collections
+import enum
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from django.utils.functional import Promise as StrPromise
@@ -171,6 +189,10 @@ class ChoicesDict:
 
     def keys(self) -> list[Any]:
         return list(self._by_value.keys())
+
+    def by_key(self) -> 'collections.OrderedDict[str, Choice]':
+        """The choices keyed by their declared attribute name."""
+        return self._by_key.copy()
 
     def __repr__(self) -> str:
         return repr(self._by_key)
@@ -337,6 +359,26 @@ class ChoicesMeta(type):
 
     def __iter__(cls) -> Iterator[tuple[Any, Choice]]:
         yield from cls.choices
+
+    def as_enum(cls) -> type[enum.Enum]:
+        """Build a real :py:class:`enum.Enum` from these choices.
+
+        The original class is unchanged — its members stay raw values so
+        they can be handed to Django fields. Use the enum where you want
+        ``isinstance`` checks or ``match`` exhaustiveness.
+        """
+        members = [
+            (key, choice.value) for key, choice in cls.choices.by_key().items()
+        ]
+        # `enum.Enum`'s functional API creates a new *class*, but its
+        # typeshed stub is written for the member-lookup call signature
+        # (`Color(1)` -> `Color.RED`), so mypy/basedpyright infer an
+        # `Enum` instance here rather than `type[Enum]`, and the `cast`
+        # below is required for them. ty infers the correct type on its
+        # own and considers that same `cast` redundant.
+        return cast(  # ty: ignore[redundant-cast]
+            type[enum.Enum], enum.Enum(cls.__name__, members)
+        )
 
 
 class Choices(metaclass=ChoicesMeta):
