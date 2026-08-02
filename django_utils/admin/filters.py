@@ -3,7 +3,7 @@ import typing
 from abc import ABC
 from collections.abc import Iterable
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from django import http
 from django.contrib import admin
@@ -19,6 +19,7 @@ from django.contrib.admin.filters import (
     RelatedOnlyFieldListFilter,
     SimpleListFilter,
 )
+from django.core import exceptions
 from django.core.cache import cache
 from django.db import models
 from django.utils import text
@@ -56,6 +57,53 @@ class Select2Mixin:
     Media = widgets.AutocompleteMixin(
         typing.cast(Any, None), typing.cast(Any, None)
     ).media
+
+
+class LookupFilterMixin:
+    """Adds an operator selector to a list filter.
+
+    The operator is read from ``<parameter_name>__op`` and validated
+    against :py:attr:`operators` before use. An operator taken from the
+    query string and interpolated into a lookup would otherwise be a
+    query-injection surface.
+    """
+
+    SUPPORTED_OPERATORS: ClassVar[frozenset[str]] = frozenset(
+        {
+            'exact',
+            'contains',
+            'icontains',
+            'startswith',
+            'gt',
+            'gte',
+            'lt',
+            'lte',
+            'range',
+        }
+    )
+
+    operators: ClassVar[tuple[str, ...]] = ('exact',)
+
+    if TYPE_CHECKING:
+        # Provided by whichever `ListFilter` subclass this is mixed into.
+        # Typed to match `SimpleListFilter.parameter_name` exactly, so
+        # mypy does not see this as an incompatible redefinition.
+        parameter_name: str | None
+        used_parameters: dict[str, Any]
+
+    @property
+    def operator_parameter_name(self) -> str:
+        return f'{self.parameter_name}__op'
+
+    def get_operator(self) -> str:
+        operator = self.used_parameters.get(
+            self.operator_parameter_name, self.operators[0]
+        )
+        if operator not in self.operators:
+            raise exceptions.SuspiciousOperation(
+                f'Unsupported filter operator: {operator!r}'
+            )
+        return operator
 
 
 class FilterBase(admin.SimpleListFilter):
@@ -115,7 +163,7 @@ class FilterBase(admin.SimpleListFilter):
         return str(value).title()
 
 
-class JSONFieldFilter(FilterBase):
+class JSONFieldFilter(LookupFilterMixin, FilterBase):
     field_path: str | None = None
 
     @staticmethod
@@ -178,6 +226,7 @@ class JSONFieldFilter(FilterBase):
         formatter: typing.Callable[[typing.Any], str] | None = None,
         cast: typing.Callable[[str], typing.Any] | None = None,
         timeout: timedelta | None = None,
+        operators: tuple[str, ...] | None = None,
     ) -> type['JSONFieldFilter']:
         assert '__' in field_path, (
             'Paths require both the field and parameter. For example: '
@@ -189,6 +238,27 @@ class JSONFieldFilter(FilterBase):
             'parameter_name': parameter_name or field_path,
             'timeout': timeout,
         }
+        if operators is not None:
+            unsupported = (
+                set(operators) - LookupFilterMixin.SUPPORTED_OPERATORS
+            )
+            if unsupported:
+                raise ValueError(
+                    f'Unsupported operators: {sorted(unsupported)}. '
+                    'Supported: '
+                    f'{sorted(LookupFilterMixin.SUPPORTED_OPERATORS)}'
+                )
+            namespace['operators'] = tuple(operators)
+
+        numeric = {'gt', 'gte', 'lt', 'lte', 'range'}
+        if operators and numeric.intersection(operators) and cast is None:
+            raise ValueError(
+                f'Operators {sorted(numeric.intersection(operators))} '
+                'compare numerically but no `cast` was given, so values '
+                'from the query string would be compared as strings. '
+                'Pass cast=int or cast=float.'
+            )
+
         if template is not None:
             namespace['template'] = template
         if formatter is not None:

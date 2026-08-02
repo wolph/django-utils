@@ -1,0 +1,38 @@
+{% comment %}
+Companion to dropdown_filter.html for LookupFilterMixin. This filter has
+no fixed set of choices to link to -- only a free-text value paired with
+an operator -- so it renders a real <form> that submits via GET. No
+JavaScript is required.
+{% endcomment %}
+{% load i18n %}
+{% block pre %}
+{%  endblock %}
+<h3>{% blocktrans with title as filter_title %} By {{ filter_title }} {% endblocktrans %}</h3>
+<ul class="admin-filter-{{ title|slugify }}">
+    <li>
+    <form method="get">
+        <select
+            name="{{ spec.operator_parameter_name }}"
+            class="form-control"
+            style="width: auto; display: inline;">
+        {% for operator in spec.operators %}
+            <option value="{{ operator }}"{% if operator == spec.get_operator %} selected="selected"{% endif %}>{{ operator }}</option>
+        {% endfor %}
+        </select>
+        <input
+            type="text"
+            name="{{ spec.parameter_name }}"
+            value="{{ spec.value|default_if_none:'' }}"
+            class="form-control"
+            style="width: 60%; display: inline;">
+        {% for key, value in spec.request.GET.items %}
+        {% if key != spec.parameter_name and key != spec.operator_parameter_name %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}">
+        {% endif %}
+        {% endfor %}
+        <input type="submit" value="{% trans 'Filter' %}">
+    </form>
+    </li>
+{% block post %}
+{%  endblock %}
+</ul>

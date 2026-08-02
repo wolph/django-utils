@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.contrib.auth.models import User
 from django.core.cache import cache as django_cache
 from django.core.cache.backends.base import memcache_key_warnings
+from django.core.exceptions import SuspiciousOperation
 from django.test import RequestFactory
 from django_utils.admin import filters
 
@@ -309,3 +310,43 @@ def test_queryset_via_admin_changelist(rf):
 
     changelist = model_admin.get_changelist_instance(request)
     assert changelist.get_queryset(request).count() == 1
+
+
+def test_declaring_an_unsupported_operator_is_a_configuration_error():
+    with pytest.raises(ValueError, match='not_an_operator'):
+        filters.JSONFieldFilter.create(
+            'data__filling', operators=('not_an_operator',)
+        )
+
+
+@pytest.mark.django_db()
+def test_operator_from_the_query_string_must_be_allowlisted(rf, model_admin):
+    models.Sandwich.objects.create(data={'filling': 'ham'})
+    filter_class = filters.JSONFieldFilter.create(
+        'data__filling', operators=('exact', 'contains')
+    )
+    request = rf.get('/admin/test_app/sandwich/')
+    instance = filter_class(request, {}, models.Sandwich, model_admin)
+
+    instance.used_parameters = {
+        'data__filling': 'ham',
+        'data__filling__op': 'exact',
+    }
+    assert instance.get_operator() == 'exact'
+
+    instance.used_parameters = {
+        'data__filling': 'ham',
+        'data__filling__op': 'regex',
+    }
+    with pytest.raises(SuspiciousOperation):
+        instance.get_operator()
+
+
+def test_numeric_operator_without_cast_is_a_configuration_error():
+    with pytest.raises(ValueError, match='cast'):
+        filters.JSONFieldFilter.create('data__price', operators=('gte',))
+
+    filter_class = filters.JSONFieldFilter.create(
+        'data__price', operators=('gte',), cast=int
+    )
+    assert filter_class.operators == ('gte',)
