@@ -59,7 +59,22 @@ class Select2Mixin:
     ).media
 
 
-class LookupFilterMixin:
+if TYPE_CHECKING:
+    # `LookupFilterMixin` is only ever mixed into a `SimpleListFilter`
+    # subclass (see `JSONFieldFilter` below). Deriving from it here, for
+    # static analysis only, gives `self.parameter_name`, `self.used_
+    # parameters` and `super().__init__()` / `super().expected_
+    # parameters()` their real, precise types instead of `Any` or a
+    # hand-rolled restatement that can drift from django-stubs. At
+    # runtime `_LookupFilterBase` is plain `object`, so the actual base
+    # classes and MRO are decided solely by whatever concrete class
+    # mixes `LookupFilterMixin` in.
+    _LookupFilterBase = SimpleListFilter
+else:
+    _LookupFilterBase = object
+
+
+class LookupFilterMixin(_LookupFilterBase):
     """Adds an operator selector to a list filter.
 
     The operator is read from ``<parameter_name>__op`` and validated
@@ -84,16 +99,33 @@ class LookupFilterMixin:
 
     operators: ClassVar[tuple[str, ...]] = ('exact',)
 
-    if TYPE_CHECKING:
-        # Provided by whichever `ListFilter` subclass this is mixed into.
-        # Typed to match `SimpleListFilter.parameter_name` exactly, so
-        # mypy does not see this as an incompatible redefinition.
-        parameter_name: str | None
-        used_parameters: dict[str, Any]
-
     @property
     def operator_parameter_name(self) -> str:
         return f'{self.parameter_name}__op'
+
+    def __init__(
+        self,
+        request: http.HttpRequest,
+        params: dict[str, list[str]],
+        model: type[models.Model],
+        model_admin: 'admin.ModelAdmin[Any]',
+    ) -> None:
+        # `SimpleListFilter.__init__` only pops its own `parameter_name`
+        # out of the shared `params` dict; it has no notion of the
+        # operator param. Left unpopped here, `<field>__op` falls
+        # through to Django's "remaining lookup params" and is
+        # re-applied as a raw ORM key-transform lookup (matching
+        # nothing) instead of being consumed by `get_operator()`.
+        super().__init__(request, params, model, model_admin)
+        if self.operator_parameter_name in params:
+            value = params.pop(self.operator_parameter_name)
+            self.used_parameters[self.operator_parameter_name] = value[-1]
+
+    def expected_parameters(self) -> list[str | None]:
+        # Mirrors the `__init__` fix above at the metadata level: this is
+        # what `FacetsMixin.get_facet_queryset` consults to exclude this
+        # filter's own params when computing facet counts for it.
+        return [*super().expected_parameters(), self.operator_parameter_name]
 
     def get_operator(self) -> str:
         operator = self.used_parameters.get(
@@ -239,6 +271,13 @@ class JSONFieldFilter(LookupFilterMixin, FilterBase):
             'timeout': timeout,
         }
         if operators is not None:
+            if not operators:
+                raise ValueError(
+                    '`operators` must not be empty: an empty tuple '
+                    'leaves `get_operator()` with no default and no '
+                    'valid operator, failing with `IndexError` on the '
+                    'first request instead of at class-creation time.'
+                )
             unsupported = (
                 set(operators) - LookupFilterMixin.SUPPORTED_OPERATORS
             )

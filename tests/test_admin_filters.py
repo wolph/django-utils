@@ -350,3 +350,50 @@ def test_numeric_operator_without_cast_is_a_configuration_error():
         'data__price', operators=('gte',), cast=int
     )
     assert filter_class.operators == ('gte',)
+
+
+def test_create_with_empty_operators_is_a_configuration_error():
+    with pytest.raises(ValueError):
+        filters.JSONFieldFilter.create('data__filling', operators=())
+
+
+@pytest.mark.django_db
+def test_queryset_via_admin_changelist_with_operator(rf):
+    """The operator param must be claimed by expected_parameters(), or
+    Django's ChangeList treats it as a leftover ORM lookup (re-parsed as
+    a JSONField key transform, e.g. ``data->filling->op``) and silently
+    returns zero rows instead of applying the filter."""
+    models.Sandwich.objects.create(data={'filling': 'ham'})
+    models.Sandwich.objects.create(data={'filling': 'cheese'})
+
+    filter_class = filters.JSONFieldFilter.create(
+        'data__filling', operators=('exact', 'contains')
+    )
+
+    class SandwichAdmin(admin.ModelAdmin):
+        list_filter = (filter_class,)
+
+    model_admin = SandwichAdmin(models.Sandwich, admin.AdminSite())
+    request = rf.get(
+        '/admin/test_app/sandwich/',
+        {'data__filling': 'ham', 'data__filling__op': 'exact'},
+    )
+    request.user = User(is_superuser=True, is_active=True, is_staff=True)
+
+    changelist = model_admin.get_changelist_instance(request)
+    assert changelist.get_queryset(request).count() == 1
+
+
+@pytest.mark.django_db
+def test_expected_parameters_includes_operator_param(rf, model_admin):
+    """`FacetsMixin.get_facet_queryset` consults `expected_parameters()`
+    to exclude a filter's own params when computing its facet counts; it
+    must list both the value and the operator parameter."""
+    filter_class = filters.JSONFieldFilter.create(
+        'data__filling', operators=('exact', 'contains')
+    )
+    instance, _request = make_filter(filter_class, rf, model_admin)
+    assert instance.expected_parameters() == [
+        'data__filling',
+        'data__filling__op',
+    ]
