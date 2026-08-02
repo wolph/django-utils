@@ -113,29 +113,46 @@ class SlugMixin(NameMixin):
     >>> str(str(x))
     'test'
 
+    Note: this mixin does **not** add a unique constraint on ``slug``.
+    The nested ``Meta.unique_together`` below is inert -- ``SlugMixin``
+    is not itself a ``Model``, and a concrete subclass such as
+    ``SlugModelBase`` declares its own ``Meta``, which does not inherit
+    from this one. Models that need the slug to be enforced unique at
+    the database level should declare ``unique=True`` on their own slug
+    field.
     """
 
     if TYPE_CHECKING:
         slug: Any
         # Provided by the concrete Model subclass this mixin is combined
         # with at runtime; not visible from SlugMixin's own bases.
-        _default_manager: ClassVar[Any]
+        _base_manager: ClassVar[Any]
 
     slugify_max_attempts: ClassVar[int] = 1000
 
     def get_unique_slug(self, base: str) -> str:
         """Return ``base``, suffixed with a counter if already taken.
 
+        Probes with ``_base_manager`` -- Django's documented unfiltered
+        manager -- rather than ``_default_manager``, so a model with a
+        filtered default manager (soft-delete style: ``objects =
+        ActiveManager()``) still gets checked against every row in the
+        table, not just the ones its default manager happens to expose.
+        Otherwise two rows hidden from each other by the filter can
+        silently collide onto the same slug.
+
         Note: the uniqueness check and the eventual insert are not
         atomic, so two concurrent saves can still race each other onto
-        the same slug. Callers with high write concurrency on the same
-        name should still enforce a unique constraint (as ``SlugMixin``
-        does) and handle the resulting ``IntegrityError``.
+        the same slug. ``SlugMixin`` does not add a unique constraint
+        (see the class docstring), so callers with high write
+        concurrency on the same name should declare ``unique=True`` on
+        their own slug field and handle the resulting
+        ``IntegrityError``.
         """
         model = type(self)
         slug = base
         for attempt in itertools.count(2):
-            taken = model._default_manager.filter(slug=slug)
+            taken = model._base_manager.filter(slug=slug)
             if self.pk is not None:
                 taken = taken.exclude(pk=self.pk)
 

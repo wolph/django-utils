@@ -1,4 +1,3 @@
-import gc
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -19,18 +18,21 @@ def queryset_iterator(
 
     Benchmarked (``benchmarks/queryset_iterator.py``) against
     ``QuerySet.iterator(chunk_size=...)`` on SQLite -- 20,000 rows,
-    chunksize=1000, 5 runs -- this function was consistently *slower*,
-    not faster: ~1.6x the wall-clock time (1.57x-1.70x across runs) and
-    ~1.85x the peak traced memory. Roughly 30-38% of the wall-clock gap
-    is the ``gc.collect()`` call made after every chunk (a fixable
-    implementation detail, not an inherent cost of keyset pagination);
-    without it the gap narrows to near parity (1.06x-1.16x) but never
-    turns into a win. SQLite has no server-side cursor support, so this
-    is the backend most favourable to this function's approach, and it
-    still lost: Django's ``iterator(chunk_size=...)`` already fetches
-    rows from the cursor in bounded batches even without one, giving it
-    the same "don't load everything into memory" property via a single
-    query instead of one query per chunk.
+    chunksize=1000 -- this function is close to parity on wall-clock
+    time (~1.09x-1.14x across runs) but still uses ~1.85x-1.88x the peak
+    traced memory. SQLite has no server-side cursor support, so this is
+    the backend most favourable to this function's approach, and it
+    still didn't win: Django's ``iterator(chunk_size=...)`` already
+    fetches rows from the cursor in bounded batches even without one,
+    giving it the same "don't load everything into memory" property via
+    a single query instead of one query per chunk.
+
+    An earlier version of this function called ``gc.collect()`` after
+    every chunk, which is why the wall-clock ratio above used to read
+    ~1.6x (1.57x-1.70x across runs) rather than ~1.1x: that call alone
+    accounted for 27-31% of the wall-clock gap against
+    ``QuerySet.iterator()``, while making no measurable difference to
+    peak memory (0.74 vs 0.75 MiB with it removed). It was dropped.
 
     Prefer ``QuerySet.iterator(chunk_size=...)`` in the general case --
     it is simpler and was not slower on any backend measured here.
@@ -55,5 +57,3 @@ def queryset_iterator(
         for row in rows:
             pk = getfunc(row, 'pk')
             yield row
-
-        gc.collect()

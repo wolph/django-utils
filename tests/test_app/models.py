@@ -12,6 +12,27 @@ class LowMaxAttemptsSpam(base_models.SlugCreatedAtModelBase):
     slugify_max_attempts = 1
 
 
+class ActiveManager(models.Manager):
+    """Soft-delete-style manager: hides rows flagged ``is_deleted``."""
+
+    def get_queryset(self) -> models.QuerySet['SoftDeleteSpam']:
+        return super().get_queryset().filter(is_deleted=False)
+
+
+class SoftDeleteSpam(base_models.SlugCreatedAtModelBase):
+    """Exercises get_unique_slug's uniqueness probe against a model whose
+    default manager filters out some rows (soft-delete style).
+
+    ``objects`` is the only manager declared, so it also becomes
+    ``_default_manager``; ``_base_manager`` stays Django's plain,
+    unfiltered auto-created manager regardless.
+    """
+
+    is_deleted = models.BooleanField(default=False)
+
+    objects = ActiveManager()
+
+
 class Eggs(Spam):
     b = models.CharField(max_length=100)
 

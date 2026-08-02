@@ -189,11 +189,17 @@ def test_as_enum_produces_real_enum_members():
     # subclass), not a regular variable.
     GenderEnum = Gender.as_enum()  # noqa: N806
 
+    # `GenderEnum` is typed as `type[enum.Enum]` (the functional API's
+    # typeshed stub can't express the member names it creates at
+    # runtime), so ty sees a base `Enum` with no `Male`/`Female`
+    # attribute below. The same opacity is why a dynamically-built enum
+    # can't be statically checked for `match` exhaustiveness either --
+    # narrowly suppressed here rather than typed around.
     assert issubclass(GenderEnum, enum.Enum)
-    assert GenderEnum.Male.value == 'm'
-    assert GenderEnum('f') is GenderEnum.Female
-    assert GenderEnum['Male'] is GenderEnum.Male
-    assert isinstance(GenderEnum.Male, GenderEnum)
+    assert GenderEnum.Male.value == 'm'  # ty: ignore[unresolved-attribute]
+    assert GenderEnum('f') is GenderEnum.Female  # ty: ignore[unresolved-attribute]
+    assert GenderEnum['Male'] is GenderEnum.Male  # ty: ignore[unresolved-attribute]
+    assert isinstance(GenderEnum.Male, GenderEnum)  # ty: ignore[unresolved-attribute]
     assert [member.name for member in GenderEnum] == ['Male', 'Female']
 
 
@@ -207,6 +213,45 @@ def test_as_enum_leaves_the_original_class_untouched():
     # No explicit label was given, so the pre-existing (unchanged) default
     # applies: the lowercased attribute name, not 'Male'.
     assert Gender.choices['m'].label == 'male'
+
+
+def test_as_enum_is_memoised():
+    """Repeated calls must return the *same* enum class, not a fresh one
+    each time -- otherwise ``is`` comparisons, ``match`` on members, and
+    using a member as a dict/cache key all silently break, and pickling
+    a member raises ``PicklingError`` (a fresh class per call is never
+    importable by qualified name).
+    """
+
+    class Gender(choices.Choices):
+        Male = choices.Choice('m', 'Male')
+        Female = choices.Choice('f', 'Female')
+
+    first = Gender.as_enum()
+    second = Gender.as_enum()
+
+    assert first is second
+    assert first.Male is second.Male  # ty: ignore[unresolved-attribute]
+
+
+def test_as_enum_subclass_gets_its_own_distinct_enum():
+    """A subclass must not inherit its parent's cached enum: the cache
+    lookup has to check ``cls.__dict__`` directly rather than
+    ``getattr``/``setattr``, which would walk the MRO and hand the
+    subclass the parent's class object instead of building its own.
+    """
+
+    class Gender(choices.Choices):
+        Male = choices.Choice('m', 'Male')
+
+    class ExtendedGender(Gender):
+        Female = choices.Choice('f', 'Female')
+
+    parent_enum = Gender.as_enum()
+    child_enum = ExtendedGender.as_enum()
+
+    assert parent_enum is not child_enum
+    assert child_enum is ExtendedGender.as_enum()
 
 
 def test_grouped_emits_djangos_optgroup_structure():
@@ -230,3 +275,40 @@ def test_grouped_puts_ungrouped_choices_first_under_an_empty_group():
         ('', [('p', 'Plain')]),
         ('Some Group', [('g', 'Grouped')]),
     ]
+
+
+def test_grouped_preserves_declaration_order_not_alphabetical():
+    """`Fruit`/`Vegetable` in the tests above sort identically in
+    declaration order and alphabetical order, so they don't tell the two
+    apart. Declare the group that sorts later alphabetically first, to
+    prove it's declaration order -- not a sort -- that determines the
+    emitted order.
+    """
+
+    class Product(choices.Choices):
+        Courgette = choices.Choice('c', 'Courgette', group='Zucchini')
+        Braeburn = choices.Choice('b', 'Braeburn', group='Apple')
+
+    assert Product.choices.grouped() == [
+        ('Zucchini', [('c', 'Courgette')]),
+        ('Apple', [('b', 'Braeburn')]),
+    ]
+
+
+def test_grouped_keeps_gettext_lazy_labels_lazy():
+    """``grouped()`` must not eagerly resolve a ``gettext_lazy`` label
+    (regression test for the label freezing at import time): the
+    module docstring's own example calls ``grouped()`` at model-field
+    definition time, so a multilingual site would otherwise get labels
+    permanently stuck in whatever language happened to be active then.
+    """
+    from django.utils.functional import Promise
+
+    class Status(choices.Choices):
+        Active = choices.Choice('a', _('Active'), group='Group')
+
+    [(group_key, [(value, label)])] = Status.choices.grouped()
+    assert group_key == 'Group'
+    assert value == 'a'
+    assert isinstance(label, Promise)
+    assert str(label) == 'Active'

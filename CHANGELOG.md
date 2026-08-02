@@ -8,16 +8,16 @@
   `Choice('a', 'Active', color='green')` gives `Status.choices['a'].color`.
   Django's `TextChoices` has no equivalent.
 - `Choices.as_enum()` returns a real `enum.Enum` built from the choices, so
-  application code can use `isinstance` and `match` exhaustiveness while
-  model fields keep taking the raw-value class.
+  application code can use runtime `isinstance` checks and `match` on real
+  enum members while model fields keep taking the raw-value class.
 - `ChoicesDict.by_key()` exposes the choices keyed by attribute name,
   returning a copy so callers can't mutate the original mapping.
 - `ChoicesDict.grouped()` returns choices nested into Django's `<optgroup>`
   structure (`[(group_label, [(value, label), ...]), ...]`), verified
   against a real Django model field and form widget.
 - `SlugMixin` now resolves slug collisions with a numeric suffix
-  (`my-thing`, `my-thing-2`, ...) instead of raising `IntegrityError`.
-  Override `slugify_max_attempts` to change the retry ceiling.
+  (`my-thing`, `my-thing-2`, ...) instead of silently producing duplicate
+  slugs. Override `slugify_max_attempts` to change the retry ceiling.
 
 ### Fixed
 

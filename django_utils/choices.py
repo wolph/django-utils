@@ -141,8 +141,8 @@ Getting a real ``Enum``
 ==============================================================================
 
 Members of a :py:class:`Choices` class are raw values, so they can be passed
-straight to Django fields. When you want ``isinstance`` checks or ``match``
-exhaustiveness, ask for an enum:
+straight to Django fields. When you want ``isinstance`` checks or a
+``match`` on real enum members, ask for an enum:
 
 .. code-block:: python
 
@@ -209,20 +209,35 @@ class ChoicesDict:
         """The choices keyed by their declared attribute name."""
         return self._by_key.copy()
 
-    def grouped(self) -> list[tuple[str, list[tuple[Any, str]]]]:
+    def grouped(
+        self,
+    ) -> list[tuple['str | StrPromise', list[tuple[Any, 'str | StrPromise']]]]:
         """The choices as Django's ``<optgroup>`` structure.
 
         Choices declaring a ``group`` metadata key are collected under it,
         in declaration order; ungrouped choices land under ``''``.
+
+        Labels (and group keys) are passed through unchanged, so a
+        ``gettext_lazy`` label stays a lazy proxy -- resolved at render
+        time, not when ``grouped()`` is called. This matters because the
+        module docstring's own example calls ``grouped()`` at model-field
+        definition time (import time), so eagerly resolving here would
+        freeze translations in whatever language happened to be active
+        at import.
         """
-        groups: collections.OrderedDict[str, list[tuple[Any, str]]] = (
-            collections.OrderedDict()
-        )
+        groups: collections.OrderedDict[
+            str | StrPromise, list[tuple[Any, str | StrPromise]]
+        ] = collections.OrderedDict()
         for choice in self._by_key.values():
             group = choice.metadata.get('group', '')
-            groups.setdefault(group, []).append(
-                (choice.value, str(choice.label))
-            )
+            # `Choice.label` is typed `str | StrPromise | None` because a
+            # bare `Choice()` starts out label-less, but `ChoicesMeta`
+            # always backfills a falsy label with the lowercased
+            # attribute name before a choice reaches `_by_key` (see
+            # `_collect_choices`), so every choice iterated here already
+            # has a real label.
+            label = cast('str | StrPromise', choice.label)
+            groups.setdefault(group, []).append((choice.value, label))
 
         return list(groups.items())
 
@@ -314,6 +329,12 @@ class ChoicesMeta(type):
     # `_assign_values` during class creation.
     choices: ChoicesDict
 
+    # Per-class cache for `as_enum()`. Only ever read/written via
+    # `cls.__dict__` (see `as_enum` below), never `getattr`/`setattr`
+    # through the MRO, so a subclass builds and caches its own enum
+    # instead of inheriting its parent's.
+    _as_enum_cache: type[enum.Enum]
+
     def __new__(
         cls,
         name: str,
@@ -395,22 +416,44 @@ class ChoicesMeta(type):
     def as_enum(cls) -> type[enum.Enum]:
         """Build a real :py:class:`enum.Enum` from these choices.
 
+        The result is memoised on the class: repeated calls return the
+        *same* enum class, so ``Gender.as_enum() is Gender.as_enum()``
+        and ``Gender.as_enum().Male is Gender.as_enum().Male`` both hold,
+        and the enum can be used as (or as part of) a dict/cache key. The
+        cache is stored in ``cls.__dict__`` and looked up there directly
+        (never via ``getattr``, which walks the MRO), so a subclass
+        builds and caches its own enum rather than inheriting its
+        parent's.
+
+        The returned class is built dynamically via ``enum.Enum``'s
+        functional API with its ``__module__`` set to
+        ``django_utils.choices`` rather than the caller's module, so its
+        members are **not picklable** with the default pickle protocol
+        (pickling an enum member looks the class up by
+        ``__module__`` + qualified name, which won't resolve back to a
+        class that was never assigned a name in that module).
+
         The original class is unchanged — its members stay raw values so
         they can be handed to Django fields. Use the enum where you want
-        ``isinstance`` checks or ``match`` exhaustiveness.
+        ``isinstance`` checks or a ``match`` on real enum members.
         """
-        members = [
-            (key, choice.value) for key, choice in cls.choices.by_key().items()
-        ]
-        # `enum.Enum`'s functional API creates a new *class*, but its
-        # typeshed stub is written for the member-lookup call signature
-        # (`Color(1)` -> `Color.RED`), so mypy/basedpyright infer an
-        # `Enum` instance here rather than `type[Enum]`, and the `cast`
-        # below is required for them. ty infers the correct type on its
-        # own and considers that same `cast` redundant.
-        return cast(  # ty: ignore[redundant-cast]
-            type[enum.Enum], enum.Enum(cls.__name__, members)
-        )
+        if '_as_enum_cache' not in cls.__dict__:
+            members = [
+                (key, choice.value)
+                for key, choice in cls.choices.by_key().items()
+            ]
+            # `enum.Enum`'s functional API creates a new *class*, but its
+            # typeshed stub is written for the member-lookup call
+            # signature (`Color(1)` -> `Color.RED`), so mypy/basedpyright
+            # infer an `Enum` instance here rather than `type[Enum]`, and
+            # the `cast` below is required for them. ty infers the
+            # correct type on its own and considers that same `cast`
+            # redundant.
+            cls._as_enum_cache = cast(  # ty: ignore[redundant-cast]
+                type[enum.Enum], enum.Enum(cls.__name__, members)
+            )
+
+        return cls._as_enum_cache
 
 
 class Choices(metaclass=ChoicesMeta):
