@@ -118,8 +118,24 @@ class LookupFilterMixin(_LookupFilterBase):
         # nothing) instead of being consumed by `get_operator()`.
         super().__init__(request, params, model, model_admin)
         if self.operator_parameter_name in params:
-            value = params.pop(self.operator_parameter_name)
-            self.used_parameters[self.operator_parameter_name] = value[-1]
+            # Django >=5.0 passes list-valued `params` (and takes the
+            # last value itself, see `SimpleListFilter.__init__` above,
+            # which this mirrors); Django 4.2 passes scalar strings.
+            # `value[-1]` on a *string* silently yields its last
+            # character instead of raising, so the shape must be
+            # checked rather than assumed. Cast to the true cross-
+            # version union -- wider than `params`'s own (single-
+            # version) stub type -- so type checkers treat the
+            # `isinstance` below as a real, non-trivial check rather
+            # than narrowing straight to `list[str]` and flagging it as
+            # redundant.
+            value = typing.cast(
+                'str | list[str]',
+                params.pop(self.operator_parameter_name),
+            )
+            if isinstance(value, list):
+                value = value[-1]
+            self.used_parameters[self.operator_parameter_name] = value
 
     def expected_parameters(self) -> list[str | None]:
         # Mirrors the `__init__` fix above at the metadata level: this is

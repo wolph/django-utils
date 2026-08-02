@@ -342,6 +342,43 @@ def test_operator_from_the_query_string_must_be_allowlisted(rf, model_admin):
         instance.get_operator()
 
 
+@pytest.mark.django_db()
+def test_operator_param_normalizes_string_and_list_valued_params(
+    rf, model_admin
+):
+    """Django 4.2 passes scalar-string `params` to a filter's __init__;
+    Django >=5.0 passes list-valued `params` and itself takes the last
+    element (see `SimpleListFilter.__init__`). `value[-1]` on a *string*
+    silently yields its last character ('icontains' -> 's') instead of
+    raising, so both shapes must be exercised directly -- going only
+    through `RequestFactory` exercises whichever single shape the
+    locally installed Django version happens to produce and would hide
+    a regression in the other."""
+    models.Sandwich.objects.create(data={'filling': 'ham'})
+    filter_class = filters.JSONFieldFilter.create(
+        'data__filling', operators=('exact', 'icontains')
+    )
+    request = rf.get('/admin/test_app/sandwich/')
+
+    # Django 4.2 shape: scalar strings.
+    string_valued = filter_class(
+        request,
+        {'data__filling': 'ham', 'data__filling__op': 'icontains'},
+        models.Sandwich,
+        model_admin,
+    )
+    assert string_valued.get_operator() == 'icontains'
+
+    # Django >=5.0 shape: list-valued.
+    list_valued = filter_class(
+        request,
+        {'data__filling': ['ham'], 'data__filling__op': ['icontains']},
+        models.Sandwich,
+        model_admin,
+    )
+    assert list_valued.get_operator() == 'icontains'
+
+
 def test_numeric_operator_without_cast_is_a_configuration_error():
     with pytest.raises(ValueError, match='cast'):
         filters.JSONFieldFilter.create('data__price', operators=('gte',))
