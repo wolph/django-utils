@@ -122,6 +122,21 @@ extra data, reachable as attributes:
 
     Status.choices['a'].color  # 'green'
 
+Grouped choices
+==============================================================================
+
+Give choices a ``group`` and hand Django the nested structure it renders as
+``<optgroup>``:
+
+.. code-block:: python
+
+    class Product(choices.Choices):
+        Apple = choices.Choice('ap', 'Apple', group='Fruit')
+        Carrot = choices.Choice('ca', 'Carrot', group='Vegetable')
+
+
+    field = models.CharField(max_length=2, choices=Product.choices.grouped())
+
 Getting a real ``Enum``
 ==============================================================================
 
@@ -193,6 +208,23 @@ class ChoicesDict:
     def by_key(self) -> 'collections.OrderedDict[str, Choice]':
         """The choices keyed by their declared attribute name."""
         return self._by_key.copy()
+
+    def grouped(self) -> list[tuple[str, list[tuple[Any, str]]]]:
+        """The choices as Django's ``<optgroup>`` structure.
+
+        Choices declaring a ``group`` metadata key are collected under it,
+        in declaration order; ungrouped choices land under ``''``.
+        """
+        groups: collections.OrderedDict[str, list[tuple[Any, str]]] = (
+            collections.OrderedDict()
+        )
+        for choice in self._by_key.values():
+            group = choice.metadata.get('group', '')
+            groups.setdefault(group, []).append(
+                (choice.value, str(choice.label))
+            )
+
+        return list(groups.items())
 
     def __repr__(self) -> str:
         return repr(self._by_key)

@@ -207,3 +207,26 @@ def test_as_enum_leaves_the_original_class_untouched():
     # No explicit label was given, so the pre-existing (unchanged) default
     # applies: the lowercased attribute name, not 'Male'.
     assert Gender.choices['m'].label == 'male'
+
+
+def test_grouped_emits_djangos_optgroup_structure():
+    class Product(choices.Choices):
+        Apple = choices.Choice('ap', 'Apple', group='Fruit')
+        Pear = choices.Choice('pe', 'Pear', group='Fruit')
+        Carrot = choices.Choice('ca', 'Carrot', group='Vegetable')
+
+    assert Product.choices.grouped() == [
+        ('Fruit', [('ap', 'Apple'), ('pe', 'Pear')]),
+        ('Vegetable', [('ca', 'Carrot')]),
+    ]
+
+
+def test_grouped_puts_ungrouped_choices_first_under_an_empty_group():
+    class Mixed(choices.Choices):
+        Plain = choices.Choice('p', 'Plain')
+        Grouped = choices.Choice('g', 'Grouped', group='Some Group')
+
+    assert Mixed.choices.grouped() == [
+        ('', [('p', 'Plain')]),
+        ('Some Group', [('g', 'Grouped')]),
+    ]
