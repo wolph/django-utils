@@ -40,17 +40,20 @@
   `tracemalloc` peak, which tracks Python-level allocations only; it
   cannot see a database driver's C-level result buffer, which is exactly
   what `queryset_iterator` exists to bound. Django opens a server-side
-  cursor for `QuerySet.iterator()` on PostgreSQL only -- on MySQL,
-  Oracle, and SQLite, `iterator()`'s peak memory is set by the driver,
-  not by `chunk_size`, since the driver's default cursor can buffer the
-  whole result set client-side regardless of how it's read back.
+  cursor for `QuerySet.iterator()` on PostgreSQL only. Off that path,
+  `iterator()`'s peak memory is set by the driver, not by `chunk_size`,
+  on backends whose driver buffers the whole result set client-side --
+  verified for MySQL with mysqlclient (its default cursor calls
+  `store_result()`); driver-dependent, and not established here, for
+  Oracle and for PostgreSQL with `DISABLE_SERVER_SIDE_CURSORS = True`.
   `queryset_iterator` avoids that by issuing each chunk as its own
   bounded `LIMIT` query rather than one unbounded query (confirmed: 1
   query for `iterator()` vs. N for `queryset_iterator()` at any table
   size), so the driver never receives more than one chunk at a time.
-  SQLite has no server-side cursor to bypass in the first place, so it
-  cannot demonstrate this effect either way; the benchmark was
-  structurally incapable of observing the failure mode the function
+  SQLite has no server-side cursor to bypass in the first place, but its
+  stdlib driver steps rows lazily rather than buffering the whole result
+  set, so it cannot demonstrate this effect either way; the benchmark
+  was structurally incapable of observing the failure mode the function
   prevents. The wall-clock cost is real and unchanged from before:
   ~1.09x-1.14x on SQLite. (An earlier version called `gc.collect()`
   after every chunk, which raised that ratio to ~1.6x; that call is now

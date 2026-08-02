@@ -6,6 +6,15 @@ Reports, for each approach: wall clock, query count, process RSS
 (peak resident set size), and -- for continuity with prior runs --
 ``tracemalloc`` peak.
 
+Query count and wall clock are measured in separate passes. Wrapping
+``time.perf_counter()`` inside ``CaptureQueriesContext`` would time
+the query-logging instrumentation as well as the code under test --
+overhead that scales with query count, so it would penalise the
+21-query path far more than the 1-query path and skew the headline
+ratio. Each ``fn`` therefore runs twice per row: once inside
+``CaptureQueriesContext`` (query count only, not timed) and once
+outside it (wall clock, RSS and ``tracemalloc`` peak, not counted).
+
 Query count is the mechanism this function actually trades on: N
 bounded ``LIMIT`` queries instead of 1 unbounded query. It is
 reported via ``CaptureQueriesContext`` and is backend-independent
@@ -13,9 +22,10 @@ evidence, unlike memory.
 
 RSS and ``tracemalloc`` are *not* reliable evidence of the effect
 this function exists to bound. SQLite has no server-side cursor to
-disable in the first place, so it cannot demonstrate the
-driver-buffering failure mode this function guards against -- see
-the note printed at the end and
+disable in the first place, and its stdlib driver steps rows lazily
+rather than buffering the whole result set, so it cannot demonstrate
+the driver-buffering failure mode this function guards against --
+see the note printed at the end and
 ``django_utils.queryset.queryset_iterator``'s docstring. They are
 reported anyway for continuity with earlier runs, clearly labelled.
 """
@@ -66,24 +76,38 @@ def _rss_mib() -> float:
 def _measure(
     label: str, fn: Callable[[], int]
 ) -> tuple[float, int, float, int]:
+    """Run ``fn`` once for query count, once (separately) for timing.
+
+    The two are measured in separate passes so that
+    ``CaptureQueriesContext``'s per-query logging overhead -- which
+    scales with query count -- never leaks into the wall-clock
+    figure. See the module docstring.
+    """
+    gc.collect()
+    with CaptureQueriesContext(connection) as queries:
+        fn()
+    query_count = len(queries)
+
     gc.collect()
     tracemalloc.start()
-    with CaptureQueriesContext(connection) as queries:
-        start = time.perf_counter()
-        count = fn()
-        elapsed = time.perf_counter() - start
+    start = time.perf_counter()
+    count = fn()
+    elapsed = time.perf_counter() - start
     rss_high_water = _rss_mib()
     _current, py_peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
+
     print(
         f'{label:<36} {count:>7} rows  {elapsed:7.3f}s  '
-        f'queries={len(queries):>3}  '
-        f'rss_high_water={rss_high_water:7.2f} MiB  '
+        f'queries={query_count:>3}  '
+        f'rss_high_water={rss_high_water:7.2f} MiB '
+        '[whole-process high-water, monotonic -- not comparable '
+        'between rows]  '
         f'py_alloc_peak={py_peak / (1024 * 1024):6.2f} MiB '
         '[Python allocations only -- does not observe driver '
         'buffering]'
     )
-    return elapsed, len(queries), rss_high_water, py_peak
+    return elapsed, query_count, rss_high_water, py_peak
 
 
 def main() -> None:
@@ -140,25 +164,30 @@ def main() -> None:
             f'{ours_py_peak / core_py_peak:.2f}x '
             '[Python allocations only]'
         )
+        gc_overhead_fraction = (gc_time - ours_time) / ours_time
         print(
-            'gc_collect=True overhead vs default:  '
+            'gc_collect=True overhead:             '
             f'{gc_time - ours_time:+.3f}s '
-            f'({(gc_time - ours_time) / ours_time:+.1%})'
+            f'({gc_overhead_fraction:+.1%} added to '
+            "queryset_iterator()'s default-mode wall time)"
         )
         print(
-            '\nNOTE: SQLite has no server-side cursor to disable, so '
-            'this benchmark cannot demonstrate the driver-buffering '
-            'effect queryset_iterator exists to bound -- the RSS and '
+            '\nNOTE: SQLite has no server-side cursor to disable, and '
+            'its stdlib driver steps rows lazily rather than '
+            'buffering the whole result set, so this benchmark '
+            'cannot demonstrate the driver-buffering effect '
+            'queryset_iterator exists to bound -- the RSS and '
             'tracemalloc figures above are read from a backend that '
-            'never buffers an unbounded result set client-side in the '
-            'first place. That effect appears on MySQL and Oracle '
-            '(whose drivers buffer the full result set client-side by '
-            'default) and on PostgreSQL when '
+            'never buffers an unbounded result set client-side in '
+            'the first place. That effect is verified on MySQL with '
+            'mysqlclient (its default cursor calls store_result()); '
+            'it is driver-dependent, and not established here, on '
+            'Oracle and on PostgreSQL with '
             '`DISABLE_SERVER_SIDE_CURSORS = True`. The query-count '
-            'comparison above is the backend-independent evidence: it '
-            'shows the mechanism (N bounded queries vs. 1 unbounded '
-            'query) directly, regardless of what any driver does with '
-            'the result set.'
+            'comparison above is the backend-independent evidence: '
+            'it shows the mechanism (N bounded queries vs. 1 '
+            'unbounded query) directly, regardless of what any '
+            'driver does with the result set.'
         )
     finally:
         runner.teardown_databases(old_config)

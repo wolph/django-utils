@@ -1,3 +1,4 @@
+import itertools
 from typing import Any
 
 import pytest
@@ -207,3 +208,45 @@ def test_gc_collect_defaults_to_false(monkeypatch):
     list(queryset.queryset_iterator(models.ContentType.objects.all(), 5))
 
     assert calls == 0
+
+
+@pytest.mark.django_db()
+def test_pk_field_null_value_raises_instead_of_looping_forever():
+    """A NULL ``pk_field`` value raises rather than looping forever.
+
+    A NULL cursor can't be resumed from with ``__gt``: the naive
+    ``cursor is None`` check can't tell "haven't started yet" apart
+    from "the last row's pk_field was NULL", so it re-runs the
+    unfiltered first chunk on every pass and never terminates.
+    Consumption is bounded with ``itertools.islice`` so a regression
+    fails this assertion instead of hanging the test suite.
+    """
+    from django.contrib.auth import models as auth_models
+
+    auth_models.User.objects.all().delete()
+    for i in range(5):
+        auth_models.User.objects.create(username=f'user{i}', last_login=None)
+
+    iterator = queryset.queryset_iterator(
+        auth_models.User.objects.all(), 2, pk_field='last_login'
+    )
+    with pytest.raises(ValueError, match='last_login'):
+        list(itertools.islice(iterator, 100))
+
+
+@pytest.mark.django_db()
+@pytest.mark.parametrize('chunksize', [0, -1, -1000])
+def test_chunksize_below_one_raises_value_error(chunksize):
+    """``chunksize < 1`` raises instead of silently yielding nothing.
+
+    ``chunksize=0`` produces ``LIMIT 0``, an empty first chunk, and an
+    immediate return -- a batch job would silently process zero rows.
+    """
+    from django.contrib.contenttypes import models
+
+    with pytest.raises(ValueError, match='chunksize'):
+        list(
+            queryset.queryset_iterator(
+                models.ContentType.objects.all(), chunksize
+            )
+        )
