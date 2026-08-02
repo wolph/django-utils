@@ -79,6 +79,21 @@ To reference these properties:
 
     SomeModel.create(enum=SomeModel.Enum.Spam)
 
+Excluding constants
+==============================================================================
+
+Any plain ``str``, ``int`` or ``float`` class attribute becomes a choice.
+To keep a constant alongside your choices, list it in ``_ignore_``:
+
+.. code-block:: python
+
+    class Gender(choices.Choices):
+        _ignore_ = ('MAX_LENGTH',)
+        MAX_LENGTH = 1
+
+        Male = choices.Choice('m')
+        Female = choices.Choice('f')
+
 """
 
 import collections
@@ -231,10 +246,11 @@ class ChoicesMeta(type):
     ) -> tuple[list[tuple[str, Choice]], bool]:
         choices: list[tuple[str, Choice]] = []
         has_values = False
+        ignore: frozenset[str] = frozenset(attrs.get('_ignore_', ()))
 
         for key, value in attrs.items():
-            # Skip private and protected values
-            if key.startswith('_'):
+            # Skip private, protected and explicitly ignored values
+            if key.startswith('_') or key in ignore:
                 continue
 
             if isinstance(value, (str, int, float)):

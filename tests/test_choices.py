@@ -89,3 +89,25 @@ def test_choices_meta_is_not_polluted():
 
     assert Pollution.UNIQUE_POLLUTION_PROBE == 'probe'
     assert not hasattr(choices.ChoicesMeta, 'UNIQUE_POLLUTION_PROBE')
+
+
+def test_ignore_excludes_constants_from_choices():
+    class Gender(choices.Choices):
+        _ignore_ = ('MAX_LENGTH',)
+        MAX_LENGTH = 1
+        Male = choices.Choice('m')
+
+    labels = [choice.label for _value, choice in Gender.choices.items()]
+    assert 'max_length' not in labels
+    assert Gender.MAX_LENGTH == 1
+
+
+def test_constants_are_still_collected_without_ignore():
+    """Without `_ignore_` the historical behaviour is unchanged."""
+
+    class Gender(choices.Choices):
+        MAX_LENGTH = 1
+        Male = choices.Choice('m')
+
+    labels = [choice.label for _value, choice in Gender.choices.items()]
+    assert 'max_length' in labels
