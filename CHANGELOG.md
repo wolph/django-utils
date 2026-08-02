@@ -25,6 +25,31 @@
   known cursor value so a batch job that died partway through can
   continue instead of restarting; `gc_collect` restores the optional
   per-chunk `gc.collect()` call (off by default -- see below).
+- `django_utils.admin.widgets.JSONWidget`: a `JSONField` admin textarea
+  that pretty-prints and key-sorts a well-formed value (Django renders it
+  on one line) and validates it inline as you type, via a small,
+  CSP-safe vanilla-JS static asset (no inline handlers, no `eval`) that
+  degrades to a plain `Textarea` without JavaScript. Django already
+  preserves malformed input across the round-trip
+  (`forms.JSONField.bound_data()` returns `InvalidJSONInput`); the widget
+  does not change that.
+- `django_utils.admin.widgets.JSONWidgetMixin`: opts a `ModelAdmin` into
+  `JSONWidget` for its `JSONField`s via `formfield_overrides`. Nothing is
+  patched globally -- a project using only the filters below sees no
+  change to its forms.
+- `django_utils.admin.filters.LookupFilterMixin`: adds an operator
+  selector to a list filter, read from `<parameter_name>__op` and
+  validated against an allowlist (`exact`, `contains`, `icontains`,
+  `startswith`, `gt`, `gte`, `lt`, `lte`, `range`) before use.
+- `JSONFieldFilter.create()` gained an `operators` keyword to enable the
+  above on JSON sub-path filters, e.g.
+  `create('data__price', operators=('gte',), cast=int)`. `contains` and
+  `range` are rejected at `create()` time for JSON sub-paths: `contains`
+  on a `KeyTransform` resolves to PostgreSQL's `@>` containment lookup,
+  not substring matching, and raises `NotSupportedError` on SQLite (use
+  `icontains`); `range` expects a two-element sequence but a filter only
+  ever supplies one scalar. Omitting `operators` leaves existing filters
+  unchanged.
 
 ### Fixed
 

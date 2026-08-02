@@ -72,6 +72,84 @@ like this:
 By default the results for the JSON filters are cached for 10 minutes but
 can be changed through the `create` parameters.
 
+### Operator filters
+
+`JSONFieldFilter.create()` accepts an `operators` keyword that adds an
+operator selector (rendered from `<parameter_name>__op` in the query
+string) alongside the value:
+
+```python
+class SomeModelAdmin(admin.ModelAdmin):
+    list_filter = (
+        JSONFieldFilter.create(
+            'data__price', operators=('gte',), cast=int
+        ),
+    )
+```
+
+Supported operators are `exact`, `contains`, `icontains`, `startswith`,
+`gt`, `gte`, `lt`, `lte` and `range`. An operator submitted outside this
+allowlist raises `SuspiciousOperation` rather than reaching the ORM.
+
+Two operators are rejected at `create()` time for JSON sub-paths, with a
+`ValueError` explaining why:
+
+- `contains` -- on a JSON sub-path (a `KeyTransform`) this resolves to
+  PostgreSQL's `@>` containment lookup, not substring matching, and raises
+  `NotSupportedError` on SQLite. Use `icontains` for substring matching.
+- `range` -- expects a two-element sequence, but a filter only ever
+  supplies one scalar value from the query string.
+
+`gt`, `gte`, `lt`, `lte` and `range` compare numerically, so `create()`
+requires a `cast` (e.g. `cast=int`) whenever one of them is listed;
+omitting it is a configuration error caught immediately rather than a
+string comparison bug found later. Omitting `operators` entirely leaves a
+filter's behaviour unchanged -- it still defaults to `exact`.
+
+The default filter sidebar renders an operator-aware filter as a list of
+distinct values, same as any other filter. For a free-text value paired
+with the operator dropdown -- the better fit for `gte`/`lte` filters on a
+field with too many distinct values to list -- pass
+`template='django_utils/admin/lookup_filter.html'`:
+
+```python
+JSONFieldFilter.create(
+    'data__price',
+    operators=('gte', 'lte'),
+    cast=int,
+    template='django_utils/admin/lookup_filter.html',
+)
+```
+
+## JSON widget
+
+`django_utils.admin.widgets.JSONWidget` is a drop-in replacement for the
+admin's default `JSONField` textarea. Django renders a stored value on one
+line (`{"b": 2, "a": [1, 2]}`) and only reports a parse error after a
+submit round-trip. `JSONWidget` indents and key-sorts the value, and
+validates it as you type, via a small, CSP-safe vanilla-JS asset (no
+inline handlers, no `eval`) that degrades to a plain textarea if
+JavaScript is unavailable.
+
+Django already preserves malformed JSON input across the round-trip
+(`forms.JSONField.bound_data()` returns it as `InvalidJSONInput` instead
+of discarding it) -- `JSONWidget` does not change that behaviour. What it
+adds is pretty-printing of well-formed values and inline validation
+feedback; it does not touch how malformed input is stored or redisplayed.
+
+Enable it per `ModelAdmin` with `JSONWidgetMixin`:
+
+```python
+from django_utils.admin.widgets import JSONWidgetMixin
+
+
+class SomeModelAdmin(JSONWidgetMixin, admin.ModelAdmin):
+    pass
+```
+
+Nothing is patched globally -- a project that only uses this package for
+the filters above sees no change to its `JSONField` forms.
+
 ## Choices usage
 
 To enable easy to use choices which are more convenient than the Django 3.0

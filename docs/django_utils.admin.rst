@@ -12,6 +12,14 @@ django\_utils.admin.filters module
    :undoc-members:
    :show-inheritance:
 
+django\_utils.admin.widgets module
+----------------------------------
+
+.. automodule:: django_utils.admin.widgets
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
