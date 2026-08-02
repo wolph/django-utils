@@ -18,20 +18,19 @@ def queryset_iterator(
     memory. Using the iterator() method only causes it to not preload all the
     classes.
 
-    Note that the implementation of the iterator does not support ordered
-    query sets.
+    Note that the results are always ordered by the primary key.
     """
-    pk = 0
-
-    try:
-        """In the case of an empty list, return"""
-        last_pk = getfunc(queryset.order_by('-pk')[0], 'pk')
-    except IndexError:
-        return
-
+    pk: Any = None
     queryset = queryset.order_by('pk')
-    while pk < last_pk:
-        for row in queryset.filter(pk__gt=pk)[:chunksize]:
+
+    while True:
+        chunk = queryset if pk is None else queryset.filter(pk__gt=pk)
+        rows = list(chunk[:chunksize])
+        if not rows:
+            return
+
+        for row in rows:
             pk = getfunc(row, 'pk')
             yield row
+
         gc.collect()
