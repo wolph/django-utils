@@ -27,7 +27,7 @@ class RecursiveField:
         assert name
 
         value = None
-        while instance and not value:
+        while instance is not None and value is None:
             value = getattr(instance, name, None)
             instance = getattr(instance, self.parent_field, None)
 
