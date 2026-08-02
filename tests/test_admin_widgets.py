@@ -50,3 +50,26 @@ def test_attrs_are_merged_with_the_data_widget_default():
 
 def test_format_value_passes_through_non_string_values():
     assert widgets.JSONWidget().format_value(None) is None
+
+
+from django.contrib import admin
+from django.db import models as db_models
+
+from tests.test_app import models as app_models
+
+
+def test_mixin_applies_the_widget_to_jsonfields():
+    class SandwichAdmin(widgets.JSONWidgetMixin, admin.ModelAdmin):
+        pass
+
+    model_admin = SandwichAdmin(app_models.Sandwich, admin.AdminSite())
+    form_field = model_admin.formfield_for_dbfield(
+        app_models.Sandwich._meta.get_field('data'), request=None
+    )
+    assert isinstance(form_field.widget, widgets.JSONWidget)
+
+
+def test_importing_the_package_does_not_change_the_global_default():
+    """Installing for the filters alone must not alter anyone's forms."""
+    default = db_models.JSONField().formfield().widget
+    assert not isinstance(default, widgets.JSONWidget)

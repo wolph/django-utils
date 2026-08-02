@@ -1,9 +1,12 @@
 """Admin widgets for working with :py:class:`~django.db.models.JSONField`."""
 
+from __future__ import annotations
+
 import json
 from typing import Any, ClassVar
 
 from django import forms
+from django.db import models
 
 
 class JSONWidget(forms.Textarea):
@@ -43,3 +46,20 @@ class JSONWidget(forms.Textarea):
             return formatted
 
         return json.dumps(parsed, indent=2, sort_keys=True, ensure_ascii=False)
+
+
+class JSONWidgetMixin:
+    """Opt a ``ModelAdmin`` into :py:class:`JSONWidget` for its JSON fields.
+
+    .. code-block:: python
+
+        class MyAdmin(JSONWidgetMixin, admin.ModelAdmin):
+            pass
+
+    Nothing is patched globally: a project that installs this package for
+    the filters alone sees no change to its forms.
+    """
+
+    formfield_overrides: ClassVar[dict[type[models.Field[Any, Any]], Any]] = {
+        models.JSONField: {'widget': JSONWidget},
+    }
