@@ -67,11 +67,25 @@ class FilterBase(admin.SimpleListFilter):
             timeout = CACHE_TIMEOUT
         return timeout.total_seconds()
 
+    def get_lookups_cache_scope(self, request: http.HttpRequest) -> str:
+        """Cache-key component isolating one user's lookups from another's.
+
+        ``lookups()`` honours the ModelAdmin's per-request queryset, which
+        may return different rows per user, so cached values must not be
+        shared blindly. Override this to return a constant when every user
+        of the admin sees the same rows and you want the cache shared.
+        """
+        user = getattr(request, 'user', None)
+        return str(getattr(user, 'pk', None))
+
     def get_lookups_cache_key(self, request: http.HttpRequest) -> str:
         # Hashed so the key is valid for every cache backend: the raw
         # path + title can contain spaces and exceed memcached's 250
         # byte limit.
-        raw = f'{request.get_full_path()}\n{self.title}'
+        raw = (
+            f'{request.get_full_path()}\n{self.title}\n'
+            f'{self.get_lookups_cache_scope(request)}'
+        )
         digest = hashlib.sha256(raw.encode('utf-8')).hexdigest()
         return f'django_utils.lookups.{digest}'
 
@@ -124,7 +138,8 @@ class JSONFieldFilter(FilterBase):
             return cached
 
         values = (
-            model_admin.model.objects.values_list(
+            model_admin.get_queryset(request)
+            .values_list(
                 self.field_path,
                 flat=True,
             )

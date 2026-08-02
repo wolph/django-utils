@@ -220,6 +220,42 @@ def test_select2_html_id_and_media(rf, model_admin):
 
 
 @pytest.mark.django_db
+def test_lookups_obey_model_admin_queryset(rf):
+    models.Sandwich.objects.create(data={'filling': 'ham'})
+    models.Sandwich.objects.create(data={'filling': 'cheese'})
+
+    class ScopedAdmin(admin.ModelAdmin):
+        def get_queryset(self, request):
+            return super().get_queryset(request).filter(data__filling='ham')
+
+    model_admin = ScopedAdmin(models.Sandwich, admin.AdminSite())
+    filter_class = filters.JSONFieldFilter.create('data__filling')
+    request = rf.get('/admin/test_app/sandwich/')
+    request.user = User(pk=1, is_superuser=True, is_active=True)
+    instance = filter_class(request, {}, models.Sandwich, model_admin)
+
+    values = [
+        value for value, _label in instance.lookups(request, model_admin)
+    ]
+    assert values == ['ham']
+
+
+@pytest.mark.django_db
+def test_lookups_cache_is_scoped_per_user(rf, model_admin):
+    models.Sandwich.objects.create(data={'filling': 'ham'})
+    filter_class = filters.JSONFieldFilter.create('data__filling')
+
+    def key_for(user_pk):
+        request = rf.get('/admin/test_app/sandwich/')
+        request.user = User(pk=user_pk, is_superuser=True, is_active=True)
+        instance = filter_class(request, {}, models.Sandwich, model_admin)
+        return instance.get_lookups_cache_key(request)
+
+    assert key_for(1) != key_for(2)
+    assert key_for(1) == key_for(1)
+
+
+@pytest.mark.django_db
 def test_queryset_via_admin_changelist(rf):
     """Exercise Django's own request -> value parsing end to end."""
     models.Sandwich.objects.create(data={'filling': 'ham'})
