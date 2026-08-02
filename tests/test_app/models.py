@@ -6,6 +6,12 @@ class Spam(base_models.SlugCreatedAtModelBase):
     a = models.CharField(max_length=50)
 
 
+class LowMaxAttemptsSpam(base_models.SlugCreatedAtModelBase):
+    """Exercises SlugMixin.get_unique_slug's exhaustion branch."""
+
+    slugify_max_attempts = 1
+
+
 class Eggs(Spam):
     b = models.CharField(max_length=100)
 

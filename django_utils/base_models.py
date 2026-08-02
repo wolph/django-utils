@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Any
+import itertools
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from django.db import models
 from django.db.models import base
@@ -116,16 +117,50 @@ class SlugMixin(NameMixin):
 
     if TYPE_CHECKING:
         slug: Any
+        # Provided by the concrete Model subclass this mixin is combined
+        # with at runtime; not visible from SlugMixin's own bases.
+        _default_manager: ClassVar[Any]
+
+    slugify_max_attempts: ClassVar[int] = 1000
+
+    def get_unique_slug(self, base: str) -> str:
+        """Return ``base``, suffixed with a counter if already taken.
+
+        Note: the uniqueness check and the eventual insert are not
+        atomic, so two concurrent saves can still race each other onto
+        the same slug. Callers with high write concurrency on the same
+        name should still enforce a unique constraint (as ``SlugMixin``
+        does) and handle the resulting ``IntegrityError``.
+        """
+        model = type(self)
+        slug = base
+        for attempt in itertools.count(2):
+            taken = model._default_manager.filter(slug=slug)
+            if self.pk is not None:
+                taken = taken.exclude(pk=self.pk)
+
+            if not taken.exists():
+                return slug
+
+            if attempt > self.slugify_max_attempts:
+                raise ValueError(
+                    f'Could not find a free slug for {base!r} after '
+                    f'{self.slugify_max_attempts} attempts'
+                )
+
+            slug = f'{base}-{attempt}'
+
+        raise AssertionError('unreachable')  # pragma: no cover
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug and self.name:
-            self.slug = defaultfilters.slugify(self.name)
+            self.slug = self.get_unique_slug(defaultfilters.slugify(self.name))
 
         # `save` isn't defined on NameMixin/object; it's provided by the
         # concrete Model subclass this mixin is combined with at runtime
         # (e.g. SlugModelBase). mypy can't see that cooperative-mixin MRO
         # when checking SlugMixin in isolation.
-        super(NameMixin, self).save(  # type: ignore[misc]  # ty: ignore[unresolved-attribute]
+        super().save(  # type: ignore[misc]  # ty: ignore[unresolved-attribute]
             *args, **kwargs
         )
 
