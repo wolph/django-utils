@@ -116,6 +116,12 @@ def test_debug_html_escapes_the_response_body():
 
 @override_settings(DEBUG=True)
 def test_debug_html_escapes_the_title():
+    # This passes even against the unfixed code: `get_full_path()`
+    # percent-encodes `<`/`>` in both the path and the query string, so
+    # there is no actual hole here to close. It documents defence in
+    # depth instead -- the title also embeds `request.method`, which
+    # Django does not validate, so the explicit `escape()` call still
+    # matters even though this particular input can't reach it unescaped.
     request = RequestFactory().get(
         '/x/', {'ajax': '1', 'debug': '1', 'q': '</title><script>x</script>'}
     )
@@ -138,6 +144,12 @@ def test_debug_html_allowed_for_internal_ip():
     response = _payload_view(request)
     assert response['Content-Type'] == 'text/html'
     assert '<textarea>' in response.content.decode()
+
+
+def test_debug_allowed_is_public_with_a_private_alias():
+    """`debug_allowed` is the supported override hook; `_debug_allowed`
+    remains as a backward-compatible alias to the same function."""
+    assert view_decorators.debug_allowed is view_decorators._debug_allowed
 
 
 @override_settings(DEBUG=True)

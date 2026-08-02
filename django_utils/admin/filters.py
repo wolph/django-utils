@@ -74,6 +74,10 @@ class FilterBase(admin.SimpleListFilter):
         may return different rows per user, so cached values must not be
         shared blindly. Override this to return a constant when every user
         of the admin sees the same rows and you want the cache shared.
+        Conversely, if ``ModelAdmin.get_queryset()`` scopes by something
+        other than the user -- tenant, site, or request host, for example
+        -- include that dimension in the returned string too, or the cache
+        key won't vary with it and the leak persists across it.
         """
         user = getattr(request, 'user', None)
         return str(getattr(user, 'pk', None))

@@ -105,7 +105,7 @@ def _serialize_ajax_response(request: EnvRequest, response: Any) -> str:
         return json.dumps(response, default=json_default_handler)
 
 
-def _debug_allowed(request: http.HttpRequest) -> bool:
+def debug_allowed(request: http.HttpRequest) -> bool:
     """Whether the ``?debug=1`` HTML view may render for this request.
 
     Rendering a response body inside an HTML document is a debugging
@@ -115,15 +115,22 @@ def _debug_allowed(request: http.HttpRequest) -> bool:
 
     Note that behind a reverse proxy ``REMOTE_ADDR`` is the proxy's
     address, not the client's, so ``INTERNAL_IPS`` will match nothing
-    (or everything, if the proxy's own address is listed). Override
-    this function's behaviour rather than trusting ``X-Forwarded-For``,
-    which is only meaningful when the proxy topology is known.
+    (or everything, if the proxy's own address is listed). If your
+    deployment sits behind a reverse proxy and needs the real client
+    address (e.g. from ``X-Forwarded-For``), reassign this function
+    (``django_utils.view_decorators.debug_allowed = my_check``) rather
+    than trusting that header here, since it is only meaningful when
+    the proxy topology is known.
     """
     if not request.GET.get('debug'):
         return False
     if settings.DEBUG:
         return True
     return request.META.get('REMOTE_ADDR') in settings.INTERNAL_IPS
+
+
+# Backwards-compatible alias for the previous private name.
+_debug_allowed = debug_allowed
 
 
 def _process_ajax_response(
@@ -142,7 +149,7 @@ def _process_ajax_response(
             )
         output = f'{callback}({output})'
 
-    if _debug_allowed(request):
+    if debug_allowed(request):
         title = escape(
             f'Rendering {request.context!r} in module {request.context!r}'
         )

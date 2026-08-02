@@ -99,7 +99,25 @@ def test_ignore_excludes_constants_from_choices():
 
     labels = [choice.label for _value, choice in Gender.choices.items()]
     assert 'max_length' not in labels
+    assert 'male' in labels
     assert Gender.MAX_LENGTH == 1
+
+
+def test_ignore_accepts_a_whitespace_or_comma_separated_string():
+    """`_ignore_` accepts the string form stdlib `enum` also accepts."""
+
+    class Gender(choices.Choices):
+        _ignore_ = 'MAX_LENGTH, OTHER_CONSTANT'
+        MAX_LENGTH = 1
+        OTHER_CONSTANT = 2
+        Male = choices.Choice('m')
+
+    labels = [choice.label for _value, choice in Gender.choices.items()]
+    assert 'max_length' not in labels
+    assert 'other_constant' not in labels
+    assert 'male' in labels
+    assert Gender.MAX_LENGTH == 1
+    assert Gender.OTHER_CONSTANT == 2
 
 
 def test_constants_are_still_collected_without_ignore():

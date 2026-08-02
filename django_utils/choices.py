@@ -94,6 +94,19 @@ To keep a constant alongside your choices, list it in ``_ignore_``:
         Male = choices.Choice('m')
         Female = choices.Choice('f')
 
+Like the standard library's ``enum``, ``_ignore_`` also accepts a single
+string of names separated by whitespace and/or commas, which is split for
+you:
+
+.. code-block:: python
+
+    class Gender(choices.Choices):
+        _ignore_ = 'MAX_LENGTH'
+        MAX_LENGTH = 1
+
+        Male = choices.Choice('m')
+        Female = choices.Choice('f')
+
 """
 
 import collections
@@ -246,7 +259,10 @@ class ChoicesMeta(type):
     ) -> tuple[list[tuple[str, Choice]], bool]:
         choices: list[tuple[str, Choice]] = []
         has_values = False
-        ignore: frozenset[str] = frozenset(attrs.get('_ignore_', ()))
+        raw_ignore = attrs.get('_ignore_', ())
+        if isinstance(raw_ignore, str):
+            raw_ignore = raw_ignore.replace(',', ' ').split()
+        ignore: frozenset[str] = frozenset(raw_ignore)
 
         for key, value in attrs.items():
             # Skip private, protected and explicitly ignored values

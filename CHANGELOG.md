@@ -13,6 +13,15 @@ Modernization release. Runtime behavior of retained APIs is unchanged except for
 - Removed the empty `django_utils/models.py` module.
 - Django is now an explicit install dependency (`django>=4.2`); 3.x
   releases only declared `python-utils`.
+- A JSONP `callback` parameter must now be a valid Python identifier.
+  Deployments relying on dotted or subscripted callback names such as
+  `angular.callbacks._0`, `window.cb`, or `cb[0]` will now get a 400
+  response instead.
+- `RecursiveField` no longer inherits the parent's value when the
+  child's own value is falsy (`0`, `''`, `False`); previously such
+  values were treated as unset. Code relying on the parent value
+  being substituted for a falsy child will now see the child's value
+  instead.
 
 ### Fixed
 

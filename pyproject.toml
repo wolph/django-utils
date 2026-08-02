@@ -73,6 +73,21 @@ tox = [
 [tool.uv.build-backend]
 module-root = ""
 module-name = "django_utils"
+# uv_build packs the module directory off the filesystem, not off git, so
+# any stray untracked file sitting in django_utils/ ships in the wheel.
+# Syncthing conflict copies are the general case; __about__.py and
+# models.py are specific pre-4.0 modules that CHANGELOG.md records as
+# removed but that can still linger on disk untracked.
+source-exclude = [
+    "**/*sync-conflict*",
+    "django_utils/__about__.py",
+    "django_utils/models.py",
+]
+wheel-exclude = [
+    "**/*sync-conflict*",
+    "django_utils/__about__.py",
+    "django_utils/models.py",
+]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "tests.settings"
