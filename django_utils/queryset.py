@@ -10,13 +10,36 @@ def queryset_iterator(
     chunksize: int = 1000,
     getfunc: Callable[[Any, str], Any] = getattr,
 ) -> Iterator[Any]:
-    """''
-    Iterate over a Django Queryset ordered by the primary key
+    """Iterate over a Django queryset in fixed-size chunks, ordered by pk.
 
-    This method loads a maximum of chunksize (default: 1000) rows in it's
-    memory at the same time while django normally would load all rows in it's
-    memory. Using the iterator() method only causes it to not preload all the
-    classes.
+    Uses keyset pagination (``WHERE pk > last_seen_pk LIMIT chunksize``)
+    instead of a database cursor, so each chunk is fetched as its own
+    independent query rather than as part of one long-lived cursor kept
+    open for the whole iteration.
+
+    Benchmarked (``benchmarks/queryset_iterator.py``) against
+    ``QuerySet.iterator(chunk_size=...)`` on SQLite -- 20,000 rows,
+    chunksize=1000, 5 runs -- this function was consistently *slower*,
+    not faster: ~1.6x the wall-clock time (1.57x-1.70x across runs) and
+    ~1.85x the peak traced memory. Roughly 30-38% of the wall-clock gap
+    is the ``gc.collect()`` call made after every chunk (a fixable
+    implementation detail, not an inherent cost of keyset pagination);
+    without it the gap narrows to near parity (1.06x-1.16x) but never
+    turns into a win. SQLite has no server-side cursor support, so this
+    is the backend most favourable to this function's approach, and it
+    still lost: Django's ``iterator(chunk_size=...)`` already fetches
+    rows from the cursor in bounded batches even without one, giving it
+    the same "don't load everything into memory" property via a single
+    query instead of one query per chunk.
+
+    Prefer ``QuerySet.iterator(chunk_size=...)`` in the general case --
+    it is simpler and was not slower on any backend measured here.
+    Reach for this function instead when a single long-lived query is
+    specifically undesirable: because each chunk is issued as a new
+    query rather than read from one cursor held open for the whole
+    iteration, iteration can pick back up on a connection that was
+    reset or recycled between chunks, which a single open cursor
+    cannot.
 
     Note that the results are always ordered by the primary key.
     """
