@@ -28,8 +28,10 @@
 
 - `queryset_iterator` was benchmarked against
   `QuerySet.iterator(chunk_size=...)` (see `benchmarks/queryset_iterator.py`)
-  and lost: on SQLite it is 1.57x-1.70x slower and uses ~1.85x the peak
-  memory. Its docstring now documents the benchmark and recommends
+  and lost: on SQLite it is ~1.09x-1.14x slower and uses ~1.85x-1.88x the
+  peak memory. (An earlier version called `gc.collect()` after every chunk,
+  which raised wall-clock time to ~1.6x; that call was removed.) Its
+  docstring now documents the benchmark and recommends
   `QuerySet.iterator(chunk_size=...)` for the general case; the function
   itself is unchanged and still has a narrow use (a new query per chunk
   rather than one long-lived cursor, useful when a connection may be reset
