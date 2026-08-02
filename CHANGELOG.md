@@ -27,6 +27,24 @@ Modernization release. Runtime behavior of retained APIs is unchanged except for
   none and was excluded from coverage).
 - The `settings` management command no longer reports the deprecated
   `USE_L10N` setting on Django 4.2.
+- The `?debug=1` view of an ajax response is now restricted to
+  `settings.DEBUG` or clients in `settings.INTERNAL_IPS`, and its output is
+  HTML-escaped. A JSONP `callback` parameter must now be a valid Python
+  identifier.
+- The `debug` template filter returns an empty string unless
+  `settings.DEBUG` is enabled, matching Django's own `{% debug %}` tag, and
+  no longer renders protected attributes.
+- Admin filter lookups now honour the `ModelAdmin`'s per-request queryset
+  instead of querying the model's default manager, and cached lookups are
+  scoped per user. Override `get_lookups_cache_scope()` to share the cache
+  between users.
+- `queryset_iterator` no longer skips rows whose primary key is zero or
+  negative; a queryset whose primary keys were all negative previously
+  yielded nothing.
+- `RecursiveField` no longer treats a falsy child value (`0`, `''`,
+  `False`) as unset and inherits the parent's value in its place.
+- `Choices` subclasses may declare `_ignore_` to keep constants from being
+  collected as choices.
 
 ### Changed
 
