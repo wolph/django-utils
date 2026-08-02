@@ -25,47 +25,87 @@ def queryset_iterator(
     ``chunksize`` rows at a time.
 
     Why this function exists
-        ``QuerySet.iterator(chunk_size=...)`` issues a single,
-        unbounded query and reads it back in batches of
-        ``chunk_size``. On PostgreSQL, with server-side cursors
-        enabled (Django's default), that single query uses a
-        server-side cursor: the *database* holds the unfetched rows,
-        not the driver, so ``iterator()`` is the better choice there
-        -- one query, bounded client memory, less code. But Django
-        only opens a server-side cursor on PostgreSQL. On MySQL with
-        mysqlclient, the default cursor calls ``store_result()`` and
-        materialises the *entire* result set client-side before
-        Python sees the first row, in a C buffer that ``chunk_size``
-        never touches -- this is verified. Oracle (``python-oracledb``)
-        and PostgreSQL with ``DISABLE_SERVER_SIDE_CURSORS = True`` are
-        driver-dependent: they may also buffer the full result set
-        client-side, but that is not established the way mysqlclient's
-        behaviour is. SQLite has no server-side cursor to disable
-        either, but the stdlib ``sqlite3`` module steps rows lazily
-        rather than buffering the whole result set (see the benchmark
-        section below). Where a driver does buffer the whole result
-        set, ``iterator()``'s peak memory is set by the driver, not by
-        ``chunk_size``, and a large enough table can exhaust it. This
-        function exists because that failure was written after
-        ``QuerySet.iterator()`` exhausted memory on a very large
-        table: splitting one unbounded query into many ``LIMIT``-ed
-        queries means the driver never receives more than one chunk at
-        a time, regardless of backend. The cost is real: N small
-        queries instead of 1, plus a modest wall-clock overhead (see
-        below).
+        This function was written after ``QuerySet.iterator()``
+        exhausted memory on a very large table. Splitting one
+        unbounded query into many bounded ``LIMIT`` queries fixed
+        that, and the same query shape brings four distinct benefits
+        along with it -- only the first of which is about the client
+        driver.
 
-    Benchmark (``benchmarks/queryset_iterator.py``), SQLite, 20,000
-    rows, chunksize=1000
-        Wall clock is close to parity with ``QuerySet.iterator()``
-        (~1.09x-1.14x across runs; query count and wall clock are
-        measured in separate passes so that query-logging
-        instrumentation doesn't inflate the many-query path's timing
-        more than the single-query path's). An earlier version of
-        this function called ``gc.collect()`` after every chunk; that
-        call alone added roughly 37-47% to ``queryset_iterator()``'s
-        default-mode wall-clock time for no measured reduction in
-        Python-level memory, so it is off by default here (see
-        ``gc_collect`` below).
+        Bounded memory on the Python side. Only ``chunksize`` model
+        instances are ever alive at once, rather than the whole
+        table. Core's own ``QuerySet.iterator(chunk_size=...)`` makes
+        the same promise, but it only holds if the driver streams:
+        with PostgreSQL and Django's default server-side cursors, the
+        *database* -- not the driver -- holds the unfetched rows, so
+        ``iterator()`` is the better choice there. Where the driver
+        buffers instead of streaming -- verified for MySQL with
+        mysqlclient, whose default cursor calls ``store_result()`` and
+        materialises the entire result set client-side before Python
+        sees the first row, in a C buffer ``chunk_size`` never touches
+        -- the whole table is already sitting in the client process
+        before ``chunk_size`` gets a chance to bound anything. Oracle
+        (``python-oracledb``) and PostgreSQL with
+        ``DISABLE_SERVER_SIDE_CURSORS = True`` are driver-dependent in
+        the same way, though that is not established here the way
+        mysqlclient's is. SQLite has no server-side cursor
+        to disable either, but the stdlib ``sqlite3`` module steps
+        rows lazily rather than buffering the whole result set (see
+        the benchmark section below).
+
+        Bounded memory on the database server. Each chunk is issued
+        as ``WHERE <pk_field> > cursor ORDER BY <pk_field> LIMIT
+        chunksize`` -- an index range scan the planner can satisfy
+        incrementally and stop as soon as it has ``chunksize`` rows.
+        A single unbounded ``SELECT ... ORDER BY`` over a large table
+        can instead force the server to materialise and sort the
+        *entire* result set before returning the first row, consuming
+        ``work_mem`` (PostgreSQL) or ``sort_buffer_size`` (MySQL) and
+        spilling to disk when it doesn't fit. The chunked form never
+        asks the server to hold more than one chunk at a time. This
+        follows from the query shape, not from measurement here.
+
+        Read-replica distribution. Because each chunk is its own
+        independent statement, a Django database router or a
+        connection pooler can spread the N chunk queries across read
+        replicas. A single long-running query pins one connection to
+        one server for its whole duration and cannot be
+        load-balanced mid-flight, so chunked iteration can scale
+        horizontally in a way one cursor cannot -- again by
+        construction, not measured here.
+
+        Operational blast radius. A single heavy query is a single
+        point of failure: it can exhaust server memory, hit a
+        statement timeout, and hold its transaction snapshot open
+        for as long as it runs -- which on PostgreSQL keeps vacuum
+        from reclaiming dead rows and causes table bloat, and on
+        MySQL/InnoDB grows the undo history. Short per-chunk queries
+        release their snapshot between chunks instead, so a slow
+        consumer doesn't hold the database hostage. They also fail
+        gracefully and resumably: a chunk that fails partway through
+        a run can be retried from the last cursor seen instead of
+        restarting the whole query, which is exactly what
+        ``start_after`` below is for.
+
+        None of points two through four were independently
+        benchmarked in this repository -- they follow from the query
+        shape described above. The only measured numbers here are the
+        query counts and wall-clock figures below, and the cost is
+        real: N small queries instead of 1, plus a modest wall-clock
+        overhead.
+
+    Benchmark
+        ``benchmarks/queryset_iterator.py``, SQLite, 20,000 rows,
+        chunksize=1000. Wall clock is close to parity with
+        ``QuerySet.iterator()`` (~1.09x-1.14x across runs; query count
+        and wall clock are measured in separate passes so that
+        query-logging instrumentation doesn't inflate the many-query
+        path's timing more than the single-query path's). An earlier
+        version of this function called ``gc.collect()`` after every
+        chunk; that call alone added roughly 37-47% to
+        ``queryset_iterator()``'s default-mode wall-clock time for no
+        measured reduction in Python-level memory, so it is off by
+        default here (see ``gc_collect`` below).
 
         The benchmark's ``tracemalloc`` peak figures are *not*
         evidence about the memory story either way: ``tracemalloc``

@@ -62,6 +62,16 @@
   claim is narrower: bounded driver-side memory by construction on
   backends that buffer, not a demonstrated fix for a specific crash.
   The docstring has been rewritten accordingly.
+- `queryset_iterator`'s docstring now documents why the chunked query
+  shape helps beyond client-side driver memory: bounded memory on the
+  database server (each chunk is an indexed range scan the planner can
+  satisfy incrementally, instead of one query that may force the
+  server to materialise and sort the full result set) and
+  distribution across read replicas (N independent statements can be
+  load-balanced; one long-running query cannot). It also covers the
+  operational blast radius of a single heavy query and how short,
+  resumable chunks (`start_after`) avoid it. These three points follow
+  from the query shape and were not independently benchmarked.
 
 ## 4.0.0 (unreleased)
 

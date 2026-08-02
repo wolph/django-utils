@@ -22,7 +22,8 @@ Examples are:
 - Models with automatic `updated_at` and `created_at` fields
 - Models with automatic, collision-free slugs based on the `name` property.
 - Iterating through querysets in predefined chunks to prevent out of memory
-  errors
+  errors, bounding memory on both the client and the database server, and
+  friendly to distribution across read replicas
 
 The library depends on the Python Utils library.
 
