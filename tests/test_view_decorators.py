@@ -5,6 +5,8 @@ import pytest
 from django import http, template
 from django.contrib.auth import models as auth_models
 from django.contrib.contenttypes import models
+from django.core.exceptions import SuspiciousOperation
+from django.test import RequestFactory, override_settings
 from django_utils import utils, view_decorators
 
 
@@ -15,6 +17,7 @@ class Request:
         self.REQUEST = dict()
         self.POST = dict()
         self.GET = dict()
+        self.META = dict()
 
     def build_absolute_uri(self):
         return '/'
@@ -93,3 +96,62 @@ def test_some_view():
 
     some_view(request, return_=http.HttpResponse())
     some_view(request)
+
+
+@view_decorators.env
+def _payload_view(request):
+    return {'ok': True, 'name': '</textarea><script>alert(1)</script>'}
+
+
+BREAKOUT = '</textarea><script>alert(1)</script>'
+
+
+@override_settings(DEBUG=True)
+def test_debug_html_escapes_the_response_body():
+    request = RequestFactory().get('/x/', {'ajax': '1', 'debug': '1'})
+    body = _payload_view(request).content.decode()
+    assert BREAKOUT not in body
+    assert '&lt;/textarea&gt;' in body
+
+
+@override_settings(DEBUG=True)
+def test_debug_html_escapes_the_title():
+    request = RequestFactory().get(
+        '/x/', {'ajax': '1', 'debug': '1', 'q': '</title><script>x</script>'}
+    )
+    body = _payload_view(request).content.decode()
+    assert '</title><script>' not in body
+
+
+@override_settings(DEBUG=False, INTERNAL_IPS=[])
+def test_debug_html_refused_in_production():
+    request = RequestFactory().get('/x/', {'ajax': '1', 'debug': '1'})
+    response = _payload_view(request)
+    assert response['Content-Type'] == 'text/plain'
+    assert '<textarea>' not in response.content.decode()
+
+
+@override_settings(DEBUG=False, INTERNAL_IPS=['127.0.0.1'])
+def test_debug_html_allowed_for_internal_ip():
+    # RequestFactory sets REMOTE_ADDR to 127.0.0.1
+    request = RequestFactory().get('/x/', {'ajax': '1', 'debug': '1'})
+    response = _payload_view(request)
+    assert response['Content-Type'] == 'text/html'
+    assert '<textarea>' in response.content.decode()
+
+
+@override_settings(DEBUG=True)
+def test_jsonp_callback_must_be_an_identifier():
+    request = RequestFactory().get(
+        '/x/',
+        {'ajax': '1', 'callback': '</textarea><script>alert(1)</script>'},
+    )
+    with pytest.raises(SuspiciousOperation):
+        _payload_view(request)
+
+
+@override_settings(DEBUG=True)
+def test_jsonp_callback_accepts_a_valid_identifier():
+    request = RequestFactory().get('/x/', {'ajax': '1', 'callback': 'myFunc'})
+    body = _payload_view(request).content.decode()
+    assert body.startswith('myFunc(')

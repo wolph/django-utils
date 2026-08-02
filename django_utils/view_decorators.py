@@ -5,10 +5,12 @@ from collections.abc import Callable
 from typing import Any
 
 from django import http, urls
+from django.conf import settings
 from django.contrib.auth import decorators
-from django.core import serializers
+from django.core import exceptions, serializers
 from django.db import models
 from django.template import loader as django_loader
+from django.utils.html import escape
 
 
 class EnvRequest(http.HttpRequest):
@@ -103,6 +105,27 @@ def _serialize_ajax_response(request: EnvRequest, response: Any) -> str:
         return json.dumps(response, default=json_default_handler)
 
 
+def _debug_allowed(request: http.HttpRequest) -> bool:
+    """Whether the ``?debug=1`` HTML view may render for this request.
+
+    Rendering a response body inside an HTML document is a debugging
+    aid, so it is restricted the way ``django-debug-toolbar`` restricts
+    its own panels: ``settings.DEBUG``, or an explicitly whitelisted
+    client address.
+
+    Note that behind a reverse proxy ``REMOTE_ADDR`` is the proxy's
+    address, not the client's, so ``INTERNAL_IPS`` will match nothing
+    (or everything, if the proxy's own address is listed). Override
+    this function's behaviour rather than trusting ``X-Forwarded-For``,
+    which is only meaningful when the proxy topology is known.
+    """
+    if not request.GET.get('debug'):
+        return False
+    if settings.DEBUG:
+        return True
+    return request.META.get('REMOTE_ADDR') in settings.INTERNAL_IPS
+
+
 def _process_ajax_response(
     request: EnvRequest,
     response: Any,
@@ -111,13 +134,18 @@ def _process_ajax_response(
     """Turn a dict/list/QuerySet response into an HttpResponse for ajax"""
     output = _serialize_ajax_response(request, response)
 
-    callback = request.GET.get('callback', False)
+    callback = request.GET.get('callback', '')
     if callback:
+        if not callback.isidentifier():
+            raise exceptions.SuspiciousOperation(
+                'JSONP callback must be a valid Python identifier'
+            )
         output = f'{callback}({output})'
 
-    if request.GET.get('debug'):
-        title = f'Rendering {request.context!r} in module {request.context!r}'
-
+    if _debug_allowed(request):
+        title = escape(
+            f'Rendering {request.context!r} in module {request.context!r}'
+        )
         output = f"""
                 <html>
                     <head>
@@ -130,7 +158,7 @@ def _process_ajax_response(
                         </style>
                     </head>
                     <body>
-                        <textarea>{output}</textarea>
+                        <textarea>{escape(output)}</textarea>
                     </body>
                 </html>
                 """
