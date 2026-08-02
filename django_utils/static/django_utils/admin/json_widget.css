@@ -1,0 +1,9 @@
+.django-utils-json-error {
+    color: #ba2121;
+    font-size: 0.8125rem;
+    margin: 0.25rem 0 0;
+}
+
+textarea[data-json-widget] {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
