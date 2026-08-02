@@ -1,3 +1,4 @@
+import pytest
 from django.db import models
 from django_utils import choices
 
@@ -129,3 +130,41 @@ def test_constants_are_still_collected_without_ignore():
 
     labels = [choice.label for _value, choice in Gender.choices.items()]
     assert 'max_length' in labels
+
+
+def test_choice_without_metadata_is_unchanged():
+    """Existing two-argument usage must behave exactly as before."""
+
+    class Gender(choices.Choices):
+        Male = choices.Choice('m', 'Male')
+        Female = choices.Choice('f')
+
+    assert Gender.Male == 'm'
+    assert Gender.Female == 'f'
+    assert Gender.choices['m'].label == 'Male'
+    assert Gender.choices['f'].label == 'female'
+    assert Gender.choices['m'].metadata == {}
+
+
+def test_choice_carries_arbitrary_metadata():
+    class Status(choices.Choices):
+        Active = choices.Choice('a', 'Active', color='green', weight=10)
+        Closed = choices.Choice('c', 'Closed', color='red', weight=20)
+
+    assert Status.choices['a'].color == 'green'
+    assert Status.choices['a'].weight == 10
+    assert Status.choices['c'].metadata == {'color': 'red', 'weight': 20}
+
+
+def test_choice_metadata_does_not_shadow_real_attributes():
+    """`value`, `label` and `order` are attributes, not metadata."""
+    choice = choices.Choice('v', 'l', color='blue')
+    assert choice.value == 'v'
+    assert choice.label == 'l'
+    assert choice.metadata == {'color': 'blue'}
+
+
+def test_choice_unknown_attribute_raises_attribute_error():
+    choice = choices.Choice('v', 'l')
+    with pytest.raises(AttributeError):
+        _ = choice.nonexistent

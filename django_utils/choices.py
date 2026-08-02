@@ -107,6 +107,21 @@ you:
         Male = choices.Choice('m')
         Female = choices.Choice('f')
 
+Attaching metadata to choices
+==============================================================================
+
+Unlike Django's ``TextChoices``, a :py:class:`Choice` can carry arbitrary
+extra data, reachable as attributes:
+
+.. code-block:: python
+
+    class Status(choices.Choices):
+        Active = choices.Choice('a', 'Active', color='green')
+        Closed = choices.Choice('c', 'Closed', color='red')
+
+
+    Status.choices['a'].color  # 'green'
+
 """
 
 import collections
@@ -186,12 +201,26 @@ class Choice:
     order: int = 0
 
     def __init__(
-        self, value: Any = None, label: 'str | StrPromise | None' = None
+        self,
+        value: Any = None,
+        label: 'str | StrPromise | None' = None,
+        **metadata: Any,
     ) -> None:
         Choice.order += 1
         self.value: Any = value
         self.label: str | StrPromise | None = label
         self.order = Choice.order
+        self.metadata: dict[str, Any] = metadata
+
+    def __getattr__(self, name: str) -> Any:
+        # Only called when normal attribute lookup fails, so real
+        # attributes (`value`, `label`, `order`, `metadata`) always win.
+        try:
+            return self.__dict__['metadata'][name]
+        except KeyError:
+            raise AttributeError(
+                f'{type(self).__name__!r} object has no attribute {name!r}'
+            ) from None
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Choice):  # pragma: no branch
