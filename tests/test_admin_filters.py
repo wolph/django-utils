@@ -6,7 +6,6 @@ from django.contrib.auth.models import User
 from django.core.cache import cache as django_cache
 from django.core.cache.backends.base import memcache_key_warnings
 from django.core.exceptions import SuspiciousOperation
-from django.db.utils import NotSupportedError
 from django.test import RequestFactory
 from django_utils.admin import filters
 
@@ -324,7 +323,7 @@ def test_declaring_an_unsupported_operator_is_a_configuration_error():
 def test_operator_from_the_query_string_must_be_allowlisted(rf, model_admin):
     models.Sandwich.objects.create(data={'filling': 'ham'})
     filter_class = filters.JSONFieldFilter.create(
-        'data__filling', operators=('exact', 'contains')
+        'data__filling', operators=('exact', 'icontains')
     )
     request = rf.get('/admin/test_app/sandwich/')
     instance = filter_class(request, {}, models.Sandwich, model_admin)
@@ -368,7 +367,7 @@ def test_queryset_via_admin_changelist_with_operator(rf):
     models.Sandwich.objects.create(data={'filling': 'cheese'})
 
     filter_class = filters.JSONFieldFilter.create(
-        'data__filling', operators=('exact', 'contains')
+        'data__filling', operators=('exact', 'icontains')
     )
 
     class SandwichAdmin(admin.ModelAdmin):
@@ -404,7 +403,7 @@ def test_omitting_operators_keeps_exact_match_behaviour(rf, model_admin):
 @pytest.mark.django_db()
 def test_icontains_operator_filters_a_json_subpath(rf, model_admin):
     """The brief's own `contains` example does not work here -- see
-    `test_contains_operator_is_broken_for_json_subpaths` below -- so
+    `test_contains_operator_is_rejected_at_create_time` below -- so
     this proves the operator-suffix mechanism itself using `icontains`,
     which `KeyTransform` (unlike bare `contains`) registers directly.
     """
@@ -427,38 +426,45 @@ def test_icontains_operator_filters_a_json_subpath(rf, model_admin):
     )
 
 
-@pytest.mark.django_db()
-def test_contains_operator_is_broken_for_json_subpaths(rf, model_admin):
-    """`contains` is a member of `SUPPORTED_OPERATORS`, but it does not
-    do what an admin user picking it from the dropdown would expect
-    once applied to a JSON sub-path.
+def test_contains_operator_is_rejected_at_create_time():
+    """`contains` is a member of the generic `SUPPORTED_OPERATORS`
+    allowlist -- it's legitimate for ordinary (non-JSON) fields -- but
+    once applied to a JSON sub-path (a `KeyTransform`, which is all
+    `JSONFieldFilter.create()` ever builds), it does not do what an
+    admin user picking it from the dropdown would expect.
 
-    `KeyTransform` (what `data__filling` compiles to) registers a
-    lookup for `icontains` directly, but not for bare `contains`.
-    Lookup resolution then falls through to `KeyTransform.output_
-    field`, a plain `JSONField()`, which *does* register `contains` --
-    as `DataContains`, Postgres's `@>` JSON-containment operator, not a
-    text substring test. That raises outright here (SQLite has no
-    `supports_json_field_contains`); on PostgreSQL it would not raise,
-    but for a scalar RHS containment degrades to equality, so it would
-    silently behave like `exact` instead of a substring match. This is
-    a pre-existing Django JSONField/KeyTransform limitation, not a
-    regression introduced by `queryset()`'s operator suffix -- see
-    task-4-report.md.
+    `KeyTransform` registers a lookup for `icontains` directly, but not
+    for bare `contains`. Lookup resolution then falls through to
+    `KeyTransform.output_field`, a plain `JSONField()`, which *does*
+    register `contains` -- as `DataContains`, Postgres's `@>`
+    JSON-containment operator, not a text substring test. That raises
+    `NotSupportedError` outright on SQLite (no `supports_json_field_
+    contains`); on PostgreSQL it would not raise, but for a scalar RHS
+    containment degrades to equality, so it would silently behave like
+    `exact` instead of a substring match. This is a pre-existing Django
+    JSONField/KeyTransform limitation, not a regression introduced by
+    `queryset()`'s operator suffix -- see task-4-report.md. `create()`
+    now rejects it up front so the failure is at import time, not at
+    request time (or, worse, not at all on PostgreSQL).
     """
-    models.Sandwich.objects.create(data={'filling': 'ham'})
-    filter_class = filters.JSONFieldFilter.create(
-        'data__filling', operators=('exact', 'contains')
-    )
-    request = rf.get('/admin/test_app/sandwich/')
-    instance = filter_class(request, {}, models.Sandwich, model_admin)
-    instance.used_parameters = {
-        'data__filling': 'ham',
-        'data__filling__op': 'contains',
-    }
+    with pytest.raises(ValueError, match='icontains'):
+        filters.JSONFieldFilter.create(
+            'data__filling', operators=('exact', 'contains')
+        )
 
-    with pytest.raises(NotSupportedError, match='contains lookup'):
-        instance.queryset(request, models.Sandwich.objects.all()).count()
+
+def test_range_operator_is_rejected_at_create_time():
+    """`range` expects a two-element sequence; a filter only ever
+    supplies a single scalar value from the query string, so it fails
+    at request time with a confusing `TypeError` from deep inside the
+    SQL compiler rather than a clear error. `cast=int` is passed here
+    to isolate this guard from the separate numeric-without-cast
+    guard above.
+    """
+    with pytest.raises(ValueError):
+        filters.JSONFieldFilter.create(
+            'data__filling', operators=('range',), cast=int
+        )
 
 
 @pytest.mark.django_db
@@ -467,7 +473,7 @@ def test_expected_parameters_includes_operator_param(rf, model_admin):
     to exclude a filter's own params when computing its facet counts; it
     must list both the value and the operator parameter."""
     filter_class = filters.JSONFieldFilter.create(
-        'data__filling', operators=('exact', 'contains')
+        'data__filling', operators=('exact', 'icontains')
     )
     instance, _request = make_filter(filter_class, rf, model_admin)
     assert instance.expected_parameters() == [

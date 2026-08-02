@@ -264,6 +264,14 @@ class JSONFieldFilter(LookupFilterMixin, FilterBase):
         timeout: timedelta | None = None,
         operators: tuple[str, ...] | None = None,
     ) -> type['JSONFieldFilter']:
+        """Build a `JSONFieldFilter` subclass for one JSON sub-path.
+
+        This validation -- including the `contains`/`range` rejection
+        below -- only runs for filters built through this factory. A
+        direct subclass that sets `operators` as a class attribute
+        instead of calling `create()` bypasses it; that is an accepted
+        limitation, not something worth metaclass machinery to close.
+        """
         assert '__' in field_path, (
             'Paths require both the field and parameter. For example: '
             '`some_json_field__some_parameter`'
@@ -292,6 +300,34 @@ class JSONFieldFilter(LookupFilterMixin, FilterBase):
                     f'{sorted(LookupFilterMixin.SUPPORTED_OPERATORS)}'
                 )
             namespace['operators'] = tuple(operators)
+
+        # `contains` and `range` are members of the generic `SUPPORTED_
+        # OPERATORS` allowlist -- they're legitimate for ordinary
+        # (non-JSON) fields, so `LookupFilterMixin` keeps allowing them --
+        # but both silently misbehave once applied to a JSON sub-path
+        # (a `KeyTransform`), which is all this factory ever builds.
+        # Reject them here, at class-creation time, rather than at
+        # request time or (worse) not at all on PostgreSQL.
+        json_unsafe_reasons = {
+            'contains': (
+                '`contains` on a JSON sub-path resolves to '
+                "`KeyTransform`'s JSON-containment lookup (PostgreSQL "
+                '`@>`), not substring matching, and is unsupported on '
+                'SQLite. Use `icontains` for substring matching.'
+            ),
+            'range': (
+                '`range` expects a two-element sequence, but a filter '
+                'only ever supplies a single scalar value.'
+            ),
+        }
+        if operators:
+            json_unsafe = [
+                json_unsafe_reasons[operator]
+                for operator in sorted(json_unsafe_reasons)
+                if operator in operators
+            ]
+            if json_unsafe:
+                raise ValueError(' '.join(json_unsafe))
 
         numeric = {'gt', 'gte', 'lt', 'lte', 'range'}
         if operators and numeric.intersection(operators) and cast is None:
