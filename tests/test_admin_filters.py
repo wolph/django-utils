@@ -256,6 +256,43 @@ def test_lookups_cache_is_scoped_per_user(rf, model_admin):
 
 
 @pytest.mark.django_db
+def test_lookups_cache_does_not_leak_across_users(rf):
+    """End-to-end: user 1's cached lookups must not be served to user 2
+    when the ModelAdmin scopes rows differently per user (bug B-leak)."""
+    models.Sandwich.objects.create(data={'filling': 'ham'})
+    models.Sandwich.objects.create(data={'filling': 'cheese'})
+
+    class PerUserAdmin(admin.ModelAdmin):
+        def get_queryset(self, request):
+            queryset = super().get_queryset(request)
+            if request.user.pk == 1:
+                return queryset.filter(data__filling='ham')
+            return queryset.filter(data__filling='cheese')
+
+    model_admin = PerUserAdmin(models.Sandwich, admin.AdminSite())
+    filter_class = filters.JSONFieldFilter.create('data__filling')
+
+    # User 1 populates the cache with their own (ham-only) view.
+    request_1 = rf.get('/admin/test_app/sandwich/')
+    request_1.user = User(pk=1, is_superuser=True, is_active=True)
+    instance_1 = filter_class(request_1, {}, models.Sandwich, model_admin)
+    values_1 = [
+        value for value, _label in instance_1.lookups(request_1, model_admin)
+    ]
+    assert values_1 == ['ham']
+
+    # User 2, with a different visible row set, must not receive user 1's
+    # cached (ham) values.
+    request_2 = rf.get('/admin/test_app/sandwich/')
+    request_2.user = User(pk=2, is_superuser=True, is_active=True)
+    instance_2 = filter_class(request_2, {}, models.Sandwich, model_admin)
+    values_2 = [
+        value for value, _label in instance_2.lookups(request_2, model_admin)
+    ]
+    assert values_2 == ['cheese']
+
+
+@pytest.mark.django_db
 def test_queryset_via_admin_changelist(rf):
     """Exercise Django's own request -> value parsing end to end."""
     models.Sandwich.objects.create(data={'filling': 'ham'})
