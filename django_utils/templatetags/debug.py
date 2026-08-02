@@ -6,6 +6,7 @@ from collections.abc import Callable
 from typing import Any, ClassVar, TypeVar
 
 from django import template
+from django.conf import settings
 from django.db import models
 from django.utils.html import conditional_escape
 from django.utils.safestring import SafeString, mark_safe
@@ -351,15 +352,27 @@ class Formatter(_Formatter):
 def debug(value: Any, max_depth: int = 3) -> SafeString:
     """Debug template filter to print variables in a pretty way
 
-    >>> str(debug(123).strip())
+    Returns an empty string unless ``settings.DEBUG`` is enabled, so a
+    filter left in a shipped template cannot leak internal state. This
+    mirrors Django's own ``{% debug %}`` tag.
+
+    >>> from django.test import override_settings
+    >>> with override_settings(DEBUG=True):
+    ...     str(debug(123).strip())
     '<pre style="border: 1px solid #fcc; background-color: #ccc;">123</pre>'
+    >>> with override_settings(DEBUG=False):
+    ...     str(debug(123).strip())
+    ''
     """
+    if not settings.DEBUG:
+        return mark_safe('')
+
     value = copy.deepcopy(value)
     formatter = Formatter(max_depth=max_depth)
     return mark_safe(
         f"""
     <pre style="border: 1px solid #fcc; background-color: #ccc;">{
-            conditional_escape(formatter(value))
+            conditional_escape(formatter(value, show_protected=False))
         }</pre>
     """
     )
