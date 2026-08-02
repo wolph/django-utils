@@ -2,7 +2,11 @@ import html as htmllib
 import json
 
 from django import forms
+from django.contrib import admin
+from django.db import models as db_models
 from django_utils.admin import widgets
+
+from tests.test_app import models as app_models
 
 
 class JSONForm(forms.Form):
@@ -50,12 +54,6 @@ def test_attrs_are_merged_with_the_data_widget_default():
 
 def test_format_value_passes_through_non_string_values():
     assert widgets.JSONWidget().format_value(None) is None
-
-
-from django.contrib import admin
-from django.db import models as db_models
-
-from tests.test_app import models as app_models
 
 
 def test_mixin_applies_the_widget_to_jsonfields():
