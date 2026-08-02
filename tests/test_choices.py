@@ -8,6 +8,14 @@ except ImportError:
     from django.utils.translation import ugettext_lazy as _
 
 
+@pytest.fixture(autouse=True)
+def _reset_choice_order():
+    """`Choice.order` is a module-global counter; keep tests hermetic."""
+    choices.Choice.order = 0
+    yield
+    choices.Choice.order = 0
+
+
 class TranslatedHuman(models.Model):
     class Gender(choices.Choices):
         Male = choices.Choice('m', _('Male'))
