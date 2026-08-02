@@ -242,11 +242,15 @@ class JSONFieldFilter(LookupFilterMixin, FilterBase):
         queryset: models.QuerySet[Any],
     ) -> models.QuerySet[Any]:
         value = self.value()
-        if value:
-            field_path = typing.cast(str, self.field_path)
-            return queryset.filter(**{field_path: self.cast(value)})
-        else:
+        if not value:
             return queryset
+
+        operator = self.get_operator()
+        lookup = typing.cast(str, self.field_path)
+        if operator != 'exact':
+            lookup = f'{lookup}__{operator}'
+
+        return queryset.filter(**{lookup: self.cast(value)})
 
     @classmethod
     def create(

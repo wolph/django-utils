@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.core.cache import cache as django_cache
 from django.core.cache.backends.base import memcache_key_warnings
 from django.core.exceptions import SuspiciousOperation
+from django.db.utils import NotSupportedError
 from django.test import RequestFactory
 from django_utils.admin import filters
 
@@ -384,6 +385,82 @@ def test_queryset_via_admin_changelist_with_operator(rf):
     assert changelist.get_queryset(request).count() == 1
 
 
+@pytest.mark.django_db()
+def test_omitting_operators_keeps_exact_match_behaviour(rf, model_admin):
+    """Backwards compatibility: create() without operators is unchanged."""
+    models.Sandwich.objects.create(data={'filling': 'ham'})
+    models.Sandwich.objects.create(data={'filling': 'hamburger'})
+
+    filter_class = filters.JSONFieldFilter.create('data__filling')
+    request = rf.get('/admin/test_app/sandwich/')
+    instance = filter_class(request, {}, models.Sandwich, model_admin)
+    instance.used_parameters = {'data__filling': 'ham'}
+
+    assert (
+        instance.queryset(request, models.Sandwich.objects.all()).count() == 1
+    )
+
+
+@pytest.mark.django_db()
+def test_icontains_operator_filters_a_json_subpath(rf, model_admin):
+    """The brief's own `contains` example does not work here -- see
+    `test_contains_operator_is_broken_for_json_subpaths` below -- so
+    this proves the operator-suffix mechanism itself using `icontains`,
+    which `KeyTransform` (unlike bare `contains`) registers directly.
+    """
+    models.Sandwich.objects.create(data={'filling': 'ham'})
+    models.Sandwich.objects.create(data={'filling': 'hamburger'})
+    models.Sandwich.objects.create(data={'filling': 'cheese'})
+
+    filter_class = filters.JSONFieldFilter.create(
+        'data__filling', operators=('exact', 'icontains')
+    )
+    request = rf.get('/admin/test_app/sandwich/')
+    instance = filter_class(request, {}, models.Sandwich, model_admin)
+    instance.used_parameters = {
+        'data__filling': 'ham',
+        'data__filling__op': 'icontains',
+    }
+
+    assert (
+        instance.queryset(request, models.Sandwich.objects.all()).count() == 2
+    )
+
+
+@pytest.mark.django_db()
+def test_contains_operator_is_broken_for_json_subpaths(rf, model_admin):
+    """`contains` is a member of `SUPPORTED_OPERATORS`, but it does not
+    do what an admin user picking it from the dropdown would expect
+    once applied to a JSON sub-path.
+
+    `KeyTransform` (what `data__filling` compiles to) registers a
+    lookup for `icontains` directly, but not for bare `contains`.
+    Lookup resolution then falls through to `KeyTransform.output_
+    field`, a plain `JSONField()`, which *does* register `contains` --
+    as `DataContains`, Postgres's `@>` JSON-containment operator, not a
+    text substring test. That raises outright here (SQLite has no
+    `supports_json_field_contains`); on PostgreSQL it would not raise,
+    but for a scalar RHS containment degrades to equality, so it would
+    silently behave like `exact` instead of a substring match. This is
+    a pre-existing Django JSONField/KeyTransform limitation, not a
+    regression introduced by `queryset()`'s operator suffix -- see
+    task-4-report.md.
+    """
+    models.Sandwich.objects.create(data={'filling': 'ham'})
+    filter_class = filters.JSONFieldFilter.create(
+        'data__filling', operators=('exact', 'contains')
+    )
+    request = rf.get('/admin/test_app/sandwich/')
+    instance = filter_class(request, {}, models.Sandwich, model_admin)
+    instance.used_parameters = {
+        'data__filling': 'ham',
+        'data__filling__op': 'contains',
+    }
+
+    with pytest.raises(NotSupportedError, match='contains lookup'):
+        instance.queryset(request, models.Sandwich.objects.all()).count()
+
+
 @pytest.mark.django_db
 def test_expected_parameters_includes_operator_param(rf, model_admin):
     """`FacetsMixin.get_facet_queryset` consults `expected_parameters()`
@@ -397,3 +474,35 @@ def test_expected_parameters_includes_operator_param(rf, model_admin):
         'data__filling',
         'data__filling__op',
     ]
+
+
+@pytest.mark.django_db
+def test_queryset_via_admin_changelist_with_non_exact_operator(rf):
+    """Exercise the operator-suffixed lookup added to `queryset()` in
+    this task through real admin request -> value parsing, not a
+    hand-set `used_parameters` dict. Task 3's own operator handling had
+    a silent wrong-results bug that only a real changelist request
+    could surface (see `test_queryset_via_admin_changelist_with_
+    operator` above); this is the equivalent guard for the operator
+    actually being appended to the lookup rather than ignored.
+    """
+    models.Sandwich.objects.create(data={'filling': 'ham'})
+    models.Sandwich.objects.create(data={'filling': 'hamburger'})
+    models.Sandwich.objects.create(data={'filling': 'cheese'})
+
+    filter_class = filters.JSONFieldFilter.create(
+        'data__filling', operators=('exact', 'icontains')
+    )
+
+    class SandwichAdmin(admin.ModelAdmin):
+        list_filter = (filter_class,)
+
+    model_admin = SandwichAdmin(models.Sandwich, admin.AdminSite())
+    request = rf.get(
+        '/admin/test_app/sandwich/',
+        {'data__filling': 'ham', 'data__filling__op': 'icontains'},
+    )
+    request.user = User(is_superuser=True, is_active=True, is_staff=True)
+
+    changelist = model_admin.get_changelist_instance(request)
+    assert changelist.get_queryset(request).count() == 2
