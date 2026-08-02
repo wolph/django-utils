@@ -117,6 +117,17 @@ class LookupFilterMixin(_LookupFilterBase):
         # re-applied as a raw ORM key-transform lookup (matching
         # nothing) instead of being consumed by `get_operator()`.
         super().__init__(request, params, model, model_admin)
+        # Django >=5.0's `ListFilter.__init__` sets `self.request`; 4.2's
+        # does not. `lookup_filter.html` reads `spec.request.GET` to
+        # preserve the rest of the query string across a submit, and
+        # Django templates silently resolve a missing attribute to ''
+        # instead of raising, so on 4.2 that loop rendered zero hidden
+        # inputs -- clicking "Filter" silently dropped every other active
+        # filter, the search query, ordering and the page number. Set
+        # unconditionally, after `super().__init__()` so it can't be
+        # clobbered by it: on >=5.0 this just re-assigns the identical
+        # object; on 4.2 it's the only place `self.request` is set.
+        self.request = request
         if self.operator_parameter_name in params:
             # Django >=5.0 passes list-valued `params` (and takes the
             # last value itself, see `SimpleListFilter.__init__` above,
@@ -345,7 +356,11 @@ class JSONFieldFilter(LookupFilterMixin, FilterBase):
             if json_unsafe:
                 raise ValueError(' '.join(json_unsafe))
 
-        numeric = {'gt', 'gte', 'lt', 'lte', 'range'}
+        # `range` is deliberately absent here: the `json_unsafe` check
+        # above already rejects it for every class this factory can
+        # build, so it can never reach this line still present in
+        # `operators`. Including it would be dead code.
+        numeric = {'gt', 'gte', 'lt', 'lte'}
         if operators and numeric.intersection(operators) and cast is None:
             raise ValueError(
                 f'Operators {sorted(numeric.intersection(operators))} '

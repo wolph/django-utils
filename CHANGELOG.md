@@ -38,18 +38,31 @@
   patched globally -- a project using only the filters below sees no
   change to its forms.
 - `django_utils.admin.filters.LookupFilterMixin`: adds an operator
-  selector to a list filter, read from `<parameter_name>__op` and
-  validated against an allowlist (`exact`, `contains`, `icontains`,
-  `startswith`, `gt`, `gte`, `lt`, `lte`, `range`) before use.
+  selector to a list filter. The operator is read from
+  `<parameter_name>__op` and validated at request time against the
+  filter's own `operators` (default `('exact',)`) before use, raising
+  `SuspiciousOperation` for anything not in that set. A custom filter
+  that mixes this in must also point `template` at
+  `django_utils/admin/lookup_filter.html` to render the operator
+  `<select>` and value input -- without it the operator is still
+  enforced, just with no UI to choose one.
 - `JSONFieldFilter.create()` gained an `operators` keyword to enable the
   above on JSON sub-path filters, e.g.
-  `create('data__price', operators=('gte',), cast=int)`. `contains` and
-  `range` are rejected at `create()` time for JSON sub-paths: `contains`
-  on a `KeyTransform` resolves to PostgreSQL's `@>` containment lookup,
-  not substring matching, and raises `NotSupportedError` on SQLite (use
+  `create('data__price', operators=('gte',), cast=int)`. The keyword
+  itself is validated against a fixed allowlist (`exact`, `contains`,
+  `icontains`, `startswith`, `gt`, `gte`, `lt`, `lte`, `range`) at
+  `create()` time -- this is `JSONFieldFilter.create()`'s own check, not
+  the request-time one described above. `contains` and `range` are
+  further rejected at `create()` time for JSON sub-paths: `contains` on
+  a `KeyTransform` resolves to PostgreSQL's `@>` containment lookup, not
+  substring matching, and raises `NotSupportedError` on SQLite (use
   `icontains`); `range` expects a two-element sequence but a filter only
-  ever supplies one scalar. Omitting `operators` leaves existing filters
-  unchanged.
+  ever supplies one scalar. Omitting `operators` keeps the default,
+  `exact`-only matching behaviour, but the query string is not fully
+  inert even then: `<parameter_name>__op` is now always claimed and
+  validated, so e.g. `?data__price=10&data__price__op=gte` against a
+  filter created without `operators` now raises `SuspiciousOperation`
+  (HTTP 400) instead of the previous silent zero-row match.
 
 ### Fixed
 

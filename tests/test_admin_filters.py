@@ -1,7 +1,9 @@
 import datetime
+import re
 
 import pytest
 from django.contrib import admin
+from django.contrib.admin.templatetags.admin_list import admin_list_filter
 from django.contrib.auth.models import User
 from django.core.cache import cache as django_cache
 from django.core.cache.backends.base import memcache_key_warnings
@@ -10,6 +12,10 @@ from django.test import RequestFactory
 from django_utils.admin import filters
 
 from tests.test_app import models
+
+# Matches any `on*=` event-handler attribute (`onclick=`, `oninput=`,
+# `onerror=`, ...), not just a couple of hand-picked names.
+HANDLER_ATTR_RE = re.compile(r'\son[a-z]+\s*=', re.IGNORECASE)
 
 
 @pytest.fixture(autouse=True)
@@ -549,3 +555,114 @@ def test_queryset_via_admin_changelist_with_non_exact_operator(rf):
 
     changelist = model_admin.get_changelist_instance(request)
     assert changelist.get_queryset(request).count() == 2
+
+
+def _render_lookup_filter(rf, model_admin, get_params):
+    """Render `lookup_filter.html` through the real admin pipeline --
+    `get_changelist_instance()` -> `admin_list_filter()` -- exactly how
+    `change_list.html` renders it, and return the markup. Exercising the
+    template this way (instead of calling `Template.render()` on a
+    hand-built context) is what catches what template coverage can't:
+    template code is invisible to coverage.py, so a broken `lookup_
+    filter.html` -- as it was before this fix -- produces no coverage
+    gap, only silently wrong HTML.
+    """
+    request = rf.get('/admin/test_app/sandwich/', get_params)
+    request.user = User(is_superuser=True, is_active=True, is_staff=True)
+    changelist = model_admin.get_changelist_instance(request)
+    (spec,) = changelist.filter_specs
+    return str(admin_list_filter(changelist, spec))
+
+
+@pytest.fixture
+def lookup_filter_admin():
+    # `SimpleListFilter.has_output()` (which `ChangeList.get_filters()`
+    # consults to decide whether to include a filter in `filter_specs`
+    # at all) defaults to `bool(self.lookup_choices)`, so a filter whose
+    # `lookups()` finds no rows is silently omitted -- at least one row
+    # is required for `filter_specs` to be non-empty below.
+    models.Sandwich.objects.create(data={'price': 10})
+
+    filter_class = filters.JSONFieldFilter.create(
+        'data__price',
+        operators=('exact', 'gte'),
+        cast=int,
+        template='django_utils/admin/lookup_filter.html',
+    )
+
+    class SandwichAdmin(admin.ModelAdmin):
+        list_display = ('id',)
+        list_filter = (filter_class,)
+
+    return SandwichAdmin(models.Sandwich, admin.AdminSite())
+
+
+@pytest.mark.django_db
+def test_lookup_filter_operator_select_lists_operators_and_marks_current(
+    rf, lookup_filter_admin
+):
+    rendered = _render_lookup_filter(
+        rf,
+        lookup_filter_admin,
+        {'data__price': '10', 'data__price__op': 'gte'},
+    )
+
+    assert 'django_utils/admin/lookup_filter.css' in rendered
+    assert re.findall(r'<option value="([a-z]+)"', rendered) == [
+        'exact',
+        'gte',
+    ]
+    assert '<option value="gte" selected="selected">gte</option>' in rendered
+    assert '<option value="exact" selected="selected">' not in rendered
+
+
+@pytest.mark.django_db
+def test_lookup_filter_hidden_inputs_preserve_other_query_state(
+    rf, lookup_filter_admin
+):
+    """`q=search-term` is the load-bearing assertion: rendering it reads
+    `spec.request`, which Django's `ListFilter.__init__` only sets on
+    >=5.0 (see `LookupFilterMixin.__init__`). On 4.2, before that fix,
+    `spec.request` doesn't exist; a template silently resolves a missing
+    attribute to '' rather than raising, so the hidden-input loop
+    iterates over nothing and this assertion fails.
+
+    `_popup=1&_popup=2` -- a real, Django-recognised query param that is
+    always stripped before it reaches the ORM (`IS_POPUP_VAR` is one of
+    `ChangeList`'s `IGNORED_PARAMS`), so it is safe to repeat without
+    also being claimed by a filter -- checks that a repeated key
+    round-trips as one hidden input per value instead of collapsing to
+    the last one.
+    """
+    rendered = _render_lookup_filter(
+        rf,
+        lookup_filter_admin,
+        {
+            'data__price': '10',
+            'data__price__op': 'gte',
+            'q': 'search-term',
+            '_popup': ['1', '2'],
+        },
+    )
+
+    assert '<input type="hidden" name="q" value="search-term">' in rendered
+    assert '<input type="hidden" name="_popup" value="1">' in rendered
+    assert '<input type="hidden" name="_popup" value="2">' in rendered
+    assert rendered.count('name="_popup"') == 2
+
+    # The filter's own params are rendered as the visible select/input,
+    # never duplicated as hidden inputs.
+    assert '<input type="hidden" name="data__price"' not in rendered
+    assert '<input type="hidden" name="data__price__op"' not in rendered
+
+
+@pytest.mark.django_db
+def test_lookup_filter_markup_is_csp_safe(rf, lookup_filter_admin):
+    rendered = _render_lookup_filter(
+        rf,
+        lookup_filter_admin,
+        {'data__price': '10', 'data__price__op': 'gte'},
+    )
+
+    assert 'style=' not in rendered.lower()
+    assert not HANDLER_ATTR_RE.search(rendered)

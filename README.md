@@ -87,9 +87,14 @@ class SomeModelAdmin(admin.ModelAdmin):
     )
 ```
 
-Supported operators are `exact`, `contains`, `icontains`, `startswith`,
-`gt`, `gte`, `lt`, `lte` and `range`. An operator submitted outside this
-allowlist raises `SuspiciousOperation` rather than reaching the ORM.
+`create(operators=...)` itself accepts `exact`, `contains`, `icontains`,
+`startswith`, `gt`, `gte`, `lt`, `lte` and `range`; passing anything
+outside that fixed list raises `ValueError` at `create()` time. At
+request time, the operator actually submitted in the query string is
+checked against *this filter's own* `operators` -- the subset you passed
+to `create()`, default `('exact',)` -- not the full list above, so a
+generally-valid operator this particular filter never declared still
+raises `SuspiciousOperation` (HTTP 400) rather than reaching the ORM.
 
 Two operators are rejected at `create()` time for JSON sub-paths, with a
 `ValueError` explaining why:
@@ -100,17 +105,24 @@ Two operators are rejected at `create()` time for JSON sub-paths, with a
 - `range` -- expects a two-element sequence, but a filter only ever
   supplies one scalar value from the query string.
 
-`gt`, `gte`, `lt`, `lte` and `range` compare numerically, so `create()`
-requires a `cast` (e.g. `cast=int`) whenever one of them is listed;
-omitting it is a configuration error caught immediately rather than a
-string comparison bug found later. Omitting `operators` entirely leaves a
-filter's behaviour unchanged -- it still defaults to `exact`.
+`gt`, `gte`, `lt` and `lte` compare numerically, so `create()` requires a
+`cast` (e.g. `cast=int`) whenever one of them is listed; omitting it is a
+configuration error caught immediately rather than a string comparison
+bug found later. Omitting `operators` keeps the default, `exact`-only
+matching behaviour, but the query string is not fully inert even then:
+`<parameter_name>__op` is always claimed and validated, so submitting one
+against a filter created without `operators` (e.g.
+`?data__price=10&data__price__op=gte`) now raises `SuspiciousOperation`
+(HTTP 400) instead of silently matching zero rows.
 
 The default filter sidebar renders an operator-aware filter as a list of
 distinct values, same as any other filter. For a free-text value paired
 with the operator dropdown -- the better fit for `gte`/`lte` filters on a
 field with too many distinct values to list -- pass
-`template='django_utils/admin/lookup_filter.html'`:
+`template='django_utils/admin/lookup_filter.html'`. Any filter built with
+`LookupFilterMixin`, not only `JSONFieldFilter`, needs this `template` to
+get the operator `<select>` and value input rendered; without it the
+operator is still validated, there's just no UI to choose one:
 
 ```python
 JSONFieldFilter.create(
@@ -149,6 +161,15 @@ class SomeModelAdmin(JSONWidgetMixin, admin.ModelAdmin):
 
 Nothing is patched globally -- a project that only uses this package for
 the filters above sees no change to its `JSONField` forms.
+
+`JSONWidgetMixin` works by declaring `formfield_overrides`, so it is a
+**silent** no-op in two situations: if `SomeModelAdmin` declares its own
+`formfield_overrides` (that dict replaces the mixin's rather than merging
+with it), or if the mixin is listed *after* `admin.ModelAdmin` in the
+class's bases (`admin.ModelAdmin` already defines an empty
+`formfield_overrides`, so MRO finds that one first). Keep the mixin first
+in the base list, and merge its `formfield_overrides` mapping into your
+own rather than replacing it if you need overrides for other fields too.
 
 ## Choices usage
 

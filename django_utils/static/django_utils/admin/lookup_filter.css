@@ -1,0 +1,9 @@
+.lookup-filter-operator {
+    width: auto;
+    display: inline;
+}
+
+.lookup-filter-value {
+    width: 60%;
+    display: inline;
+}

@@ -58,6 +58,27 @@ class JSONWidgetMixin:
 
     Nothing is patched globally: a project that installs this package for
     the filters alone sees no change to its forms.
+
+    This works by declaring a class-level ``formfield_overrides`` and
+    relies on normal Python attribute lookup to make it visible on the
+    final class, so it is a *silent* no-op in two situations:
+
+    - The ``ModelAdmin`` declares its own ``formfield_overrides``. That
+      dict replaces this mixin's entirely rather than merging with it
+      (regular class-attribute shadowing, not a dict merge), so
+      ``models.JSONField`` is no longer mapped to :py:class:`JSONWidget`
+      and Django's default JSON textarea is used instead -- no error, no
+      warning.
+    - The mixin is listed *after* ``admin.ModelAdmin`` in the class's
+      bases, e.g. ``class MyAdmin(admin.ModelAdmin, JSONWidgetMixin)``.
+      ``admin.ModelAdmin`` already defines ``formfield_overrides`` (as an
+      empty dict), so MRO resolves the attribute there first and this
+      mixin's mapping is never consulted.
+
+    If your ``ModelAdmin`` needs its own ``formfield_overrides`` for
+    other fields, merge this mixin's ``formfield_overrides`` mapping in
+    explicitly instead of overriding it outright, and keep this mixin
+    first in the base list.
     """
 
     formfield_overrides: ClassVar[dict[type[models.Field[Any, Any]], Any]] = {

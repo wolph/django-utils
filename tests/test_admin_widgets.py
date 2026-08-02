@@ -1,5 +1,6 @@
 import html as htmllib
 import json
+import re
 
 from django import forms
 from django.contrib import admin
@@ -7,6 +8,11 @@ from django.db import models as db_models
 from django_utils.admin import widgets
 
 from tests.test_app import models as app_models
+
+# Matches any `on*=` event-handler attribute (`onclick=`, `oninput=`,
+# `onerror=`, ...), not just the couple of names a hand-picked list of
+# `assert 'onclick=' not in rendered` checks would happen to cover.
+HANDLER_ATTR_RE = re.compile(r'\son[a-z]+\s*=', re.IGNORECASE)
 
 
 class JSONForm(forms.Form):
@@ -41,8 +47,7 @@ def test_widget_declares_its_media():
 def test_rendered_markup_is_csp_safe():
     rendered = str(JSONForm(initial={'data': {'a': 1}})['data'])
     assert '<script' not in rendered.lower()
-    assert 'onclick=' not in rendered.lower()
-    assert 'oninput=' not in rendered.lower()
+    assert not HANDLER_ATTR_RE.search(rendered)
     assert 'style=' not in rendered.lower()
 
 
