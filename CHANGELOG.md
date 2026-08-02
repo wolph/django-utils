@@ -18,6 +18,13 @@
 - `SlugMixin` now resolves slug collisions with a numeric suffix
   (`my-thing`, `my-thing-2`, ...) instead of silently producing duplicate
   slugs. Override `slugify_max_attempts` to change the retry ceiling.
+- `queryset_iterator` gained three keyword-only options, all backwards
+  compatible: `pk_field` iterates by any unique, indexed, ordered column
+  instead of the primary key (useful when the pk is a random UUID but a
+  monotonic `created_at`/`id` column exists); `start_after` resumes from a
+  known cursor value so a batch job that died partway through can
+  continue instead of restarting; `gc_collect` restores the optional
+  per-chunk `gc.collect()` call (off by default -- see below).
 
 ### Fixed
 
@@ -26,16 +33,32 @@
 
 ### Changed
 
-- `queryset_iterator` was benchmarked against
-  `QuerySet.iterator(chunk_size=...)` (see `benchmarks/queryset_iterator.py`)
-  and lost: on SQLite it is ~1.09x-1.14x slower and uses ~1.85x-1.88x the
-  peak memory. (An earlier version called `gc.collect()` after every chunk,
-  which raised wall-clock time to ~1.6x; that call was removed.) Its
-  docstring now documents the benchmark and recommends
-  `QuerySet.iterator(chunk_size=...)` for the general case; the function
-  itself is unchanged and still has a narrow use (a new query per chunk
-  rather than one long-lived cursor, useful when a connection may be reset
-  or recycled mid-iteration).
+- A prior version of this changelog reported that `queryset_iterator`
+  was benchmarked against `QuerySet.iterator(chunk_size=...)` and lost.
+  That conclusion was wrong and has been corrected. The benchmark
+  (`benchmarks/queryset_iterator.py`) ran on SQLite and measured
+  `tracemalloc` peak, which tracks Python-level allocations only; it
+  cannot see a database driver's C-level result buffer, which is exactly
+  what `queryset_iterator` exists to bound. Django opens a server-side
+  cursor for `QuerySet.iterator()` on PostgreSQL only -- on MySQL,
+  Oracle, and SQLite, `iterator()`'s peak memory is set by the driver,
+  not by `chunk_size`, since the driver's default cursor can buffer the
+  whole result set client-side regardless of how it's read back.
+  `queryset_iterator` avoids that by issuing each chunk as its own
+  bounded `LIMIT` query rather than one unbounded query (confirmed: 1
+  query for `iterator()` vs. N for `queryset_iterator()` at any table
+  size), so the driver never receives more than one chunk at a time.
+  SQLite has no server-side cursor to bypass in the first place, so it
+  cannot demonstrate this effect either way; the benchmark was
+  structurally incapable of observing the failure mode the function
+  prevents. The wall-clock cost is real and unchanged from before:
+  ~1.09x-1.14x on SQLite. (An earlier version called `gc.collect()`
+  after every chunk, which raised that ratio to ~1.6x; that call is now
+  opt-in via `gc_collect=True`, off by default.) No out-of-memory
+  failure has been reproduced in this repository's benchmark -- the
+  claim is narrower: bounded driver-side memory by construction on
+  backends that buffer, not a demonstrated fix for a specific crash.
+  The docstring has been rewritten accordingly.
 
 ## 4.0.0 (unreleased)
 
