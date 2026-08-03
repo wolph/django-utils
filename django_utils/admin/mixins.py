@@ -3,7 +3,8 @@
 ``ReadOnlyModelAdminMixin`` turns any existing admin — including one
 using this package's filters and widgets — into a safe read-only view:
 add/change/delete are denied for everyone (superusers included), every
-concrete field becomes read-only, and the list configuration
+concrete field and many-to-many relation becomes read-only, and the
+list configuration
 (``list_display``, ``list_filter``, ``search_fields``) keeps working
 untouched.  Built exclusively on stable public ``ModelAdmin`` API.
 """
