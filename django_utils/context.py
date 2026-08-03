@@ -18,13 +18,22 @@ Everything here is opt-in: without the middleware (or the
 
 import contextlib
 import contextvars
+import sys
 import typing
-from collections.abc import Awaitable, Callable, Iterator
+from collections.abc import Awaitable, Callable, Generator
+from typing import TYPE_CHECKING
 
-from asgiref import sync
 from django import http
 
-if typing.TYPE_CHECKING:
+if sys.version_info >= (3, 12):
+    from inspect import iscoroutinefunction, markcoroutinefunction
+else:  # pragma: no cover
+    # Same dispatch asgiref does internally, spelled so type checkers can
+    # narrow it: pre-3.12, inspect.iscoroutinefunction doesn't honor
+    # asgiref's `_is_coroutine` marker, so asgiref's shim is required.
+    from asgiref.sync import iscoroutinefunction, markcoroutinefunction
+
+if TYPE_CHECKING:
     from django.contrib.auth import models as auth_models
 
     _User = auth_models.AbstractBaseUser | auth_models.AnonymousUser
@@ -62,7 +71,7 @@ def get_current_user() -> '_User | None':
 @contextlib.contextmanager
 def current_request(
     request: http.HttpRequest,
-) -> Iterator[http.HttpRequest]:
+) -> Generator[http.HttpRequest, None, None]:
     """Make ``request`` current for the duration of the block.
 
     For tests, ``shell`` sessions and management commands — anywhere no
@@ -89,9 +98,9 @@ class RequestContextMiddleware:
 
     def __init__(self, get_response: _GetResponse | _AsyncGetResponse) -> None:
         self.get_response = get_response
-        self._is_async = sync.iscoroutinefunction(get_response)
+        self._is_async = iscoroutinefunction(get_response)
         if self._is_async:
-            sync.markcoroutinefunction(self)
+            markcoroutinefunction(self)
 
     def __call__(
         self, request: http.HttpRequest
