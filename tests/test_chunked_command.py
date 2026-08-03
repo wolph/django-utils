@@ -10,6 +10,7 @@ import logging
 
 import pytest
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.db import models as dj_models
 from django_utils import query_debug
 from django_utils.management.commands import base_command
@@ -27,22 +28,36 @@ class CollectSpam(base_command.ChunkedCommand):
     def __init__(self) -> None:
         super().__init__()
         self.seen: list[int] = []
-        self.interrupt_after: int | None = None
+        self.interrupt_on: int | None = None
 
     def get_queryset(self) -> dj_models.QuerySet[models.Spam]:
         return models.Spam.objects.all()
 
     def handle_instance(self, instance: models.Spam) -> None:
-        self.seen.append(instance.pk)
-        if self.interrupt_after and len(self.seen) >= self.interrupt_after:
+        if (
+            self.interrupt_on is not None
+            and len(self.seen) + 1 >= self.interrupt_on
+        ):
             raise KeyboardInterrupt
+        self.seen.append(instance.pk)
 
 
 class MutateSpam(base_command.ChunkedCommand):
+    def __init__(self) -> None:
+        super().__init__()
+        self.count: int = 0
+        self.interrupt_on: int | None = None
+
     def get_queryset(self) -> dj_models.QuerySet[models.Spam]:
         return models.Spam.objects.all()
 
     def handle_instance(self, instance: models.Spam) -> None:
+        if (
+            self.interrupt_on is not None
+            and self.count + 1 >= self.interrupt_on
+        ):
+            raise KeyboardInterrupt
+        self.count += 1
         instance.a = 'changed'
         instance.save()
 
@@ -62,7 +77,9 @@ def test_chunksize_bounds_queries(spam_rows):
     command = CollectSpam()
     with query_debug.query_budget(warn_at=100) as budget:
         call_command(command, verbosity=2, chunksize=2)
-    # ceil(5/2) = 3 data chunks + 1 final empty probe.
+    # queryset_iterator fetches ceil(5/2)=3 data chunks, then one more empty
+    # query to discover end of iteration (never short-circuits on partial
+    # final chunk). Total: 3 data + 1 probe = 4 queries.
     assert budget.count == 4
     assert len(command.seen) == 5
 
@@ -96,14 +113,20 @@ def test_without_dry_run_commits(spam_rows):
 
 
 def test_keyboard_interrupt_logs_resume_hint(spam_rows, caplog):
+    pks = sorted(spam.pk for spam in spam_rows)
     command = CollectSpam()
-    command.interrupt_after = 2
+    command.interrupt_on = 2
     with caplog.at_level(logging.WARNING, logger=LOGGER):
         with pytest.raises(KeyboardInterrupt):
             call_command(command, verbosity=2)
+    # interrupt_on=2 raises when len(seen)+1 >= 2, i.e., before 2nd
+    # append. So only the 1st pk is in seen; the resume hint names the
+    # last completed pk.
+    assert command.seen == pks[:1]
     message = ' '.join(record.getMessage() for record in caplog.records)
     assert '--resume-from' in message
-    assert str(command.seen[-1]) in message
+    assert str(pks[0]) in message
+    assert 'after 1 rows' in message
 
 
 def test_progress_logged_every_log_every_rows(spam_rows, caplog):
@@ -116,3 +139,23 @@ def test_progress_logged_every_log_every_rows(spam_rows, caplog):
         if 'rows processed' in record.getMessage()
     ]
     assert len(progress) >= 5
+
+
+def test_chunksize_zero_raises_command_error(spam_rows):
+    with pytest.raises(CommandError, match='--chunksize must be >= 1'):
+        call_command(CollectSpam(), verbosity=2, chunksize=0)
+
+
+def test_log_every_zero_raises_command_error(spam_rows):
+    with pytest.raises(CommandError, match='--log-every must be >= 1'):
+        call_command(CollectSpam(), verbosity=2, log_every=0)
+
+
+def test_dry_run_with_keyboard_interrupt_rolls_back(spam_rows):
+    command = MutateSpam()
+    command.interrupt_on = 2
+    with pytest.raises(KeyboardInterrupt):
+        call_command(command, verbosity=2, dry_run=True)
+    # Even though interrupted during processing, dry-run transaction
+    # rolled back.
+    assert not models.Spam.objects.filter(a='changed').exists()

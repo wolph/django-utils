@@ -137,8 +137,22 @@ class ChunkedCommand(CustomBaseCommand):
     def _process(self, **options: Any) -> None:
         log = cast(logging.Logger, self.log)
         queryset = self.get_queryset()
-        chunksize: int = options.get('chunksize') or self.chunksize
-        log_every: int = options.get('log_every') or self.log_every
+        raw_chunksize = options.get('chunksize')
+        chunksize: int = (
+            self.chunksize if raw_chunksize is None else raw_chunksize
+        )
+        raw_log_every = options.get('log_every')
+        log_every: int = (
+            self.log_every if raw_log_every is None else raw_log_every
+        )
+        if chunksize < 1:
+            raise base.CommandError(
+                f'--chunksize must be >= 1, got {chunksize}'
+            )
+        if log_every < 1:
+            raise base.CommandError(
+                f'--log-every must be >= 1, got {log_every}'
+            )
         limit: int | None = options.get('limit')
         resume_from: str | None = options.get('resume_from')
         start_after: Any = None
@@ -147,16 +161,16 @@ class ChunkedCommand(CustomBaseCommand):
             # field so integer/UUID/etc. pks compare correctly.
             start_after = queryset.model._meta.pk.to_python(resume_from)
 
-        processed = 0
+        processed: int = 0
         last_pk: Any = None
-        started = time.monotonic()
+        started: float = time.monotonic()
         rows = queryset_utils.queryset_iterator(
             queryset, chunksize=chunksize, start_after=start_after
         )
         try:
             for instance in rows:
-                last_pk = instance.pk
                 self.handle_instance(instance)
+                last_pk = instance.pk
                 processed += 1
                 if processed % log_every == 0:
                     elapsed = max(time.monotonic() - started, 1e-9)
