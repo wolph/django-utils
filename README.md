@@ -265,6 +265,27 @@ class MyModel(models.Model):
 
 For tests and management commands, use the `current_request()` context manager instead of adding the middleware.
 
+## Query budgets
+
+Catch N+1 regressions in production code paths — not just in tests or behind a development-only debug toolbar.
+
+`django_utils.query_debug.query_budget` counts every query a block executes and logs a warning or raises an exception when the block exceeds its budget. It's production-safe by construction: counting uses Django's `connection.execute_wrapper()` (public API, active regardless of `DEBUG`) instead of accumulating `connection.queries` logs which leak memory in long-lived processes.
+
+Usable as a context manager or a decorator:
+
+```python
+from django_utils.query_debug import query_budget
+
+# Warn if a view runs more than 20 queries; fail tests if more than 100
+with query_budget(warn_at=20, raise_at=100):
+    results = expensive_operation()
+
+# Decorator form: fresh budget per call
+@query_budget(warn_at=10)
+def my_view(request):
+    return render(request, 'template.html', expensive_context())
+```
+
 ## Links
 
 - Documentation: <https://django-utils-2.readthedocs.io/en/latest/>

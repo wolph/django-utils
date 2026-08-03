@@ -4,6 +4,10 @@
 
 ### Added
 
+- `django_utils.query_debug.query_budget`: production-safe query counting via
+  `connection.execute_wrapper()` — warn or raise on N+1 regressions in real code
+  paths, where `assertNumQueries` (test-only) and profilers (dev-only) cannot
+  live. The dominant N+1 package (nplusone) has been unmaintained since 2018.
 - `django_utils.context`: contextvars-native current request/user access
   (`RequestContextMiddleware`, `get_current_request()`, `get_current_user()`,
   `current_request()` context manager). Safe under ASGI where thread-local
