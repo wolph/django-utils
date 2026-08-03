@@ -43,3 +43,13 @@ class RecursionTest(models.Model):
 
 class Sandwich(models.Model):
     data = models.JSONField(default=dict)
+
+
+class Review(models.Model):
+    sandwich = models.ForeignKey(Sandwich, on_delete=models.CASCADE)
+    rating = models.IntegerField()
+
+
+class Topping(models.Model):
+    sandwich = models.ForeignKey(Sandwich, on_delete=models.CASCADE)
+    price = models.IntegerField()

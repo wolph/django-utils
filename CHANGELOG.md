@@ -22,6 +22,10 @@
   allows header-less clients (token CSRF stays the backstop), with
   `fetch_metadata_exempt` decorator for opt-outs. Defense-in-depth: run
   alongside `CsrfViewMiddleware`, never instead of it.
+- `django_utils.aggregates`: `SubqueryCount`, `SubquerySum`, `SubqueryAvg`,
+  `SubqueryMin`, `SubqueryMax` — aggregate annotations that run as independent
+  subqueries, immune to the JOIN fan-out that makes
+  `annotate(Count('a'), Count('b'))` silently multiply counts.
 - `django_utils.context`: contextvars-native current request/user access
   (`RequestContextMiddleware`, `get_current_request()`, `get_current_user()`,
   `current_request()` context manager). Safe under ASGI where thread-local

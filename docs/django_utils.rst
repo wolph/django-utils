@@ -13,6 +13,14 @@ Subpackages
 Submodules
 ----------
 
+django_utils.aggregates module
+------------------------------
+
+.. automodule:: django_utils.aggregates
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 django_utils.auth module
 ------------------------
 
