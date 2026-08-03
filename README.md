@@ -318,7 +318,7 @@ if user.has_perm(permission_string(MyModel, 'change')):
 
 ## Modern CSRF (Fetch-Metadata) middleware
 
-Browser request headers have made the old CSRF token/template-tag dance unnecessary. The `Sec-Fetch-Site` header (sent by all modern browsers since ~2019) tells you whether a request is same-origin, same-site, or cross-site — no tokens required.
+Modern browsers send request metadata headers that let you reject cross-site state-changing requests before token checks even run — as a second layer, not a replacement. The `Sec-Fetch-Site` header (sent by all modern browsers since ~2019) tells you whether a request is same-origin, same-site, or cross-site — no tokens required.
 
 `FetchMetadataMiddleware` rejects cross-site state-changing requests by header inspection alone, with a fallback to `Origin` header for older browsers. It's **defense-in-depth**: run it *alongside* Django's `CsrfViewMiddleware`, never instead of it. Old browsers and non-browser clients (curl, webhooks) carry neither header and pass through — that's where token CSRF still catches attacks.
 
@@ -329,6 +329,8 @@ The policy, in order:
 3. `Sec-Fetch-Site` present: allow `same-origin`/`same-site`/`none` (browser UI); reject everything else with 403 — unknown values fail closed.
 4. No `Sec-Fetch-Site`: compare `Origin` header to `scheme://host`; mismatch rejected.
 5. Neither header: allow (token CSRF is the backstop).
+
+Behind a TLS-terminating proxy without `SECURE_PROXY_SSL_HEADER` configured, step 4 can false-reject a legacy browser: `request.scheme` reads `http` while its `Origin` header is `https://…`; modern browsers are unaffected since they send `Sec-Fetch-Site`. Configure `SECURE_PROXY_SSL_HEADER` per [the Django docs](https://docs.djangoproject.com/en/stable/ref/settings/#secure-proxy-ssl-header).
 
 Add to `MIDDLEWARE`:
 

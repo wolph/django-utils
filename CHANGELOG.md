@@ -8,7 +8,8 @@
   and `permission_string()` — the helpers behind django/new-features #47 and
   #137 (67 combined reactions) that every project hand-rolls. Both decorators
   work bare (`@superuser_required`) and parameterized
-  (`@superuser_required(raise_exception=True)`), with redirect or 403 options.
+  (`@superuser_required(raise_exception=True)`), with redirect or 403 options,
+  and work on both sync and async views.
   `permission_string()` builds the `'app_label.action_modelname'` string every
   `user.has_perm()` call needs from a model class.
 - `django_utils.query_debug.query_budget`: production-safe query counting via

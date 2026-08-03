@@ -9,6 +9,7 @@ needs is hand-formatted everywhere (django/new-features #137);
 """
 
 import functools
+import sys
 import typing
 from collections.abc import Callable
 
@@ -17,7 +18,71 @@ from django.contrib.auth import decorators as auth_decorators
 from django.core import exceptions
 from django.db import models
 
+if sys.version_info >= (3, 12):
+    from inspect import iscoroutinefunction
+else:  # pragma: no cover
+    # Same dispatch asgiref does internally, spelled so type checkers can
+    # narrow it: pre-3.12, inspect.iscoroutinefunction doesn't honor
+    # asgiref's `_is_coroutine` marker, so asgiref's shim is required.
+    from asgiref.sync import iscoroutinefunction
+
 _View = typing.TypeVar('_View', bound=Callable[..., typing.Any])
+
+
+def _denied(
+    request: typing.Any, *args: typing.Any, **kwargs: typing.Any
+) -> typing.Any:  # pragma: no cover
+    raise AssertionError('user_passes_test redirects before calling this')
+
+
+def _denied_response(
+    request: typing.Any,
+    args: tuple[typing.Any, ...],
+    kwargs: dict[str, typing.Any],
+    raise_exception: bool,
+    redirecting: Callable[..., typing.Any],
+) -> typing.Any:
+    if raise_exception:
+        raise exceptions.PermissionDenied
+    return redirecting(request, *args, **kwargs)
+
+
+def _wrap_async(
+    func: _View,
+    check: Callable[[typing.Any], bool],
+    raise_exception: bool,
+    redirecting: Callable[..., typing.Any],
+) -> _View:
+    @functools.wraps(func)
+    async def async_wrapper(
+        request: typing.Any, *args: typing.Any, **kwargs: typing.Any
+    ) -> typing.Any:
+        if check(request.user):
+            return await func(request, *args, **kwargs)
+        return _denied_response(
+            request, args, kwargs, raise_exception, redirecting
+        )
+
+    return typing.cast(_View, async_wrapper)
+
+
+def _wrap_sync(
+    func: _View,
+    check: Callable[[typing.Any], bool],
+    raise_exception: bool,
+    redirecting: Callable[..., typing.Any],
+) -> _View:
+    @functools.wraps(func)
+    def wrapper(
+        request: typing.Any, *args: typing.Any, **kwargs: typing.Any
+    ) -> typing.Any:
+        if check(request.user):
+            return func(request, *args, **kwargs)
+        return _denied_response(
+            request, args, kwargs, raise_exception, redirecting
+        )
+
+    return typing.cast(_View, wrapper)
 
 
 def _flag_required(
@@ -30,21 +95,20 @@ def _flag_required(
         return bool(getattr(user, flag, False))
 
     def decorator(func: _View) -> _View:
+        # `django.contrib.auth.decorators.user_passes_test` only gained
+        # async support in Django 5.0, so the real (possibly async) view
+        # is never handed to it. `user_passes_test` only calls the
+        # wrapped callable to redirect it, which happens only when
+        # `check` fails -- so wrapping this never-called shim keeps the
+        # redirect/login_url logic Django's own on every supported
+        # version.
         redirecting = auth_decorators.user_passes_test(
             check, login_url=login_url
-        )(func)
+        )(_denied)
 
-        @functools.wraps(func)
-        def wrapper(
-            request: typing.Any, *args: typing.Any, **kwargs: typing.Any
-        ) -> typing.Any:
-            if check(request.user):
-                return func(request, *args, **kwargs)
-            if raise_exception:
-                raise exceptions.PermissionDenied
-            return redirecting(request, *args, **kwargs)
-
-        return typing.cast(_View, wrapper)
+        if iscoroutinefunction(func):
+            return _wrap_async(func, check, raise_exception, redirecting)
+        return _wrap_sync(func, check, raise_exception, redirecting)
 
     if view_func is None:
         return decorator
@@ -64,7 +128,8 @@ def superuser_required(
     Failing users are redirected to login (``login_url`` or
     ``settings.LOGIN_URL``); with ``raise_exception=True`` they get
     ``PermissionDenied`` (HTTP 403) instead, matching
-    ``permission_required``'s option of the same name.
+    ``permission_required``'s option of the same name. Works on both
+    sync and async views.
     """
     return _flag_required(
         'is_superuser', view_func, login_url, raise_exception
@@ -77,7 +142,10 @@ def staff_required(
     login_url: str | None = None,
     raise_exception: bool = False,
 ) -> '_View | Callable[[_View], _View]':
-    """Allow only users with ``is_staff``.  See ``superuser_required``."""
+    """Allow only users with ``is_staff``.  See ``superuser_required``.
+
+    Works on both sync and async views.
+    """
     return _flag_required('is_staff', view_func, login_url, raise_exception)
 
 

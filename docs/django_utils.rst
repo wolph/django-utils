@@ -13,6 +13,14 @@ Subpackages
 Submodules
 ----------
 
+django_utils.auth module
+------------------------
+
+.. automodule:: django_utils.auth
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 django_utils.base_models module
 -------------------------------
 
@@ -29,10 +37,34 @@ django_utils.choices module
     :undoc-members:
     :show-inheritance:
 
+django_utils.context module
+---------------------------
+
+.. automodule:: django_utils.context
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 django_utils.fields module
 --------------------------
 
 .. automodule:: django_utils.fields
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+django_utils.middleware module
+-------------------------------
+
+.. automodule:: django_utils.middleware
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+django_utils.query_debug module
+--------------------------------
+
+.. automodule:: django_utils.query_debug
     :members:
     :undoc-members:
     :show-inheritance:

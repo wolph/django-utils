@@ -1,6 +1,7 @@
 """Tests for django_utils.auth."""
 
 import pytest
+from asgiref import sync
 from django import http
 from django.contrib.auth import models as auth_models
 from django.core import exceptions
@@ -10,6 +11,10 @@ from tests.test_app import models
 
 
 def ok_view(request):
+    return http.HttpResponse('ok')
+
+
+async def async_ok_view(request):
     return http.HttpResponse('ok')
 
 
@@ -73,6 +78,36 @@ def test_staff_required_blocks_plain_user(rf, plain_user):
     view = auth.staff_required(raise_exception=True)(ok_view)
     with pytest.raises(exceptions.PermissionDenied):
         view(_request(rf, plain_user))
+
+
+def test_superuser_required_anonymous_raise_exception(rf):
+    view = auth.superuser_required(raise_exception=True)(ok_view)
+    with pytest.raises(exceptions.PermissionDenied):
+        view(_request(rf, auth_models.AnonymousUser()))
+
+
+def test_superuser_required_allows_async_superuser(rf, superuser):
+    decorated = auth.superuser_required(async_ok_view)
+    assert sync.iscoroutinefunction(decorated)
+    response = sync.async_to_sync(decorated)(_request(rf, superuser))
+    assert response.status_code == 200
+
+
+def test_superuser_required_redirects_async_staff(rf, staff):
+    decorated = auth.superuser_required(login_url='/other-login/')(
+        async_ok_view
+    )
+    response = sync.async_to_sync(decorated)(_request(rf, staff))
+    assert response.status_code == 302
+    assert response.url.startswith('/other-login/')
+
+
+def test_staff_required_async_raise_exception_blocks_plain_user(
+    rf, plain_user
+):
+    decorated = auth.staff_required(raise_exception=True)(async_ok_view)
+    with pytest.raises(exceptions.PermissionDenied):
+        sync.async_to_sync(decorated)(_request(rf, plain_user))
 
 
 def test_decorators_preserve_view_metadata():

@@ -70,8 +70,10 @@ class TestSecFetchSite:
         response = client_call('/page/', headers={'sec-fetch-site': site})
         assert response.status_code == 200
 
-    def test_cross_site_post_rejected(self):
-        response = Client().post(
+    @pytest.mark.parametrize('method', ['post', 'put', 'patch', 'delete'])
+    def test_cross_site_rejected_all_unsafe_methods(self, method):
+        client_call = getattr(Client(), method)
+        response = client_call(
             '/page/', headers={'sec-fetch-site': 'cross-site'}
         )
         assert response.status_code == 403
@@ -150,16 +152,28 @@ class TestOriginFallback:
         response = Client().post('/page/', headers={'origin': origin})
         assert response.status_code == 403
 
-    def test_disallowed_host_rejected(self):
+    def test_disallowed_host_rejected(self, caplog):
         # When get_host() raises DisallowedHost, reject the request.
-        response = Client().post(
-            '/page/',
-            headers={
-                'origin': 'http://x.example',
-                'host': 'evil.example',
-            },
-        )
+        import logging
+
+        with caplog.at_level(
+            logging.WARNING, logger='django_utils.middleware'
+        ):
+            response = Client().post(
+                '/page/',
+                headers={
+                    'origin': 'http://x.example',
+                    'host': 'evil.example',
+                },
+            )
         assert response.status_code == 403
+        records = [
+            r for r in caplog.records if r.name == 'django_utils.middleware'
+        ]
+        (record,) = records
+        # Pins that the DisallowedHost branch, not an ordinary origin
+        # mismatch, produced the 403.
+        assert 'disallowed Host' in record.getMessage()
 
 
 class TestExemption:

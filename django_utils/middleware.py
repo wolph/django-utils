@@ -83,14 +83,23 @@ class FetchMetadataMiddleware:
     4. No ``Sec-Fetch-Site``: compare ``Origin`` to this request's
        ``scheme://host``; mismatch is rejected.
     5. Neither header: allow.  Token CSRF remains the backstop.
+
+    Behind a TLS-terminating proxy, step 4 can false-reject: without
+    ``SECURE_PROXY_SSL_HEADER`` configured, ``request.scheme`` reads
+    ``http`` while a legacy browser's ``Origin`` header (the client sees
+    only the outer HTTPS connection) is ``https://…``, so the exact-match
+    comparison fails and the request is rejected as cross-site. Modern
+    browsers are unaffected -- they send ``Sec-Fetch-Site``, which step 3
+    handles first. Configure ``SECURE_PROXY_SSL_HEADER`` per the Django
+    docs to fix ``request.scheme`` itself.
     """
 
     sync_capable = True
     async_capable = True
 
     def __init__(self, get_response: _GetResponse | _AsyncGetResponse) -> None:
-        self.get_response = get_response
-        self._is_async = iscoroutinefunction(get_response)
+        self.get_response: _GetResponse | _AsyncGetResponse = get_response
+        self._is_async: bool = iscoroutinefunction(get_response)
         if self._is_async:
             # Marking the instance is Django's documented idiom for hybrid
             # middleware; typeshed types markcoroutinefunction for plain
@@ -99,7 +108,7 @@ class FetchMetadataMiddleware:
 
     def __call__(
         self, request: http.HttpRequest
-    ) -> 'http.HttpResponseBase | Awaitable[http.HttpResponseBase]':
+    ) -> http.HttpResponseBase | Awaitable[http.HttpResponseBase]:
         if self._is_async:
             return typing.cast(_AsyncGetResponse, self.get_response)(request)
         return typing.cast(_GetResponse, self.get_response)(request)

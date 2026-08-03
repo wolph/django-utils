@@ -90,15 +90,18 @@ class RequestContextMiddleware:
     Add to ``MIDDLEWARE`` (any position; before auth middleware is fine
     because ``get_current_user`` reads the user lazily).  The variable is
     reset in a ``finally`` so an exception anywhere downstream cannot leak
-    one request into the next.
+    one request into the next.  That reset happens as soon as the view
+    returns a response, before a ``StreamingHttpResponse`` body iterator
+    runs -- so ``get_current_request()`` called from inside one returns
+    ``None``.
     """
 
     sync_capable = True
     async_capable = True
 
     def __init__(self, get_response: _GetResponse | _AsyncGetResponse) -> None:
-        self.get_response = get_response
-        self._is_async = iscoroutinefunction(get_response)
+        self.get_response: _GetResponse | _AsyncGetResponse = get_response
+        self._is_async: bool = iscoroutinefunction(get_response)
         if self._is_async:
             # Marking the instance is Django's documented idiom for hybrid
             # middleware; typeshed types markcoroutinefunction for plain
@@ -107,7 +110,7 @@ class RequestContextMiddleware:
 
     def __call__(
         self, request: http.HttpRequest
-    ) -> 'http.HttpResponseBase | Awaitable[http.HttpResponseBase]':
+    ) -> http.HttpResponseBase | Awaitable[http.HttpResponseBase]:
         if self._is_async:
             return self._acall(request)
         token = _request_var.set(request)
