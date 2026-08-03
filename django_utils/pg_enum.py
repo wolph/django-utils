@@ -122,8 +122,9 @@ class EnumField(_FieldBase):
 
     ``choices`` is always derived from ``choices_class`` -- there is no
     override; passing a ``choices=`` keyword too raises ``TypeError``
-    (``CharField.__init__`` got two values for it). ``max_length`` is
-    derived as the longest value's length unless given explicitly.
+    (this ``__init__`` rejects it explicitly, before deriving anything).
+    ``max_length`` is derived as the longest value's length unless given
+    explicitly.
     ``enum_type`` defaults to ``choices_class``'s name in snake_case
     (``SandwichStatus`` -> ``'sandwich_status'``) and names the
     PostgreSQL type this field's column references -- that type must

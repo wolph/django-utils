@@ -159,7 +159,7 @@ def test_full_model_round_trip_sqlite(order_table):
     assert order.status == models.OrderStatus.Shipped
 
 
-def test_full_clean_rejects_non_choice_value(order_table):
+def test_full_clean_rejects_non_choice_value():
     order = models.Order(status='not-a-real-status')
     with pytest.raises(dj_exceptions.ValidationError):
         order.full_clean()
@@ -316,6 +316,81 @@ def test_drop_enum_type_removes_from_catalog():
     with connection.cursor() as cursor:
         cursor.execute('SELECT 1 FROM pg_type WHERE typname = %s', [type_name])
         assert cursor.fetchone() is None
+
+
+@pytest.mark.postgres
+def test_readme_recreate_and_migrate_recipe():
+    """Pins the README's recreate-and-migrate escape-hatch recipe.
+
+    Exercises the exact database-level steps the recipe documents: create
+    the v1 type, a table, and some data; create the v2 type; cast the
+    column with the documented ``ALTER TABLE ... ALTER COLUMN ... TYPE
+    ... USING status::text::...`` (the two-step cast through ``text`` --
+    PostgreSQL has no direct enum-to-enum cast, and without the ``USING``
+    clause at all -- what a plain ``migrations.AlterField`` would emit --
+    PostgreSQL refuses with "column ... cannot be cast automatically",
+    which is exactly why the README uses ``SeparateDatabaseAndState``
+    instead); verify the existing rows survived the cast and the column's
+    new type is v2; then drop the old (v1) type.
+    """
+    type_v1 = 'pg_enum_test_recipe_v1'
+    type_v2 = 'pg_enum_test_recipe_v2'
+    table_name = 'pg_enum_test_recipe_table'
+    values_v1 = ['pending', 'shipped', 'delivered']
+    values_v2 = [*values_v1, 'cancelled']
+
+    create_v1 = pg_enum.CreateEnumType(type_v1, values_v1)
+    create_v2 = pg_enum.CreateEnumType(type_v2, values_v2)
+    try:
+        with connection.schema_editor() as schema_editor:
+            create_v1.database_forwards('test_app', schema_editor, None, None)
+            schema_editor.execute(
+                f'CREATE TABLE {schema_editor.quote_name(table_name)} '
+                f'(id serial primary key, '
+                f'status {schema_editor.quote_name(type_v1)})'
+            )
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f'INSERT INTO {connection.ops.quote_name(table_name)} '
+                f"(status) VALUES ('pending'), ('shipped')"
+            )
+
+        with connection.schema_editor() as schema_editor:
+            create_v2.database_forwards('test_app', schema_editor, None, None)
+            # The exact statement the README documents.
+            schema_editor.execute(
+                f'ALTER TABLE {schema_editor.quote_name(table_name)} '
+                f'ALTER COLUMN status TYPE '
+                f'{schema_editor.quote_name(type_v2)} '
+                f'USING status::text::{schema_editor.quote_name(type_v2)}'
+            )
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f'SELECT status FROM {connection.ops.quote_name(table_name)} '
+                f'ORDER BY id'
+            )
+            assert [row[0] for row in cursor.fetchall()] == [
+                'pending',
+                'shipped',
+            ]
+
+            cursor.execute(
+                'SELECT udt_name FROM information_schema.columns '
+                'WHERE table_name = %s AND column_name = %s',
+                [table_name, 'status'],
+            )
+            row = cursor.fetchone()
+            assert row is not None
+            assert row[0] == type_v2
+    finally:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f'DROP TABLE IF EXISTS {connection.ops.quote_name(table_name)}'
+            )
+        with connection.schema_editor() as schema_editor:
+            create_v1.database_backwards('test_app', schema_editor, None, None)
+            create_v2.database_backwards('test_app', schema_editor, None, None)
 
 
 @pytest.mark.postgres
