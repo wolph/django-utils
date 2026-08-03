@@ -286,6 +286,36 @@ def my_view(request):
     return render(request, 'template.html', expensive_context())
 ```
 
+## Auth helpers
+
+Permission checks and decorator helpers for view access control. Django ships
+`login_required` and `permission_required`, but `superuser_required` and
+`staff_required` must be reimplemented in nearly every project. Likewise,
+building permission strings for `user.has_perm()` is always hand-formatted.
+
+```python
+from django_utils.auth import superuser_required, staff_required, permission_string
+
+# Decorate views to require superuser (bare or with options)
+@superuser_required
+def admin_only_view(request):
+    return HttpResponse('Admin content')
+
+@superuser_required(raise_exception=True)  # Raises 403 instead of redirecting
+def strict_admin_view(request):
+    return HttpResponse('Admin content')
+
+# Same for staff
+@staff_required
+def staff_only_view(request):
+    return HttpResponse('Staff content')
+
+# Build permission strings for has_perm checks
+if user.has_perm(permission_string(MyModel, 'change')):
+    # user can change MyModel instances
+    pass
+```
+
 ## Links
 
 - Documentation: <https://django-utils-2.readthedocs.io/en/latest/>
