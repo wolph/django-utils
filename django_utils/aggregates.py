@@ -86,10 +86,17 @@ class _RelationNameMixin:
     )
 
     def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
-        """Typing-only stub so ``type(self)(...)`` below type-checks.
+        """Cooperative passthrough link, ahead of ``Subquery`` in the MRO.
 
-        Every concrete subclass defines its own ``__init__`` and is
-        constructed through that, never through this one.
+        Every concrete subclass sets ``self._deferred`` itself and defines
+        its own ``__init__``, but for the non-string (real queryset) path
+        each one ends by calling ``super().__init__(...)``, which the MRO
+        of ``class SubqueryCount(_RelationNameMixin, expressions.Subquery)``
+        routes through here before it reaches ``Subquery.__init__``. This
+        override also gives ``type(self)(...)`` in ``resolve_expression``
+        below a permissive signature to type-check against, since a bare
+        mixin (no ``__init__`` of its own) would otherwise type-check
+        against ``object.__init__`` (0 arguments).
         """
         super().__init__(*args, **kwargs)
 
