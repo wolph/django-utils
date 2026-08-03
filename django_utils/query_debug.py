@@ -59,6 +59,8 @@ class query_budget(contextlib.ContextDecorator):  # noqa: N801
     ``using`` limits counting to one connection alias; the default counts
     every configured connection.  Each decorated call gets a fresh
     budget; instances are single-use per ``with`` (not reentrant).
+    Instances are not thread-safe; the decorator form is safe because
+    each call gets a fresh instance.
     """
 
     def __init__(

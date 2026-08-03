@@ -109,3 +109,25 @@ def test_using_limits_to_one_alias():
     with query_debug.query_budget(warn_at=100, using='default') as budget:
         _run_queries(2)
     assert budget.count == 2
+
+
+@pytest.mark.django_db
+def test_decorator_recursion_gets_fresh_budget_per_call():
+    # A shared instance would hit the single-use RuntimeError guard on
+    # the recursive entry; _recreate_cm must hand each call its own
+    # budget instance.
+    @query_debug.query_budget(warn_at=100)
+    def recurse(depth: int) -> None:
+        _run_queries(1)
+        if depth:
+            recurse(depth - 1)
+
+    recurse(2)
+
+
+@pytest.mark.django_db(databases=['default', 'other'])
+def test_using_excludes_other_aliases():
+    with query_debug.query_budget(warn_at=100, using='default') as budget:
+        list(models.Sandwich.objects.using('other').all())
+        _run_queries(1)
+    assert budget.count == 1

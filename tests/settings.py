@@ -6,7 +6,12 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': ':memory:',
-    }
+    },
+    # Second alias solely so query_budget's `using` exclusion is testable.
+    'other': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',
+    },
 }
 
 ALLOWED_HOSTS: list[str] = []
