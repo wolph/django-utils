@@ -185,3 +185,64 @@ def test_sliced_count(sandwich):
         ),
     ).get(pk=sandwich.pk)
     assert annotated.top_two_count == 2
+
+
+def test_relation_name_count_matches_queryset_form(sandwich):
+    by_name = models.Sandwich.objects.annotate(
+        reviews=aggregates.SubqueryCount('review'),
+        toppings=aggregates.SubqueryCount('topping'),
+    ).get(pk=sandwich.pk)
+    assert by_name.reviews == 2
+    assert by_name.toppings == 3
+
+
+def test_relation_name_column_aggregates(sandwich):
+    annotated = models.Sandwich.objects.annotate(
+        total=aggregates.SubquerySum('topping', 'price'),
+        avg_rating=aggregates.SubqueryAvg('review', 'rating'),
+    ).get(pk=sandwich.pk)
+    assert annotated.total == 9
+    assert annotated.avg_rating == pytest.approx(3.0)
+
+
+def test_relation_name_forward_m2m(sandwich):
+    for name in ('spicy', 'vegan'):
+        sandwich.tags.create(name=name)
+    annotated = models.Sandwich.objects.annotate(
+        tag_count=aggregates.SubqueryCount('tags'),
+    ).get(pk=sandwich.pk)
+    assert annotated.tag_count == 2
+
+
+def test_relation_name_reverse_m2m(sandwich):
+    tag = models.Tag.objects.create(name='classic')
+    tag.sandwiches.add(sandwich)
+    annotated = models.Tag.objects.annotate(
+        sandwich_count=aggregates.SubqueryCount('sandwiches'),
+    ).get(pk=tag.pk)
+    assert annotated.sandwich_count == 1
+
+
+def test_relation_name_unknown_raises(sandwich):
+    with pytest.raises(ValueError, match='unknown relation'):
+        list(
+            models.Sandwich.objects.annotate(
+                n=aggregates.SubqueryCount('nonexistent'),
+            )
+        )
+
+
+def test_relation_name_non_relation_raises(sandwich):
+    with pytest.raises(ValueError, match='not a reverse or many-to-many'):
+        list(
+            models.Sandwich.objects.annotate(
+                n=aggregates.SubqueryCount('data'),
+            )
+        )
+
+
+def test_relation_name_respects_avg_default_output_field(sandwich):
+    annotated = models.Sandwich.objects.annotate(
+        avg_rating=aggregates.SubqueryAvg('review', 'rating'),
+    ).get(pk=sandwich.pk)
+    assert isinstance(annotated.avg_rating, float)

@@ -360,6 +360,17 @@ References: [django/new-features #98](https://github.com/django/new-features/iss
 Annotating two one-to-many relations together is a footgun: `annotate(Count('review'), Count('topping'))` implements each aggregate as a JOIN, so the cartesian product multiplies counts — a sandwich with 2 reviews and 3 toppings reports 6 of each. Use `SubqueryCount`, `SubquerySum`, `SubqueryAvg`, `SubqueryMin`, and `SubqueryMax` to run each aggregate in its own independent subquery instead:
 
 ```python
+from django_utils.aggregates import SubqueryCount, SubquerySum
+
+Sandwich.objects.annotate(
+    reviews=SubqueryCount('review'),
+    topping_total=SubquerySum('topping', 'price'),
+)
+```
+
+Passing a relation name resolves it against the annotated model at query-build time — reverse FK, reverse many-to-many, and forward many-to-many relations are all supported. For anything the name form can't express (an inner `filter()`, a top-N slice, a relation reached through another model), pass a queryset explicitly instead — it's resolved as an `OuterRef('pk')`-correlated subquery either way:
+
+```python
 from django.db.models import OuterRef
 from django_utils.aggregates import SubqueryCount, SubquerySum
 

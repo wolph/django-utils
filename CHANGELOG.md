@@ -25,7 +25,10 @@
 - `django_utils.aggregates`: `SubqueryCount`, `SubquerySum`, `SubqueryAvg`,
   `SubqueryMin`, `SubqueryMax` — aggregate annotations that run as independent
   subqueries, immune to the JOIN fan-out that makes
-  `annotate(Count('a'), Count('b'))` silently multiply counts.
+  `annotate(Count('a'), Count('b'))` silently multiply counts. All five also
+  accept a relation name in place of a queryset (`SubqueryCount('review')`,
+  `SubquerySum('topping', 'price')`) for reverse FK and (reverse or forward)
+  many-to-many relations, resolved against the annotated model.
 - `django_utils.bulk.bulk_update_or_create`: chunked upsert on Django's
   native `bulk_create(update_conflicts=True)` — one
   `INSERT ... ON CONFLICT DO UPDATE` per batch instead of 2N racy queries.

@@ -69,3 +69,8 @@ class Topping(models.Model):
 class Ingredient(models.Model):
     name = models.CharField(max_length=50, unique=True)
     stock = models.IntegerField(default=0)
+
+
+class Tag(models.Model):
+    name = models.CharField(max_length=50)
+    sandwiches = models.ManyToManyField(Sandwich, related_name='tags')
