@@ -9,6 +9,23 @@
     'use strict';
 
     function activate(select) {
+        // `admin_list_filter` renders each filter spec's template
+        // independently and concatenates the results onto the
+        // changelist page, so on a page with more than one dropdown
+        // filter (a supported, `JSONFieldFilter.create()`-encouraged
+        // configuration) this file's `<script src>` tag -- emitted
+        // unconditionally by dropdown_filter.html -- appears once per
+        // filter. A classic script executes its top-level code once per
+        // occurrence, so `init()` below runs once per filter too, each
+        // time re-querying every `[data-dropdown-filter]` select on the
+        // whole page. Without this marker, that would attach a `change`
+        // listener to the same select N times. Guard: skip a select
+        // that's already been activated.
+        if (select.dataset.duDropdownActivated) {
+            return;
+        }
+        select.dataset.duDropdownActivated = '1';
+
         var container = select.closest('ul');
         if (!container) {
             return;

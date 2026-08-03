@@ -15,6 +15,18 @@
         }
         var selects = document.querySelectorAll('[data-select2-filter]');
         Array.prototype.forEach.call(selects, function (select) {
+            // See dropdown_filter.js's `activate()` for why this guard
+            // exists: this file's `<script src>` tag (loaded by
+            // select2_filter.html's `post` block) appears once per
+            // select2 filter on the changelist, so this `init()` runs
+            // once per occurrence too. Calling `.select2()` again on an
+            // already-initialized element without first calling
+            // `.select2('destroy')` is a documented select2 footgun
+            // (duplicate widgets), so skip anything already activated.
+            if (select.dataset.duSelect2Activated) {
+                return;
+            }
+            select.dataset.duSelect2Activated = '1';
             django.jQuery(select).select2();
         });
     }

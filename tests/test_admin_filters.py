@@ -773,6 +773,58 @@ def test_dropdown_filter_renders_links_and_hidden_select_for_many_choices(
 
 
 @pytest.mark.django_db
+def test_two_dropdown_filters_on_one_changelist_each_render_their_own_markup(
+    rf,
+):
+    """`JSONFieldFilter.create()` is explicitly designed to be used more
+    than once per admin (different sub-paths get independent filters),
+    and `admin_list_filter` renders each filter spec's template
+    independently -- the results are concatenated onto the same
+    changelist page. So with two dropdown filters, `dropdown_filter.
+    html`'s unconditional `<script src=".../dropdown_filter.js">` tag
+    is emitted *twice*, and a classic `<script src>` executes its
+    top-level code once per occurrence -- meaning `dropdown_filter.js`'s
+    `DOMContentLoaded` listener would fire twice, each pass re-querying
+    every `[data-dropdown-filter]` select on the page. Without the
+    per-element `dataset` marker guard in `dropdown_filter.js`, that
+    doubles up `change` listeners (and, for select2, re-inits the
+    widget) per select for every extra filter using the same template.
+    JS behavior itself isn't exercised here (no browser harness in this
+    project) -- this proves the N-occurrence markup shape the guard
+    has to cope with.
+    """
+    models.Sandwich.objects.create(
+        data={'filling': 'bacon', 'topping': 'sesame'}
+    )
+    models.Sandwich.objects.create(
+        data={'filling': 'cheese', 'topping': 'poppy'}
+    )
+    models.Sandwich.objects.create(data={'filling': 'egg', 'topping': 'plain'})
+    models.Sandwich.objects.create(data={'filling': 'ham', 'topping': 'onion'})
+
+    filling_filter = filters.JSONFieldFilterDropdown.create('data__filling')
+    topping_filter = filters.JSONFieldFilterDropdown.create('data__topping')
+
+    class SandwichAdmin(admin.ModelAdmin):
+        list_display = ('id',)
+        list_filter = (filling_filter, topping_filter)
+
+    model_admin = SandwichAdmin(models.Sandwich, admin.AdminSite())
+    request = rf.get('/admin/test_app/sandwich/')
+    request.user = User(is_superuser=True, is_active=True, is_staff=True)
+    changelist = model_admin.get_changelist_instance(request)
+    assert len(changelist.filter_specs) == 2
+
+    rendered = ''.join(
+        str(admin_list_filter(changelist, spec))
+        for spec in changelist.filter_specs
+    )
+
+    assert rendered.count('django_utils/admin/dropdown_filter.js') == 2
+    assert rendered.count('data-dropdown-filter') == 2
+
+
+@pytest.mark.django_db
 def test_select2_filter_renders_select_with_activation_script(
     rf, variant_filter_admin
 ):
