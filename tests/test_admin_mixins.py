@@ -2,6 +2,7 @@
 
 import pytest
 from django.contrib import admin
+from django.contrib.admin import helpers
 from django.contrib.auth.models import User
 from django_utils.admin import mixins
 
@@ -67,22 +68,53 @@ def test_admin_checks_pass(model_admin):
 
 def test_change_view_includes_m2m_in_readonly(rf):
     """Regression: M2M fields sat in the fieldset but in neither
-    form.base_fields nor readonly_fields -> KeyError/500 on render.
-    Verify readonly_fields includes M2M fields."""
+    form.base_fields nor readonly_fields.
+
+    The crash lived in template rendering: ``change_form.html`` iterates
+    ``helpers.AdminForm`` fieldsets, and building a ``Fieldline`` for a
+    field that is in neither collection raises ``KeyError`` -> 500 on a
+    plain GET (reachable: ``has_view_or_change_permission`` is an OR and
+    view permission stays True). Replicate that exact iteration here —
+    asserting on ``get_form()`` alone would pass even against the buggy
+    implementation.
+    """
     tag = models.Tag.objects.create(name='classic')
     tag.sandwiches.add(models.Sandwich.objects.create(data={}))
     model_admin = ReadOnlyTagAdmin(models.Tag, admin.AdminSite())
     request = rf.get(f'/admin/test_app/tag/{tag.pk}/change/')
     request.user = User.objects.create(
-        pk=1, is_superuser=True, is_staff=True, is_active=True
+        username='m2m-admin', is_superuser=True, is_staff=True, is_active=True
     )
-    # Verify M2M field is in readonly_fields (the regression fix)
+
     readonly = model_admin.get_readonly_fields(request, tag)
     assert 'sandwiches' in readonly
-    # Verify form generation doesn't crash with M2M in readonly_fields
-    form = model_admin.get_form(request, tag, change=True)
-    # The form should be generated without KeyError on render
-    assert form is not None
+
+    form_class = model_admin.get_form(request, tag, change=True)
+    admin_form = helpers.AdminForm(
+        form_class(instance=tag),
+        list(model_admin.get_fieldsets(request, tag)),
+        {},
+        readonly,
+        model_admin=model_admin,
+    )
+    rendered: list[str] = []
+    for fieldset in admin_form:
+        for line in fieldset:  # pre-fix: KeyError 'sandwiches' here
+            rendered.extend(
+                str(field.contents())
+                for field in line
+                if isinstance(field, helpers.AdminReadonlyField)
+            )
+    # The name field's readonly contents must have rendered, and the
+    # M2M field must appear in the iterated fieldlines — completing the
+    # iteration at all is the crash-regression proof.
+    assert any('classic' in value for value in rendered)
+    assert 'sandwiches' in {
+        field
+        for fieldset in admin_form
+        for line in fieldset
+        for field in line.fields
+    }
 
 
 def test_view_permission_respects_default_for_non_staff_user(rf):
