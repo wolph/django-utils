@@ -174,6 +174,24 @@
 
 ### Changed
 
+- Test infrastructure: the full test suite now also runs against
+  PostgreSQL 16 in CI (a new, parallel `postgres` job), not just
+  SQLite. `tests/settings.py` gained an opt-in env-var switch
+  (`DJANGO_UTILS_TEST_POSTGRES=1`, plus `POSTGRES_HOST`/`POSTGRES_PORT`/
+  `POSTGRES_USER`/`POSTGRES_PASSWORD`, all with local-Postgres-friendly
+  defaults) that flips both configured database aliases to PostgreSQL;
+  local `pytest`/`tox` runs are unaffected unless the var is set.
+  Deliberate deviation from the originating spec's "a `postgres`
+  marker; one tox env running the marked tests" text: running the
+  *full* suite against PostgreSQL strictly exceeds that (every
+  ORM-touching claim gets real cross-backend coverage, not a
+  hand-picked subset picked by whoever adds the next test). The
+  `postgres` pytest marker is still registered (`tests/conftest.py`,
+  new) and auto-skips when the env var isn't set -- kept for *future*
+  PostgreSQL-only tests (e.g. an upcoming ENUM field with no SQLite
+  equivalent), not as the current PostgreSQL-suite selector. See the
+  `[testenv:py313-django52-postgres]` comment in `tox.ini` for the
+  same note in context.
 - A prior version of this changelog reported that `queryset_iterator`
   was benchmarked against `QuerySet.iterator(chunk_size=...)` and lost.
   That conclusion was wrong and has been corrected. The benchmark

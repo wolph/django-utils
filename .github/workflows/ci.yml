@@ -68,6 +68,31 @@ jobs:
           path: .tox/.coverage.*
           include-hidden-files: true
 
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          activate-environment: true
+          python-version: '3.13'
+      - run: uv pip install '.[tox]'
+      - name: Run tests against PostgreSQL
+        run: tox -e py313-django52-postgres
+
   docs:
     runs-on: ubuntu-latest
     timeout-minutes: 10

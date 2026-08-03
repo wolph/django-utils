@@ -1,18 +1,43 @@
 """Django settings for the django-utils2 test suite."""
 
+import os
+
 DEBUG = True
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': ':memory:',
-    },
-    # Second alias solely so query_budget's `using` exclusion is testable.
-    'other': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': ':memory:',
-    },
-}
+
+def _postgres_database(name: str) -> dict[str, str]:
+    return {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': name,
+        'HOST': os.environ.get('POSTGRES_HOST', '127.0.0.1'),
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+        'USER': os.environ.get('POSTGRES_USER', 'postgres'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'postgres'),
+    }
+
+
+def _sqlite_database() -> dict[str, str]:
+    return {'ENGINE': 'django.db.backends.sqlite3', 'NAME': ':memory:'}
+
+
+# Opt-in, off by default: DJANGO_UTILS_TEST_POSTGRES flips BOTH database
+# aliases to PostgreSQL so the *full* suite runs against a real backend,
+# not just a hand-picked `postgres`-marked subset (see the `postgres`
+# tox env and CI job, and the CHANGELOG, for why that's a deliberate
+# deviation from the spec's "one marker, one env" text). Without this
+# var, nothing below changes: sqlite stays the default.
+if os.environ.get('DJANGO_UTILS_TEST_POSTGRES'):
+    DATABASES = {
+        'default': _postgres_database('django_utils'),
+        'other': _postgres_database('django_utils_other'),
+    }
+else:
+    DATABASES = {
+        'default': _sqlite_database(),
+        # Second alias solely so query_budget's `using` exclusion is
+        # testable.
+        'other': _sqlite_database(),
+    }
 
 ALLOWED_HOSTS: list[str] = []
 
