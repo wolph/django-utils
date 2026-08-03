@@ -1,5 +1,6 @@
 """Tests for django_utils.bulk."""
 
+import django
 import pytest
 from django_utils import bulk, query_debug
 
@@ -95,3 +96,77 @@ def test_rejects_mixed_models():
             unique_fields=['name'],
             update_fields=['stock'],
         )
+
+
+def test_upsert_by_pk_alias():
+    existing = models.Ingredient.objects.create(name='salt', stock=1)
+    bulk.bulk_update_or_create(
+        [models.Ingredient(pk=existing.pk, name='salt', stock=99)],
+        unique_fields=['pk'],
+        update_fields=['stock'],
+    )
+    assert models.Ingredient.objects.get(pk=existing.pk).stock == 99
+
+
+def test_multi_column_unique_constraint():
+    sandwich = models.Sandwich.objects.create(data={})
+    models.Review.objects.create(sandwich=sandwich, rating=5, comment='old')
+    bulk.bulk_update_or_create(
+        [
+            models.Review(sandwich=sandwich, rating=5, comment='new'),
+            models.Review(sandwich=sandwich, rating=1, comment='fresh'),
+        ],
+        unique_fields=['sandwich', 'rating'],
+        update_fields=['comment'],
+    )
+    assert models.Review.objects.count() == 2
+    assert (
+        models.Review.objects.get(sandwich=sandwich, rating=5).comment == 'new'
+    )
+
+
+def test_fk_attname_accepted():
+    sandwich = models.Sandwich.objects.create(data={})
+    models.Review.objects.create(sandwich=sandwich, rating=5, comment='old')
+    bulk.bulk_update_or_create(
+        [models.Review(sandwich=sandwich, rating=5, comment='attname')],
+        unique_fields=['sandwich_id', 'rating'],
+        update_fields=['comment'],
+    )
+    assert (
+        models.Review.objects.get(sandwich=sandwich, rating=5).comment
+        == 'attname'
+    )
+
+
+def test_rejects_non_concrete_field():
+    # 'review' resolves on Sandwich (reverse FK) but is not concrete;
+    # bulk_create could never use it as a conflict target.
+    with pytest.raises(ValueError):
+        bulk.bulk_update_or_create(
+            [models.Sandwich(data={})],
+            unique_fields=['review'],
+            update_fields=['data'],
+        )
+
+
+def test_pk_and_pk_name_overlap_detected():
+    with pytest.raises(ValueError):
+        bulk.bulk_update_or_create(
+            [_ingredient('x', 1)],
+            unique_fields=['pk'],
+            update_fields=['id'],
+        )
+
+
+def test_returned_objects_pk_population():
+    """Django 5.0+ populates pks on the returned objects; Django 4.2
+    cannot (ticket #34698, fixed in 5.0) and returns pk=None. The module
+    docstring documents exactly this split."""
+    created = bulk.bulk_update_or_create(
+        [_ingredient('salt', 5), _ingredient('pepper', 3)],
+        unique_fields=['name'],
+        update_fields=['stock'],
+    )
+    pk_expected = django.VERSION >= (5, 0)
+    assert all((obj.pk is not None) is pk_expected for obj in created)

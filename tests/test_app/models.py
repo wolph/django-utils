@@ -1,3 +1,5 @@
+import typing
+
 from django.db import models
 from django_utils import base_models
 
@@ -48,6 +50,14 @@ class Sandwich(models.Model):
 class Review(models.Model):
     sandwich = models.ForeignKey(Sandwich, on_delete=models.CASCADE)
     rating = models.IntegerField()
+    comment = models.CharField(max_length=50, default='')
+
+    class Meta:
+        constraints: typing.ClassVar = [
+            models.UniqueConstraint(
+                fields=['sandwich', 'rating'], name='uniq_sandwich_rating'
+            ),
+        ]
 
 
 class Topping(models.Model):
