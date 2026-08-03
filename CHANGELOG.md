@@ -150,6 +150,23 @@
   being invisible to coverage.py. Enabling it immediately surfaced --
   and forced render tests for -- `dropdown_filter.html` and
   `select2_filter.html`, which no test had ever rendered.
+- `django_utils.pg_enum.EnumField`: a `CharField` wired to a
+  `django_utils.choices.Choices` class -- `choices`/`max_length` derived
+  from it, and on PostgreSQL the column's real type is a native
+  `CREATE TYPE ... AS ENUM` type (plain `VARCHAR` on every other
+  backend, so models stay portable). Closes the README's oldest
+  promise ("coming soon"). Ships with three explicit
+  `migrations.Operation` subclasses -- `CreateEnumType`, `DropEnumType`,
+  `AddEnumValue` -- added to a migration BY HAND (Django's autodetector
+  has no concept of "create this standalone database object first");
+  all three are DB-only and no-ops on non-PostgreSQL vendors.
+  `AddEnumValue` is `atomic = False` (PostgreSQL cannot run
+  `ALTER TYPE ... ADD VALUE` inside a transaction on versions before 12)
+  and irreversible (PostgreSQL has no `DROP VALUE`; the README documents
+  the recreate-and-migrate escape hatch). Test infrastructure: the
+  `postgres` pytest marker registered in Phase D (until now unused) gets
+  its first real consumers here, verified both skipped (SQLite) and
+  executed (`tox -e py313-django52-postgres`, live PostgreSQL 16).
 
 ### Fixed
 

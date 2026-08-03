@@ -1,7 +1,7 @@
 import typing
 
 from django.db import models
-from django_utils import base_models, crypto_fields
+from django_utils import base_models, choices, crypto_fields, pg_enum
 
 
 class Spam(base_models.SlugCreatedAtModelBase):
@@ -74,6 +74,36 @@ class Ingredient(models.Model):
 class Tag(models.Model):
     name = models.CharField(max_length=50)
     sandwiches = models.ManyToManyField(Sandwich, related_name='tags')
+
+
+class OrderStatus(choices.Choices):
+    """Small Choices class exercising django_utils.pg_enum.EnumField."""
+
+    Pending = choices.Choice('pending', 'Pending')
+    Shipped = choices.Choice('shipped', 'Shipped')
+    Delivered = choices.Choice('delivered', 'Delivered')
+
+
+class Order(models.Model):
+    """EnumField-bearing model.
+
+    ``managed = False``: on PostgreSQL, ``EnumField``'s column type is
+    the ``order_status`` enum type, which must already exist before a
+    table referencing it can be created -- exactly what the hand-written
+    ``CreateEnumType`` migration operation is for (see
+    ``django_utils.pg_enum``). ``tests/test_app`` has no migrations
+    directory (every other model here auto-syncs), and syncdb has no
+    hook to run a hand-written operation before creating a table, so
+    letting this model auto-sync would try to create its column against
+    a type that doesn't exist yet on every PostgreSQL test run. Tests
+    that need this table create/drop it themselves, in the right order,
+    via ``connection.schema_editor()``.
+    """
+
+    status = pg_enum.EnumField(OrderStatus, default=OrderStatus.Pending)
+
+    class Meta:
+        managed = False
 
 
 if crypto_fields._fernet_available:

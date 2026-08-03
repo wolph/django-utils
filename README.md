@@ -352,8 +352,103 @@ StatusEnum = Status.as_enum()
 StatusEnum('a') is StatusEnum.ACTIVE  # True
 ```
 
-A PostgreSQL ENUM field will be coming soon to automatically facilitate the
-creation of the enum if needed.
+## PostgreSQL ENUM field
+
+`django_utils.pg_enum.EnumField` wires a `Choices` class straight to a
+`CharField`: `choices` and `max_length` are derived from it, and on
+PostgreSQL the column's real type is a native `CREATE TYPE ... AS ENUM`
+type instead of `VARCHAR` -- the database itself then rejects a row that
+doesn't hold one of the declared values, on top of (not instead of)
+Django's own choice validation. On every other backend `db_type()` falls
+back to plain `VARCHAR`, so a model using `EnumField` stays portable --
+SQLite never sees a Postgres-specific type name:
+
+```python
+from django.db import models
+from django_utils import choices, pg_enum
+
+
+class OrderStatus(choices.Choices):
+    Pending = choices.Choice('pending', 'Pending')
+    Shipped = choices.Choice('shipped', 'Shipped')
+    Delivered = choices.Choice('delivered', 'Delivered')
+
+
+class Order(models.Model):
+    status = pg_enum.EnumField(OrderStatus, default=OrderStatus.Pending)
+```
+
+`enum_type` defaults to the `Choices` class name in snake_case
+(`OrderStatus` -> `'order_status'`); pass it explicitly to use a
+different PostgreSQL type name.
+
+### Hand-written migration operations
+
+The field never issues DDL for the enum type itself -- Django's
+`makemigrations` autodetector has no concept of "create this standalone
+database object first". Add three explicit operations to a migration BY
+HAND instead:
+
+```python
+from django.db import migrations
+from django_utils import pg_enum
+
+
+class Migration(migrations.Migration):
+    dependencies = [...]
+
+    operations = [
+        # Must run BEFORE the operation that adds a column using it.
+        pg_enum.CreateEnumType(
+            'order_status', ['pending', 'shipped', 'delivered']
+        ),
+        migrations.AddField(
+            model_name='order',
+            name='status',
+            field=pg_enum.EnumField(
+                'myapp.models.OrderStatus', default='pending'
+            ),
+        ),
+        # Later migration, once the app knows about a new status:
+        pg_enum.AddEnumValue('order_status', 'cancelled'),
+    ]
+```
+
+All three are DB-only (no model-state changes) and no-ops on every
+non-PostgreSQL vendor, so a migration using them still applies cleanly
+against SQLite or MySQL -- just without the enum type's extra
+database-level integrity check. `CreateEnumType` reverses to `DROP TYPE`;
+`DropEnumType` is the inverse (it takes the same `values` so *its*
+reversal has something to recreate).
+
+`AddEnumValue` is irreversible and runs outside the migration's
+transaction (`atomic = False`) -- PostgreSQL cannot run
+`ALTER TYPE ... ADD VALUE` inside a transaction on versions before 12,
+and has no `DROP VALUE` at all, on any version. If you need to remove a
+value, recreate the type instead:
+
+```python
+operations = [
+    pg_enum.CreateEnumType(
+        'order_status_v2', ['pending', 'shipped', 'delivered']
+    ),
+    migrations.AlterField(
+        model_name='order',
+        name='status',
+        field=pg_enum.EnumField(
+            'myapp.models.OrderStatus', enum_type='order_status_v2'
+        ),
+    ),
+    migrations.RunSQL(
+        "ALTER TABLE myapp_order ALTER COLUMN status TYPE order_status_v2 "
+        "USING status::text::order_status_v2",
+        reverse_sql=migrations.RunSQL.noop,
+    ),
+    pg_enum.DropEnumType(
+        'order_status', ['pending', 'shipped', 'delivered', 'cancelled']
+    ),
+]
+```
 
 ## Current request / user (ASGI-safe)
 

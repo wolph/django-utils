@@ -85,6 +85,14 @@ django_utils.middleware module
     :undoc-members:
     :show-inheritance:
 
+django_utils.pg_enum module
+---------------------------
+
+.. automodule:: django_utils.pg_enum
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 django_utils.query_debug module
 --------------------------------
 
