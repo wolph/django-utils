@@ -255,7 +255,10 @@ from django_utils.context import get_current_request, get_current_user
 class MyModel(models.Model):
     def save(self, *args, **kwargs):
         user = get_current_user()
-        if user:
+        # `get_current_user()` returns the real `AnonymousUser` instance
+        # (which is truthy!) for anonymous requests, so check
+        # `is_authenticated`, not just `if user:`.
+        if user is not None and user.is_authenticated:
             self.updated_by = user
         super().save(*args, **kwargs)
 ```
