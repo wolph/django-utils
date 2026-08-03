@@ -302,3 +302,37 @@ def test_char_value_formfield_carries_max_length():
     assert formfield.max_length == 100
     attrs = formfield.widget_attrs(formfield.widget)
     assert attrs['maxlength'] == '100'
+
+
+@pytest.mark.django_db
+def test_queryset_update_encrypts():
+    """`update()` routes through `get_prep_value` without `Model.save()`
+    -- the raw column must still hold a Fernet token, never plaintext."""
+    secret = models.Secret.objects.create(
+        char_value='old', text_value='t', json_value=None
+    )
+    models.Secret.objects.update(char_value='updated-plain')
+
+    secret.refresh_from_db()
+    assert secret.char_value == 'updated-plain'
+    raw = _raw_column('test_app_secret', 'char_value', secret.pk)
+    assert raw.startswith('gAAAA')
+    assert 'updated-plain' not in raw
+
+
+@pytest.mark.django_db
+def test_bulk_create_encrypts():
+    """`bulk_create` also bypasses `Model.save()`; same contract."""
+    models.Secret.objects.bulk_create(
+        [
+            models.Secret(
+                char_value='bulk-plain', text_value='t', json_value=None
+            )
+        ]
+    )
+
+    secret = models.Secret.objects.get()
+    assert secret.char_value == 'bulk-plain'
+    raw = _raw_column('test_app_secret', 'char_value', secret.pk)
+    assert raw.startswith('gAAAA')
+    assert 'bulk-plain' not in raw
