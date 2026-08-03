@@ -185,7 +185,7 @@ class EncryptedCharField(_EncryptedField):
     def _deserialize(self, value: str) -> str:
         return value
 
-    def formfield(  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
+    def formfield(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, **kwargs: typing.Any
     ) -> forms.Field | None:
         # Same idiom as CharField.formfield(): client-side maxlength and
@@ -206,7 +206,7 @@ class EncryptedTextField(_EncryptedField):
     def _deserialize(self, value: str) -> str:
         return value
 
-    def formfield(  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
+    def formfield(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, **kwargs: typing.Any
     ) -> forms.Field | None:
         # Same idiom as TextField.formfield(): a Textarea widget instead
@@ -222,7 +222,7 @@ class EncryptedJSONField(_EncryptedField):
     def _serialize(self, value: typing.Any) -> str:
         return json.dumps(value)
 
-    def formfield(  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
+    def formfield(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, **kwargs: typing.Any
     ) -> forms.Field | None:
         # Without this, bare Field.formfield() defaults to forms.CharField,
