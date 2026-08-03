@@ -129,6 +129,23 @@ def test_keyboard_interrupt_logs_resume_hint(spam_rows, caplog):
     assert 'after 1 rows' in message
 
 
+def test_keyboard_interrupt_on_first_row_suggests_plain_rerun(
+    spam_rows, caplog
+):
+    """No row completed: a `--resume-from None` hint would be pasted
+    verbatim by an operator and break; the message must say to re-run
+    without --resume-from instead."""
+    command = CollectSpam()
+    command.interrupt_on = 1
+    with caplog.at_level(logging.WARNING, logger=LOGGER):
+        with pytest.raises(KeyboardInterrupt):
+            call_command(command, verbosity=2)
+    assert command.seen == []
+    message = ' '.join(record.getMessage() for record in caplog.records)
+    assert 'interrupted before completing any rows' in message
+    assert 'None' not in message
+
+
 def test_progress_logged_every_log_every_rows(spam_rows, caplog):
     command = CollectSpam()
     with caplog.at_level(logging.INFO, logger=LOGGER):

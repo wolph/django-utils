@@ -188,10 +188,19 @@ class ChunkedCommand(CustomBaseCommand):
                     )
                     return
         except KeyboardInterrupt:
-            log.warning(
-                'interrupted after %d rows; continue with --resume-from %s',
-                processed,
-                last_pk,
-            )
+            if last_pk is None:
+                # No row completed; a --resume-from hint would be
+                # 'None' verbatim — tell the operator to just re-run.
+                log.warning(
+                    'interrupted before completing any rows; re-run '
+                    'without --resume-from'
+                )
+            else:
+                log.warning(
+                    'interrupted after %d rows; continue with '
+                    '--resume-from %s',
+                    processed,
+                    last_pk,
+                )
             raise
         log.info('done: %d rows processed, last pk %r', processed, last_pk)
