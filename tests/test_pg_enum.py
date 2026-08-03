@@ -13,6 +13,7 @@ import pytest
 from django.core import exceptions as dj_exceptions
 from django.db import (
     Error as DjangoDbError,
+    NotSupportedError,
     connection,
     transaction,
 )
@@ -59,11 +60,27 @@ def order_table() -> typing.Iterator[None]:
     then the table -- the same order a hand-written migration would use
     (``CreateEnumType`` before ``CreateModel``/``AddField``) -- and tears
     both down afterwards.
+
+    Type creation and table creation run as two separate transactions
+    (via two separate ``schema_editor()`` blocks) specifically so that if
+    ``create_model`` ever fails, the enum type it depended on can still be
+    dropped cleanly afterwards -- a shared transaction would already be
+    aborted by that point, and the type would otherwise dangle forever
+    (a fixture that raises before ``yield`` never runs its post-``yield``
+    teardown).
     """
     create_type = pg_enum.CreateEnumType(_ORDER_ENUM_TYPE, _ORDER_VALUES)
     with connection.schema_editor() as schema_editor:
         create_type.database_forwards('test_app', schema_editor, None, None)
-        schema_editor.create_model(models.Order)
+    try:
+        with connection.schema_editor() as schema_editor:
+            schema_editor.create_model(models.Order)
+    except BaseException:
+        with connection.schema_editor() as schema_editor:
+            create_type.database_backwards(
+                'test_app', schema_editor, None, None
+            )
+        raise
     yield
     with connection.schema_editor() as schema_editor:
         schema_editor.delete_model(models.Order)
@@ -83,8 +100,16 @@ def test_choices_derived_from_choices_class():
 
 
 def test_max_length_auto_derived():
-    field = pg_enum.EnumField(models.OrderStatus)
-    assert field.max_length == len('delivered')
+    # OrderStatus's values and labels happen to be equal-length ('Pending'
+    # <-> 'pending'), which can't tell "derived from values" apart from
+    # "derived from labels". A class with a label deliberately longer
+    # than every value can.
+    class LongLabelStatus(choices.Choices):
+        A = choices.Choice('a', 'A Very Long Label Indeed')
+        Bb = choices.Choice('bb', 'B')
+
+    field = pg_enum.EnumField(LongLabelStatus)
+    assert field.max_length == len('bb')
 
 
 def test_max_length_explicit_override_respected():
@@ -308,6 +333,27 @@ def test_end_to_end_schema_editor_create_model(order_table):
         row = cursor.fetchone()
         assert row is not None
         assert row[0] == _ORDER_ENUM_TYPE
+
+
+@pytest.mark.postgres
+def test_add_enum_value_raises_when_migration_left_atomic_true():
+    """The operation's own ``atomic = False`` cannot escape an already-open
+    migration transaction -- only the *Migration's* ``atomic`` attribute
+    (consulted by ``MigrationExecutor.apply_migration`` before any
+    operation runs) controls whether the schema editor opens one. Simulate
+    "forgot to set atomic = False on the Migration" with a plain
+    ``schema_editor()`` (atomic=True, the Django default) and assert
+    ``database_forwards`` refuses to run inside it rather than silently
+    attempting (and, depending on PostgreSQL version, failing or landing
+    an unusable-within-transaction value).
+    """
+    with connection.schema_editor() as schema_editor:
+        with pytest.raises(NotSupportedError) as exc_info:
+            pg_enum.AddEnumValue('pg_enum_test_guard', 'x').database_forwards(
+                'test_app', schema_editor, None, None
+            )
+    assert 'atomic = False' in str(exc_info.value)
+    assert 'Migration' in str(exc_info.value)
 
 
 @pytest.mark.postgres

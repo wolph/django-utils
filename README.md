@@ -386,10 +386,12 @@ different PostgreSQL type name.
 
 The field never issues DDL for the enum type itself -- Django's
 `makemigrations` autodetector has no concept of "create this standalone
-database object first". Add three explicit operations to a migration BY
-HAND instead:
+database object first". Add explicit operations to a migration BY HAND
+instead. `CreateEnumType` must run before the operation that adds a column
+using it, so it belongs in the same migration, ahead of `AddField`:
 
 ```python
+import myapp.models
 from django.db import migrations
 from django_utils import pg_enum
 
@@ -398,56 +400,76 @@ class Migration(migrations.Migration):
     dependencies = [...]
 
     operations = [
-        # Must run BEFORE the operation that adds a column using it.
         pg_enum.CreateEnumType(
             'order_status', ['pending', 'shipped', 'delivered']
         ),
         migrations.AddField(
             model_name='order',
             name='status',
-            field=pg_enum.EnumField(
-                'myapp.models.OrderStatus', default='pending'
-            ),
+            field=pg_enum.EnumField(myapp.models.OrderStatus, default='pending'),
         ),
-        # Later migration, once the app knows about a new status:
-        pg_enum.AddEnumValue('order_status', 'cancelled'),
     ]
 ```
 
-All three are DB-only (no model-state changes) and no-ops on every
+Both are DB-only (no model-state changes) and no-ops on every
 non-PostgreSQL vendor, so a migration using them still applies cleanly
 against SQLite or MySQL -- just without the enum type's extra
 database-level integrity check. `CreateEnumType` reverses to `DROP TYPE`;
 `DropEnumType` is the inverse (it takes the same `values` so *its*
 reversal has something to recreate).
 
-`AddEnumValue` is irreversible and runs outside the migration's
-transaction (`atomic = False`) -- PostgreSQL cannot run
-`ALTER TYPE ... ADD VALUE` inside a transaction on versions before 12,
-and has no `DROP VALUE` at all, on any version. If you need to remove a
-value, recreate the type instead:
+#### `AddEnumValue` needs its own migration, with `atomic = False` on the class
+
+`AddEnumValue` sets `atomic = False` on itself, but **that alone is not
+enough**. Django's migration executor opens its schema editor -- and with
+it, the wrapping transaction -- keyed on the **Migration's** `atomic`
+attribute (default `True`), *before* any operation's own `atomic` flag is
+ever consulted; an operation-level flag can only add extra wrapping inside
+an already-open transaction, never escape one that's already open. This is
+the same reason Django's own `AddIndexConcurrently` requires
+`atomic = False` on the Migration class, not just the operation. Skip it
+and `AddEnumValue.database_forwards` raises `NotSupportedError` instead of
+running somewhere it can't safely run:
 
 ```python
-operations = [
-    pg_enum.CreateEnumType(
-        'order_status_v2', ['pending', 'shipped', 'delivered']
-    ),
-    migrations.AlterField(
-        model_name='order',
-        name='status',
-        field=pg_enum.EnumField(
-            'myapp.models.OrderStatus', enum_type='order_status_v2'
+class Migration(migrations.Migration):
+    dependencies = [...]
+    atomic = False  # required -- see above; the operation's own
+    # atomic = False cannot escape this Migration's transaction on its own.
+
+    operations = [
+        pg_enum.AddEnumValue('order_status', 'cancelled'),
+    ]
+```
+
+`AddEnumValue` is also irreversible -- PostgreSQL has no `DROP VALUE` at
+all, on any version. If you need to remove a value, recreate the type
+instead:
+
+```python
+class Migration(migrations.Migration):
+    dependencies = [...]
+
+    operations = [
+        pg_enum.CreateEnumType(
+            'order_status_v2', ['pending', 'shipped', 'delivered']
         ),
-    ),
-    migrations.RunSQL(
-        "ALTER TABLE myapp_order ALTER COLUMN status TYPE order_status_v2 "
-        "USING status::text::order_status_v2",
-        reverse_sql=migrations.RunSQL.noop,
-    ),
-    pg_enum.DropEnumType(
-        'order_status', ['pending', 'shipped', 'delivered', 'cancelled']
-    ),
-]
+        migrations.AlterField(
+            model_name='order',
+            name='status',
+            field=pg_enum.EnumField(
+                myapp.models.OrderStatus, enum_type='order_status_v2'
+            ),
+        ),
+        migrations.RunSQL(
+            "ALTER TABLE myapp_order ALTER COLUMN status TYPE "
+            "order_status_v2 USING status::text::order_status_v2",
+            reverse_sql=migrations.RunSQL.noop,
+        ),
+        pg_enum.DropEnumType(
+            'order_status', ['pending', 'shipped', 'delivered', 'cancelled']
+        ),
+    ]
 ```
 
 ## Current request / user (ASGI-safe)
