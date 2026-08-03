@@ -43,4 +43,7 @@ class ReadOnlyModelAdminMixin:
         request: http.HttpRequest,
         obj: typing.Any = None,
     ) -> tuple[str, ...]:
-        return tuple(field.name for field in self.model._meta.concrete_fields)
+        meta = self.model._meta
+        return tuple(
+            field.name for field in (*meta.concrete_fields, *meta.many_to_many)
+        )

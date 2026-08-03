@@ -175,9 +175,9 @@ own rather than replacing it if you need overrides for other fields too.
 
 For operations dashboards, audits, or restricted data access, convert any
 `ModelAdmin` to a read-only view — add/change/delete denied for everyone
-(superusers included), all fields locked, while list filtering and search
-still work. `ReadOnlyModelAdminMixin` is built on stable public `ModelAdmin`
-API only:
+(superusers included), all concrete fields and many-to-many relations locked
+as read-only, while list filtering and search still work.
+`ReadOnlyModelAdminMixin` is built on stable public `ModelAdmin` API only:
 
 ```python
 from django.contrib import admin
