@@ -234,6 +234,34 @@ StatusEnum('a') is StatusEnum.ACTIVE  # True
 A PostgreSQL ENUM field will be coming soon to automatically facilitate the
 creation of the enum if needed.
 
+## Current request / user (ASGI-safe)
+
+Store the current request and user in contextvars for access from anywhere without needing to pass them as function arguments. Unlike thread-local equivalents like `django-crum`, which leak state between interleaved requests under ASGI, `RequestContextMiddleware` uses `contextvars.ContextVar` — isolated per asyncio task and safe under both WSGI and ASGI.
+
+Add the middleware to your Django settings:
+
+```python
+MIDDLEWARE = [
+    # ... other middleware ...
+    'django_utils.context.RequestContextMiddleware',
+]
+```
+
+Then access the current request or user from model `save()` methods, signal handlers, or any helper code:
+
+```python
+from django_utils.context import get_current_request, get_current_user
+
+class MyModel(models.Model):
+    def save(self, *args, **kwargs):
+        user = get_current_user()
+        if user:
+            self.updated_by = user
+        super().save(*args, **kwargs)
+```
+
+For tests and management commands, use the `current_request()` context manager instead of adding the middleware.
+
 ## Links
 
 - Documentation: <https://django-utils-2.readthedocs.io/en/latest/>

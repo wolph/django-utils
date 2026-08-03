@@ -4,6 +4,10 @@
 
 ### Added
 
+- `django_utils.context`: contextvars-native current request/user access
+  (`RequestContextMiddleware`, `get_current_request()`, `get_current_user()`,
+  `current_request()` context manager). Safe under ASGI where thread-local
+  equivalents like django-crum leak state between interleaved requests.
 - `Choice` accepts arbitrary keyword metadata, reachable as attributes:
   `Choice('a', 'Active', color='green')` gives `Status.choices['a'].color`.
   Django's `TextChoices` has no equivalent.
