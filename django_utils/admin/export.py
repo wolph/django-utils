@@ -8,10 +8,13 @@ the rest, use django-import-export -- this module exists for the 90%
 case without its weight.
 
 CSV injection: spreadsheet applications execute cell values starting
-with ``=``, ``+``, ``-`` or ``@`` as formulas.  Exported text values
-starting with those characters are prefixed with a single quote
-(documented OWASP mitigation); numbers and other non-str values are
-left untouched.
+with ``=``, ``+``, ``-``, ``@``, a tab (``\t``) or a carriage return
+(``\r``) as formulas (OWASP's full dangerous-prefix list -- the last
+two are less obvious than the arithmetic operators since some CSV
+parsers strip leading whitespace before a spreadsheet application ever
+sees the cell, but not all do). Exported text values starting with any
+of those characters are prefixed with a single quote (documented OWASP
+mitigation); numbers and other non-str values are left untouched.
 
 Both actions run against the queryset the changelist hands them --
 already narrowed by ``list_filter``, search, and this package's own
@@ -41,7 +44,7 @@ if TYPE_CHECKING:
 # `queryset_iterator`'s own default.
 _CHUNK_SIZE = 1000
 
-_DANGEROUS_PREFIXES = ('=', '+', '-', '@')
+_DANGEROUS_PREFIXES = ('=', '+', '-', '@', '\t', '\r')
 
 
 class _Echo:
@@ -61,19 +64,31 @@ class _Echo:
 def _export_fields(model_admin: typing.Any) -> tuple[str, ...]:
     """Columns to export: ``model_admin.export_fields`` if set,
     otherwise every concrete field's attname (so foreign keys export
-    as ``<name>_id`` values, not related objects)."""
+    as ``<name>_id`` values, not related objects).
+
+    ``export_fields = ()`` is rejected rather than silently treated as
+    "unset" -- ``if export_fields:`` would otherwise swallow an
+    explicit empty tuple and fall through to exporting every field,
+    the opposite of what setting it (even to nothing) signals.
+    """
     export_fields = getattr(model_admin, 'export_fields', None)
-    if export_fields:
-        return tuple(export_fields)
-    meta = model_admin.model._meta
-    return tuple(field.attname for field in meta.concrete_fields)
+    if export_fields is None:
+        meta = model_admin.model._meta
+        return tuple(field.attname for field in meta.concrete_fields)
+    if not export_fields:
+        raise ValueError(
+            'export_fields must not be empty; leave it unset (None) '
+            'for the default field list'
+        )
+    return tuple(export_fields)
 
 
 def _guard_csv(value: typing.Any) -> typing.Any:
-    """Prefix a leading ``=``, ``+``, ``-`` or ``@`` in string values
-    with a single quote -- the documented OWASP mitigation for CSV
-    injection. Non-str values (ints, Decimals, dates, ...) are
-    returned untouched."""
+    """Prefix a leading ``=``, ``+``, ``-``, ``@``, tab or carriage
+    return in string values with a single quote -- the documented
+    OWASP mitigation for CSV injection (full dangerous-prefix list).
+    Non-str values (ints, Decimals, dates, ...) are returned
+    untouched."""
     if isinstance(value, str) and value.startswith(_DANGEROUS_PREFIXES):
         return f"'{value}"
     return value

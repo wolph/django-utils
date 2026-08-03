@@ -28,6 +28,7 @@ jobs:
           unzip -l dist/django_utils2-*.whl | grep -q 'py.typed'
           unzip -l dist/django_utils2-*.whl | grep -q 'static/django_utils/admin/json_widget.js'
           unzip -l dist/django_utils2-*.whl | grep -q 'static/django_utils/admin/json_widget.css'
+          unzip -l dist/django_utils2-*.whl | grep -q 'static/django_utils/admin/lookup_filter.css'
           unzip -l dist/django_utils2-*.whl | grep -q 'static/django_utils/admin/dropdown_filter.js'
           unzip -l dist/django_utils2-*.whl | grep -q 'static/django_utils/admin/dropdown_filter.css'
           unzip -l dist/django_utils2-*.whl | grep -q 'static/django_utils/admin/select2_filter.js'

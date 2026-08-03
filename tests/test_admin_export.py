@@ -25,6 +25,10 @@ class RestrictedIngredientExportAdmin(export.ExportMixin, admin.ModelAdmin):
     export_fields = ('name',)
 
 
+class EmptyExportFieldsIngredientAdmin(export.ExportMixin, admin.ModelAdmin):
+    export_fields = ()
+
+
 class SpamExportAdmin(export.ExportMixin, admin.ModelAdmin):
     pass
 
@@ -48,7 +52,7 @@ def _csv_rows(content):
 # -- _guard_csv / _export_fields (helper units) ------------------------
 
 
-@pytest.mark.parametrize('prefix', ['=', '+', '-', '@'])
+@pytest.mark.parametrize('prefix', ['=', '+', '-', '@', '\t', '\r'])
 def test_guard_csv_prefixes_dangerous_strings(prefix):
     value = f'{prefix}SUM(A1:A9)'
     assert export._guard_csv(value) == f"'{value}"
@@ -71,6 +75,25 @@ def test_export_fields_honours_custom_attribute():
         models.Ingredient, admin.AdminSite()
     )
     assert export._export_fields(restricted) == ('name',)
+
+
+def test_export_fields_none_still_defaults(model_admin):
+    """``export_fields`` left at its class default (``None``) still
+    falls through to every concrete field's attname -- the ``()``
+    rejection below must not affect the unset case."""
+    assert model_admin.export_fields is None
+    assert export._export_fields(model_admin) == ('id', 'name', 'stock')
+
+
+def test_export_fields_explicit_empty_tuple_is_a_configuration_error():
+    """``export_fields = ()`` is rejected rather than silently treated
+    as "unset" and falling through to exporting every field -- the
+    opposite of what setting it (even to nothing) signals."""
+    empty = EmptyExportFieldsIngredientAdmin(
+        models.Ingredient, admin.AdminSite()
+    )
+    with pytest.raises(ValueError, match='export_fields must not be empty'):
+        export._export_fields(empty)
 
 
 # -- CSV ------------------------------------------------------------
@@ -97,7 +120,7 @@ def test_export_as_csv_streams_header_and_rows(model_admin, rf):
     assert rows[2] == [str(pepper.pk), 'pepper', '7']
 
 
-@pytest.mark.parametrize('prefix', ['=', '+', '-', '@'])
+@pytest.mark.parametrize('prefix', ['=', '+', '-', '@', '\t', '\r'])
 def test_export_as_csv_guards_formula_injection(model_admin, rf, prefix):
     dangerous_name = f'{prefix}SUM(A1:A9)'
     models.Ingredient.objects.create(name=dangerous_name, stock=42)

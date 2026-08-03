@@ -23,7 +23,18 @@ from django_utils import aggregates
 
 
 class ReadOnlyModelAdminMixin:
-    """Deny add/change/delete; make every field read-only."""
+    """Deny add/change/delete; make every field read-only.
+
+    Governs the *parent* admin's own permissions only: an editable
+    ``inlines`` entry on the wrapped admin is not made read-only by
+    this mixin. Django still denies the inline's add/change/delete POST
+    (each inline formset checks its own model's permissions
+    independently), so nothing is actually editable through it -- but
+    the change-form UI still renders its widgets as if it were, which
+    can mislead a user into thinking edits are possible. Apply this
+    mixin to inline admin classes too if you want their rendered UI to
+    match.
+    """
 
     if TYPE_CHECKING:
         # Provided by the ModelAdmin this is mixed into.
@@ -51,9 +62,32 @@ class ReadOnlyModelAdminMixin:
         request: http.HttpRequest,
         obj: typing.Any = None,
     ) -> tuple[str, ...]:
+        # Merge with, don't replace, whatever the wrapped admin already
+        # declares. An admin using the ordinary `fields = (...,
+        # 'shouting_name')` / `readonly_fields = ('shouting_name',)` /
+        # `shouting_name()` method pattern is fine on its own; replacing
+        # its `readonly_fields` outright used to drop `shouting_name`
+        # from both `form.base_fields` (excluded because it was declared
+        # readonly) and the returned `readonly_fields` (recomputed here
+        # from concrete/M2M fields only, which a plain method-backed
+        # display attribute is neither) -- present in the fieldset but
+        # in neither collection, the same `KeyError` crash class as the
+        # M2M bug fixed above. `dict.fromkeys()` dedupes while
+        # preserving first-seen order (the wrapped admin's own entries,
+        # then the model's fields).
         meta = self.model._meta
-        return tuple(
+        model_fields = (
             field.name for field in (*meta.concrete_fields, *meta.many_to_many)
+        )
+        return tuple(
+            dict.fromkeys(
+                (
+                    *super().get_readonly_fields(  # type: ignore[misc]  # ty: ignore[unresolved-attribute]
+                        request, obj
+                    ),
+                    *model_fields,
+                )
+            )
         )
 
 

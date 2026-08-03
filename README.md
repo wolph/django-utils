@@ -199,7 +199,9 @@ The mixin leaves view permission and list configuration untouched, so you
 can keep your existing filters, search fields, and display columns. It's a
 **silent** no-op if listed *after* `admin.ModelAdmin` (MRO finds
 `has_add_permission` on `ModelAdmin` first), so keep the mixin first in the
-base list.
+base list. It also composes with
+[`ExportMixin`](#admin-export) for read-only export dashboards: view and
+download, never edit.
 
 ## Count columns in the admin
 

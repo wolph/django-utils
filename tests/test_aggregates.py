@@ -205,7 +205,10 @@ def test_relation_name_column_aggregates(sandwich):
     assert annotated.avg_rating == pytest.approx(3.0)
 
 
-def test_relation_name_forward_m2m(sandwich):
+def test_relation_name_reverse_m2m(sandwich):
+    """``Tag.sandwiches`` is the declared ``ManyToManyField``; accessed
+    from ``Sandwich`` (via ``related_name='tags'``) it's the reverse
+    side -- a ``ManyToManyRel``, not a field on ``Sandwich`` itself."""
     for name in ('spicy', 'vegan'):
         sandwich.tags.create(name=name)
     annotated = models.Sandwich.objects.annotate(
@@ -214,7 +217,9 @@ def test_relation_name_forward_m2m(sandwich):
     assert annotated.tag_count == 2
 
 
-def test_relation_name_reverse_m2m(sandwich):
+def test_relation_name_forward_m2m(sandwich):
+    """``Tag.sandwiches`` is the declared ``ManyToManyField`` on
+    ``Tag`` itself -- the forward side."""
     tag = models.Tag.objects.create(name='classic')
     tag.sandwiches.add(sandwich)
     annotated = models.Tag.objects.annotate(
