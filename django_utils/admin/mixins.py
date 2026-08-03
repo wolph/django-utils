@@ -27,9 +27,10 @@ class ReadOnlyModelAdminMixin:
 
     Governs the *parent* admin's own permissions only: an editable
     ``inlines`` entry on the wrapped admin is not made read-only by
-    this mixin. Django still denies the inline's add/change/delete POST
-    (each inline formset checks its own model's permissions
-    independently), so nothing is actually editable through it -- but
+    this mixin. Django still denies the write: the change view's POST
+    path is gated on the parent admin's ``has_change_permission``,
+    which this mixin hard-denies -- so nothing is actually editable
+    through it. But
     the change-form UI still renders its widgets as if it were, which
     can mislead a user into thinking edits are possible. Apply this
     mixin to inline admin classes too if you want their rendered UI to
