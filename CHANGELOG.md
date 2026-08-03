@@ -36,8 +36,9 @@
 - `django_utils.management.commands.base_command.ChunkedCommand`: management-command
   base that iterates any queryset through `queryset_iterator` with progress
   logging, `--resume-from` checkpointing for resumable runs, `--limit` for
-  early stops, and transactional `--dry-run` that rolls back via exception
-  unwinding (safe inside pytest-django's per-test transactions).
+  early stops, and transactional `--dry-run` (scoped to the queryset's
+  database alias) that rolls back via exception unwinding (safe inside
+  pytest-django's per-test transactions).
 - `django_utils.context`: contextvars-native current request/user access
   (`RequestContextMiddleware`, `get_current_request()`, `get_current_user()`,
   `current_request()` context manager). Safe under ASGI where thread-local

@@ -89,6 +89,29 @@ def test_rejects_bad_arguments(kwargs):
         bulk.bulk_update_or_create([_ingredient('x', 1)], **kwargs)
 
 
+@pytest.mark.parametrize(
+    'kwargs',
+    [
+        {'unique_fields': [], 'update_fields': ['stock']},
+        {'unique_fields': ['name'], 'update_fields': []},
+        {
+            'unique_fields': ['name'],
+            'update_fields': ['stock'],
+            'batch_size': 0,
+        },
+    ],
+)
+def test_rejects_bad_arguments_even_with_empty_objs(kwargs):
+    """batch_size/unique_fields/update_fields validation must run before
+    the empty-objs short-circuit -- a caller passing [] alongside a bad
+    batch_size or empty field list must still see the ValueError, not a
+    silent []."""
+    with query_debug.query_budget(warn_at=100) as budget:
+        with pytest.raises(ValueError):
+            bulk.bulk_update_or_create([], **kwargs)
+    assert budget.count == 0
+
+
 def test_rejects_mixed_models():
     with pytest.raises(ValueError):
         bulk.bulk_update_or_create(

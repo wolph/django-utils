@@ -62,6 +62,18 @@ class MutateSpam(base_command.ChunkedCommand):
         instance.save()
 
 
+class MutateOtherAliasSpam(base_command.ChunkedCommand):
+    """Like MutateSpam, but its queryset targets the 'other' alias --
+    exercises dry-run rollback scoped to the queryset's own database."""
+
+    def get_queryset(self) -> dj_models.QuerySet[models.Spam]:
+        return models.Spam.objects.using('other')
+
+    def handle_instance(self, instance: models.Spam) -> None:
+        instance.a = 'changed'
+        instance.save()
+
+
 @pytest.fixture
 def spam_rows():
     return [models.Spam.objects.create(a=f's{n}') for n in range(5)]
@@ -176,3 +188,33 @@ def test_dry_run_with_keyboard_interrupt_rolls_back(spam_rows):
     # Even though interrupted during processing, dry-run transaction
     # rolled back.
     assert not models.Spam.objects.filter(a='changed').exists()
+
+
+def test_limit_zero_raises_command_error(spam_rows):
+    command = CollectSpam()
+    with pytest.raises(CommandError, match='--limit must be >= 1'):
+        call_command(command, verbosity=2, limit=0)
+    assert command.seen == []
+
+
+def test_limit_negative_raises_command_error(spam_rows):
+    command = CollectSpam()
+    with pytest.raises(CommandError, match='--limit must be >= 1'):
+        call_command(command, verbosity=2, limit=-1)
+    assert command.seen == []
+
+
+def test_bad_resume_from_raises_command_error(spam_rows):
+    with pytest.raises(CommandError, match='not a valid primary key'):
+        call_command(CollectSpam(), verbosity=2, resume_from='not-a-pk')
+
+
+@pytest.mark.django_db(databases=['default', 'other'])
+def test_dry_run_rolls_back_on_queryset_own_alias():
+    """dry-run must roll back on the alias get_queryset() itself uses,
+    not always 'default' -- a command whose queryset targets 'other'
+    must not leave committed writes there."""
+    for n in range(3):
+        models.Spam.objects.using('other').create(a=f's{n}')
+    call_command(MutateOtherAliasSpam(), verbosity=2, dry_run=True)
+    assert not models.Spam.objects.using('other').filter(a='changed').exists()

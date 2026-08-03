@@ -2,6 +2,7 @@ import logging
 import time
 from typing import Any, ClassVar, cast
 
+from django.core.exceptions import ValidationError
 from django.core.management import base
 from django.db import models, transaction
 from python_utils import logger
@@ -57,6 +58,26 @@ class _DryRunRollback(Exception):  # noqa: N818
     """Raised to unwind a ``--dry-run`` transaction; never escapes."""
 
 
+def _resolve_start_after(
+    queryset: models.QuerySet[Any], resume_from: str | None
+) -> Any:
+    """Convert ``--resume-from`` to a pk value via the queryset's model.
+
+    Command-line values are strings; converting through the pk field
+    lets integer/UUID/etc. pks compare correctly. Raises ``CommandError``
+    (not a raw ``ValidationError``) for a value the pk field rejects.
+    """
+    if resume_from is None:
+        return None
+    try:
+        return queryset.model._meta.pk.to_python(resume_from)
+    except ValidationError as exc:
+        raise base.CommandError(
+            f'--resume-from {resume_from!r} is not a valid primary key '
+            f'for {queryset.model.__name__}: {exc}'
+        ) from exc
+
+
 class ChunkedCommand(CustomBaseCommand):
     """Batch-process a queryset in bounded, resumable chunks.
 
@@ -67,6 +88,12 @@ class ChunkedCommand(CustomBaseCommand):
     known pk with ``--resume-from``, and rolls everything back under
     ``--dry-run``.  On interrupt or early stop it logs the exact
     ``--resume-from`` value to continue with.
+
+    ``--dry-run`` wraps only the queryset's own database alias
+    (``self.get_queryset().db``); writes ``handle_instance`` makes to
+    OTHER databases are not covered and will still be committed. Also
+    note: under ``--dry-run``, the resume hints logged refer to work
+    that was rolled back -- do not feed them to a real run.
 
     Deliberately out of scope: retries and parallelism — this is
     iterate + log + checkpoint, nothing more.
@@ -123,7 +150,10 @@ class ChunkedCommand(CustomBaseCommand):
             # pytest-django's per-test transaction). Unwinding a nested
             # atomic via an exception rolls back only its own savepoint.
             try:
-                with transaction.atomic():
+                # Double get_queryset() call is harmless: querysets are
+                # lazy, and this scopes the rollback to the queryset's
+                # own alias rather than always 'default'.
+                with transaction.atomic(using=self.get_queryset().db):
                     self._process(**options)
                     raise _DryRunRollback  # noqa: TRY301
             except _DryRunRollback:
@@ -154,12 +184,10 @@ class ChunkedCommand(CustomBaseCommand):
                 f'--log-every must be >= 1, got {log_every}'
             )
         limit: int | None = options.get('limit')
+        if limit is not None and limit < 1:
+            raise base.CommandError(f'--limit must be >= 1, got {limit}')
         resume_from: str | None = options.get('resume_from')
-        start_after: Any = None
-        if resume_from is not None:
-            # Command-line values are strings; convert through the pk
-            # field so integer/UUID/etc. pks compare correctly.
-            start_after = queryset.model._meta.pk.to_python(resume_from)
+        start_after: Any = _resolve_start_after(queryset, resume_from)
 
         processed: int = 0
         last_pk: Any = None

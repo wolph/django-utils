@@ -357,7 +357,7 @@ References: [django/new-features #98](https://github.com/django/new-features/iss
 
 ## Subquery aggregates
 
-Annotating two one-to-many relations together is a footgun: ``annotate(Count('review'), Count('topping'))`` implements each aggregate as a JOIN, so the cartesian product multiplies counts — a sandwich with 2 reviews and 3 toppings reports 6 of each. Use `SubqueryCount`, `SubquerySum`, `SubqueryAvg`, `SubqueryMin`, and `SubqueryMax` to run each aggregate in its own independent subquery instead:
+Annotating two one-to-many relations together is a footgun: `annotate(Count('review'), Count('topping'))` implements each aggregate as a JOIN, so the cartesian product multiplies counts — a sandwich with 2 reviews and 3 toppings reports 6 of each. Use `SubqueryCount`, `SubquerySum`, `SubqueryAvg`, `SubqueryMin`, and `SubqueryMax` to run each aggregate in its own independent subquery instead:
 
 ```python
 from django.db.models import OuterRef

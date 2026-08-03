@@ -75,17 +75,28 @@ def bulk_update_or_create(
     Rows whose ``unique_fields`` already exist are updated instead of
     raising ``IntegrityError``; new rows are inserted.  Returns the
     input objects as a list.  All validation errors raise ``ValueError``
-    before any query runs.
+    before any query runs -- including when ``objs`` is empty, so a bad
+    ``batch_size`` or field list is never masked by an empty input.
+
+    Each batch is committed independently; there is no transaction
+    spanning all batches. That is deliberate -- a crash partway through
+    a large run leaves the earlier batches durable and the operation
+    resumable. Wrap the call in ``django.db.transaction.atomic()``
+    yourself if you need all-or-nothing semantics instead.
+
+    Writes always go through the model's default database
+    (``Model._base_manager``, no ``using`` override); routing to a
+    non-default alias is a known gap -- there is no ``using=`` parameter.
     """
     items = list(objs)
-    if not items:
-        return []
     if batch_size < 1:
         raise ValueError(f'batch_size must be >= 1, got {batch_size!r}')
     if not unique_fields:
         raise ValueError('unique_fields must not be empty')
     if not update_fields:
         raise ValueError('update_fields must not be empty')
+    if not items:
+        return []
     model = type(items[0])
     mixed = [obj for obj in items if type(obj) is not model]
     if mixed:

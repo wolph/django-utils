@@ -21,6 +21,18 @@ Annotations built this way support ``filter()`` and ``order_by()`` like
 any other.  ``SubqueryCount`` of an empty set is 0; the column
 aggregates return ``NULL`` (Python ``None``) for an empty set, matching
 SQL — wrap in ``django.db.models.functions.Coalesce`` for a default.
+
+Backend honesty: the correlated subquery lives inside a FROM-clause
+derived table (``FROM (SELECT ...) _agg``/``_count``). MySQL earlier
+than 8.0.14 cannot reference the outer query's columns from within a
+derived table and fails loudly with an unknown-column error. Verified
+on SQLite (this repo's CI); expected to work on PostgreSQL and on
+MySQL/MariaDB 8.0.14+, but not CI-verified on either.
+
+The column aggregates (``SubquerySum``, ``SubqueryAvg``, ``SubqueryMin``,
+``SubqueryMax``) reserve ``agg_value`` as the inner annotation alias —
+a queryset whose model has a real field or annotation named
+``agg_value`` raises Django's annotation-conflict error.
 """
 
 import typing
