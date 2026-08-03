@@ -8,8 +8,8 @@ the rest, use django-import-export -- this module exists for the 90%
 case without its weight.
 
 CSV injection: spreadsheet applications execute cell values starting
-with ``=``, ``+``, ``-``, ``@``, a tab (``\t``) or a carriage return
-(``\r``) as formulas (OWASP's full dangerous-prefix list -- the last
+with ``=``, ``+``, ``-``, ``@``, a tab (``\\t``) or a carriage return
+(``\\r``) as formulas (OWASP's full dangerous-prefix list -- the last
 two are less obvious than the arithmetic operators since some CSV
 parsers strip leading whitespace before a spreadsheet application ever
 sees the cell, but not all do). Exported text values starting with any
