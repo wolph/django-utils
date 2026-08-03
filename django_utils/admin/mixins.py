@@ -9,6 +9,7 @@ untouched.  Built exclusively on stable public ``ModelAdmin`` API.
 """
 
 import typing
+from typing import TYPE_CHECKING
 
 from django import http
 
@@ -16,7 +17,7 @@ from django import http
 class ReadOnlyModelAdminMixin:
     """Deny add/change/delete; make every field read-only."""
 
-    if typing.TYPE_CHECKING:
+    if TYPE_CHECKING:
         # Provided by the ModelAdmin this is mixed into.
         model: typing.Any
 
