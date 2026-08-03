@@ -13,10 +13,13 @@ on *any* unique constraint — identical behaviour when the model has one
 unique constraint, subtly broader when it has several.
 
 Version honesty: on Django 5.0+ the returned objects have their primary
-keys populated (inserted and conflict-updated rows alike); on Django
-4.2, ``bulk_create(update_conflicts=True)`` cannot return IDs (Django
-ticket #34698, fixed in 5.0), so every returned object has ``pk=None``
-even though its row was written.
+keys populated (inserted and conflict-updated rows alike) — where the
+backend can return rows from a bulk insert at all: PostgreSQL and
+SQLite can, MariaDB can, vanilla MySQL never can (its Django backend
+disables row-returning inserts on every Django version).  On Django
+4.2, ``bulk_create(update_conflicts=True)`` cannot return IDs anywhere
+(Django ticket #34698, fixed in 5.0), so every returned object has
+``pk=None`` even though its row was written.
 
 Field names accept the same spellings ``bulk_create`` does: field names
 (``owner``), foreign-key attnames (``owner_id``), and the ``'pk'``

@@ -163,6 +163,9 @@ def test_returned_objects_pk_population():
     """Django 5.0+ populates pks on the returned objects; Django 4.2
     cannot (ticket #34698, fixed in 5.0) and returns pk=None. The module
     docstring documents exactly this split."""
+    # 'salt' exists already, so the call covers a conflict-updated row
+    # AND a freshly inserted one — the docstring claims both alike.
+    models.Ingredient.objects.create(name='salt', stock=1)
     created = bulk.bulk_update_or_create(
         [_ingredient('salt', 5), _ingredient('pepper', 3)],
         unique_fields=['name'],
