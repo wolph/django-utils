@@ -30,7 +30,11 @@ from django.db.models import expressions
 
 
 class SubqueryCount(expressions.Subquery):
-    """``COUNT(*)`` over ``queryset``, evaluated as its own subquery."""
+    """``COUNT(*)`` over ``queryset``, evaluated as its own subquery.
+
+    Unsliced inner querysets get their ordering stripped (pointless in an
+    aggregate); sliced ones keep it (a top-N slice needs its ordering).
+    """
 
     template = '(SELECT COUNT(*) FROM (%(subquery)s) _count)'
 
@@ -39,14 +43,20 @@ class SubqueryCount(expressions.Subquery):
     ) -> None:
         # order_by() drops pointless subquery ordering; values('pk')
         # shrinks the select list (JSON/text columns never leave the DB).
+        if not queryset.query.is_sliced:
+            queryset = queryset.order_by()
         kwargs: dict[str, typing.Any] = dict(extra)
         if 'output_field' not in kwargs:
             kwargs['output_field'] = models.IntegerField()
-        super().__init__(queryset.order_by().values('pk'), **kwargs)
+        super().__init__(queryset.values('pk'), **kwargs)
 
 
 class _SubqueryColumnAggregate(expressions.Subquery):
-    """``<FUNCTION>(column)`` over ``queryset``, as its own subquery."""
+    """``<FUNCTION>(column)`` over ``queryset``, as its own subquery.
+
+    Unsliced inner querysets get their ordering stripped (pointless in an
+    aggregate); sliced ones keep it (a top-N slice needs its ordering).
+    """
 
     function: typing.ClassVar[str]
     default_output_field: typing.ClassVar[
@@ -66,14 +76,18 @@ class _SubqueryColumnAggregate(expressions.Subquery):
                 f'column must be a plain field/annotation name, got {column!r}'
             )
         self.template = (
-            f'(SELECT {self.function}(_agg.{column}) FROM (%(subquery)s) _agg)'
+            f'(SELECT {self.function}(_agg.agg_value) '
+            f'FROM (%(subquery)s) _agg)'
         )
+        if not queryset.query.is_sliced:
+            queryset = queryset.order_by()
+        queryset = queryset.values(agg_value=models.F(column))
         if output_field is None:
             output_field = self.default_output_field
         kwargs: dict[str, typing.Any] = dict(extra)
         if output_field is not None:
             kwargs['output_field'] = output_field
-        super().__init__(queryset.order_by().values(column), **kwargs)
+        super().__init__(queryset, **kwargs)
 
 
 class SubquerySum(_SubqueryColumnAggregate):

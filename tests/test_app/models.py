@@ -53,3 +53,4 @@ class Review(models.Model):
 class Topping(models.Model):
     sandwich = models.ForeignKey(Sandwich, on_delete=models.CASCADE)
     price = models.IntegerField()
+    order = models.IntegerField(default=0)

@@ -21,8 +21,10 @@ def sandwich():
     sandwich = models.Sandwich.objects.create(data={'name': 'blt'})
     for rating in (2, 4):
         models.Review.objects.create(sandwich=sandwich, rating=rating)
-    for price in (1, 3, 5):
-        models.Topping.objects.create(sandwich=sandwich, price=price)
+    for order_idx, price in enumerate((1, 3, 5), 1):
+        models.Topping.objects.create(
+            sandwich=sandwich, price=price, order=order_idx
+        )
     return sandwich
 
 
@@ -151,3 +153,35 @@ def test_subquery_avg_with_explicit_output_field(sandwich):
         ),
     ).get(pk=sandwich.pk)
     assert float(annotated.avg_rating) == pytest.approx(3.0)
+
+
+def test_reserved_keyword_column(sandwich):
+    """Verify that SQL keywords in column names don't crash.
+
+    The 'order' column is a SQL reserved keyword; without F() aliasing,
+    this would crash with OperationalError at query time.
+    """
+    annotated = models.Sandwich.objects.annotate(
+        order_sum=aggregates.SubquerySum(_toppings_for_outer(), 'order'),
+    ).get(pk=sandwich.pk)
+    assert annotated.order_sum == 6
+
+
+def test_sliced_top_n_max(sandwich):
+    """Max of top 2 cheapest toppings (prices 1, 3) is 3."""
+    annotated = models.Sandwich.objects.annotate(
+        top_two_max=aggregates.SubqueryMax(
+            _toppings_for_outer().order_by('price')[:2], 'price'
+        ),
+    ).get(pk=sandwich.pk)
+    assert annotated.top_two_max == 3
+
+
+def test_sliced_count(sandwich):
+    """Count of top 2 most expensive toppings is 2."""
+    annotated = models.Sandwich.objects.annotate(
+        top_two_count=aggregates.SubqueryCount(
+            _toppings_for_outer().order_by('-price')[:2]
+        ),
+    ).get(pk=sandwich.pk)
+    assert annotated.top_two_count == 2
