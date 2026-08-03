@@ -232,8 +232,15 @@ each one, the mixin annotates the changelist queryset with a
 `<relation>_count` column (`review_count`, `topping_count`, ...) and
 appends it to `list_display` — unless you've already placed it yourself,
 in which case your position and your own method (if you defined one) win.
-Every generated column is sortable in the changelist header, same as any
-other `admin_order_field`-carrying column.
+(A hand-written method wins the display slot but doesn't carry
+`admin_order_field` unless you set it yourself — the queryset annotation
+is still there to sort on.) Every generated column is sortable in the
+changelist header, same as any other `admin_order_field`-carrying column.
+
+Same MRO rule as the read-only mixin above: list `CountColumnMixin`
+*before* `admin.ModelAdmin`, otherwise `get_queryset` and
+`get_list_display` silently fall through to Django's own versions and
+nothing is added.
 
 ## Choices usage
 

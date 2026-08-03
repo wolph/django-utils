@@ -208,6 +208,20 @@ def test_count_column_method_returns_annotated_value(
     assert count_admin.review_count(row) == 2
 
 
+def test_predefined_admin_keeps_annotation_alongside_custom_method(
+    predefined_count_admin, superuser_request, sandwich_with_relations
+):
+    """A user-overridden review_count display method wins the display
+    slot while the queryset annotation still exists for ordering — the
+    annotation lives on model rows, the method on the admin instance;
+    different namespaces, no collision."""
+    row = predefined_count_admin.get_queryset(superuser_request).get(
+        pk=sandwich_with_relations.pk
+    )
+    assert row.review_count == 2
+    assert predefined_count_admin.review_count(row) == 'custom'
+
+
 def test_changelist_orders_by_count(
     count_admin, superuser_request, sandwich_with_relations, rf
 ):
