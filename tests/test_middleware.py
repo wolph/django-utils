@@ -19,9 +19,20 @@ def exempt_view(request):
     return http.HttpResponse('exempt ok')
 
 
+@middleware.fetch_metadata_exempt
+async def async_exempt_view(request):
+    return http.HttpResponse('async exempt ok')
+
+
+def slug_view(request, slug):
+    return http.HttpResponse('ok')
+
+
 urlpatterns = [
     urls.path('page/', echo_view),
     urls.path('exempt/', exempt_view),
+    urls.path('exempt-async/', async_exempt_view),
+    urls.path('page/<str:slug>/', slug_view),
 ]
 
 MIDDLEWARE_UNDER_TEST = ['django_utils.middleware.FetchMetadataMiddleware']
@@ -37,9 +48,26 @@ def _fetch_metadata_middleware(settings):
 
 
 class TestSecFetchSite:
-    @pytest.mark.parametrize('site', ['same-origin', 'same-site', 'none'])
-    def test_allowed_sites_post(self, site):
-        response = Client().post('/page/', headers={'sec-fetch-site': site})
+    @pytest.mark.parametrize(
+        'site,method',
+        [
+            ('same-origin', 'post'),
+            ('same-origin', 'put'),
+            ('same-origin', 'patch'),
+            ('same-origin', 'delete'),
+            ('same-site', 'post'),
+            ('same-site', 'put'),
+            ('same-site', 'patch'),
+            ('same-site', 'delete'),
+            ('none', 'post'),
+            ('none', 'put'),
+            ('none', 'patch'),
+            ('none', 'delete'),
+        ],
+    )
+    def test_allowed_sites_all_unsafe_methods(self, site, method):
+        client_call = getattr(Client(), method)
+        response = client_call('/page/', headers={'sec-fetch-site': site})
         assert response.status_code == 200
 
     def test_cross_site_post_rejected(self):
@@ -55,7 +83,7 @@ class TestSecFetchSite:
         )
         assert response.status_code == 403
 
-    @pytest.mark.parametrize('method', ['get', 'head', 'options'])
+    @pytest.mark.parametrize('method', ['get', 'head', 'options', 'trace'])
     def test_safe_methods_always_pass(self, method):
         client_call = getattr(Client(), method)
         response = client_call(
@@ -63,12 +91,20 @@ class TestSecFetchSite:
         )
         assert response.status_code == 200
 
-    @pytest.mark.parametrize('method', ['post', 'put', 'patch', 'delete'])
-    def test_all_unsafe_methods_covered(self, method):
-        client_call = getattr(Client(), method)
-        response = client_call(
-            '/page/', headers={'sec-fetch-site': 'cross-site'}
-        )
+    @pytest.mark.parametrize(
+        'site',
+        [
+            'Same-Origin',
+            'SAME-ORIGIN',
+            ' same-origin',
+            'same-origin ',
+            'same-origin, cross-site',
+            '',
+        ],
+    )
+    def test_case_and_edge_cases_rejected(self, site):
+        # Fail closed: exact match only, no normalization.
+        response = Client().post('/page/', headers={'sec-fetch-site': site})
         assert response.status_code == 403
 
 
@@ -101,6 +137,30 @@ class TestOriginFallback:
         )
         assert response.status_code == 200
 
+    @pytest.mark.parametrize(
+        'origin',
+        [
+            'null',
+            'https://testserver',
+            'http://testserver:80',
+        ],
+    )
+    def test_origin_edge_cases_rejected(self, origin):
+        # Exact match required: null, HTTPS scheme, explicit port all rejected
+        response = Client().post('/page/', headers={'origin': origin})
+        assert response.status_code == 403
+
+    def test_disallowed_host_rejected(self):
+        # When get_host() raises DisallowedHost, reject the request.
+        response = Client().post(
+            '/page/',
+            headers={
+                'origin': 'http://x.example',
+                'host': 'evil.example',
+            },
+        )
+        assert response.status_code == 403
+
 
 class TestExemption:
     def test_exempt_view_allows_cross_site(self):
@@ -115,13 +175,21 @@ class TestExemption:
 
 def test_exempt_wraps_async_views():
     from asgiref import sync
+    from django.test import AsyncClient
 
-    @middleware.fetch_metadata_exempt
-    async def async_view(request):
-        return http.HttpResponse('ok')
+    # Check that async_exempt_view is wrapped correctly
+    assert sync.iscoroutinefunction(async_exempt_view)
+    assert async_exempt_view.fetch_metadata_exempt is True
 
-    assert sync.iscoroutinefunction(async_view)
-    assert async_view.fetch_metadata_exempt is True
+    # Drive the exempt async view through AsyncClient with cross-site headers
+    # to verify the async wrapper body executes and the view is actually exempt
+    async def scenario():
+        return await AsyncClient().post(
+            '/exempt-async/', headers={'sec-fetch-site': 'cross-site'}
+        )
+
+    response = sync.async_to_sync(scenario)()
+    assert response.status_code == 200
 
 
 def test_rejection_logs_warning(caplog):
@@ -149,19 +217,17 @@ def test_async_stack():
     assert sync.async_to_sync(scenario)().status_code == 403
 
 
-def test_async_exempt_view_called():
-    """Test async wrapper in fetch_metadata_exempt actually executes."""
-    from asgiref import sync
+def test_log_injection_with_newline(caplog):
+    """Log injection via percent-encoded newline in URL path."""
+    import logging
 
-    @middleware.fetch_metadata_exempt
-    async def async_exempt_view(request):
-        return http.HttpResponse('async exempt ok')
-
-    # Test that the wrapped async view can be called
-    async def scenario():
-        # Call the view function directly to test the wrapper executes
-        response = await async_exempt_view(None)
-        return response.status_code == 200
-
-    result = sync.async_to_sync(scenario)()
-    assert result
+    with caplog.at_level(logging.WARNING, logger='django_utils.middleware'):
+        # %0A is a newline; request.path decodes it, but we escape via repr()
+        Client().post('/page/%0A/', headers={'sec-fetch-site': 'cross-site'})
+    records = [
+        r for r in caplog.records if r.name == 'django_utils.middleware'
+    ]
+    assert len(records) == 1, f'Expected 1 record, got {len(records)}'
+    message = records[0].getMessage()
+    assert '\n' not in message, 'Log message contains unescaped newline'
+    assert 'cross-site' in message

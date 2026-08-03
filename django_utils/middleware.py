@@ -22,6 +22,7 @@ import typing
 from collections.abc import Awaitable, Callable
 
 from django import http
+from django.core import exceptions
 
 if sys.version_info >= (3, 12):
     from inspect import iscoroutinefunction, markcoroutinefunction
@@ -52,7 +53,7 @@ def fetch_metadata_exempt(view_func: _View) -> _View:
     if iscoroutinefunction(view_func):
 
         @functools.wraps(view_func)
-        async def wrapper(  # type: ignore[no-redef]
+        async def wrapper(  # pyright: ignore[reportRedeclaration]
             *args: typing.Any, **kwargs: typing.Any
         ) -> typing.Any:
             return await view_func(*args, **kwargs)
@@ -60,7 +61,7 @@ def fetch_metadata_exempt(view_func: _View) -> _View:
     else:
 
         @functools.wraps(view_func)
-        def wrapper(  # type: ignore[no-redef]
+        def wrapper(  # pyright: ignore[reportRedeclaration]
             *args: typing.Any, **kwargs: typing.Any
         ) -> typing.Any:
             return view_func(*args, **kwargs)
@@ -115,24 +116,29 @@ class FetchMetadataMiddleware:
         if site is not None:
             if site in _ALLOWED_SITES:
                 return None
-            return self._reject(request, f'Sec-Fetch-Site is {site!r}')
+            return self._reject(request, f'Sec-Fetch-Site is {site[:64]!r}')
         origin = request.headers.get('Origin')
         if origin is None:
             return None
-        expected = f'{request.scheme}://{request.get_host()}'
+        try:
+            expected = f'{request.scheme}://{request.get_host()}'
+        except exceptions.DisallowedHost:
+            return self._reject(
+                request, f'Origin {origin[:64]!r} with disallowed Host'
+            )
         if origin == expected:
             return None
         return self._reject(
-            request, f'Origin {origin!r} does not match {expected!r}'
+            request, f'Origin {origin[:64]!r} does not match {expected!r}'
         )
 
     def _reject(
         self, request: http.HttpRequest, reason: str
     ) -> http.HttpResponseForbidden:
         logger.warning(
-            'Fetch-Metadata policy rejected %s %s: %s',
+            'Fetch-Metadata policy rejected %s %.200r: %.200s',
             request.method,
-            request.path,
+            request.get_full_path(),
             reason,
         )
         return http.HttpResponseForbidden(

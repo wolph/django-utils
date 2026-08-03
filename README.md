@@ -351,7 +351,7 @@ def webhook_view(request):
     return HttpResponse('ok')
 ```
 
-References: [django/new-features #98](https://github.com/django/django/discussions/16632), [OWASP Fetch Metadata](https://owasp.org/www-project-fetch-metadata/), [Go's approach](https://pkg.go.dev/net/http#Request.IsTLS).
+References: [django/new-features #98](https://github.com/django/new-features/issues/98), [Go's approach](https://pkg.go.dev/net/http#CrossOriginProtection).
 
 ## Links
 
