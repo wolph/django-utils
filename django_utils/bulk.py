@@ -104,7 +104,9 @@ def bulk_update_or_create(
             f'{sorted(field.name for field in overlap)}'
         )
 
-    manager = model._base_manager
+    # django-stubs types _base_manager (so a cast is redundant for mypy),
+    # but pyrefly runs without the plugin and can't see it.
+    manager = model._base_manager  # pyrefly: ignore[missing-attribute]
     result: list[M] = []
     for start in range(0, len(items), batch_size):
         result.extend(
