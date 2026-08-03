@@ -373,6 +373,23 @@ Sandwich.objects.annotate(
 
 Annotations support `filter()` and `order_by()` like any other. `SubqueryCount` of an empty set is 0; the column aggregates return `None` for an empty set — wrap in `Coalesce()` for a default.
 
+## Bulk upsert
+
+`bulk_update_or_create()` inserts rows and updates the ones whose unique key already exists — in one `INSERT ... ON CONFLICT DO UPDATE` statement per batch, using Django's own `bulk_create(update_conflicts=True)` under the hood. The naive alternative, a loop of `update_or_create()`, costs two queries per row and is racy between the check and the write.
+
+```python
+from django_utils.bulk import bulk_update_or_create
+
+bulk_update_or_create(
+    [Ingredient(name='salt', stock=5), Ingredient(name='pepper', stock=3)],
+    unique_fields=['name'],
+    update_fields=['stock'],
+    batch_size=1000,
+)
+```
+
+Arguments are validated before any query runs (`ValueError` on empty or overlapping field lists, unknown fields, mixed model classes). Backend note: PostgreSQL and SQLite use `unique_fields` as the explicit conflict target; MySQL/MariaDB's `ON DUPLICATE KEY UPDATE` fires on *any* unique constraint — identical with one unique constraint on the model, subtly broader with several.
+
 ## Links
 
 - Documentation: <https://django-utils-2.readthedocs.io/en/latest/>

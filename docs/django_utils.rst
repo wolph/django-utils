@@ -37,6 +37,14 @@ django_utils.base_models module
     :undoc-members:
     :show-inheritance:
 
+django_utils.bulk module
+------------------------
+
+.. automodule:: django_utils.bulk
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 django_utils.choices module
 ---------------------------
 

@@ -26,6 +26,13 @@
   `SubqueryMin`, `SubqueryMax` — aggregate annotations that run as independent
   subqueries, immune to the JOIN fan-out that makes
   `annotate(Count('a'), Count('b'))` silently multiply counts.
+- `django_utils.bulk.bulk_update_or_create`: chunked upsert on Django's
+  native `bulk_create(update_conflicts=True)` — one
+  `INSERT ... ON CONFLICT DO UPDATE` per batch instead of 2N racy queries.
+  Existing upsert packages predate the native API and reinvent raw SQL.
+  All argument validation happens before any query runs; PostgreSQL and
+  SQLite honour `unique_fields` as the conflict target, MySQL/MariaDB
+  fire on any unique constraint (documented in the module).
 - `django_utils.context`: contextvars-native current request/user access
   (`RequestContextMiddleware`, `get_current_request()`, `get_current_user()`,
   `current_request()` context manager). Safe under ASGI where thread-local

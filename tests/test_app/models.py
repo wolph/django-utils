@@ -54,3 +54,8 @@ class Topping(models.Model):
     sandwich = models.ForeignKey(Sandwich, on_delete=models.CASCADE)
     price = models.IntegerField()
     order = models.IntegerField(default=0)
+
+
+class Ingredient(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    stock = models.IntegerField(default=0)
