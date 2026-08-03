@@ -29,13 +29,17 @@ to find rows by value.
 Requires the ``crypto`` extra (``pip install 'django-utils2[crypto]'``):
 importing this module works without ``cryptography`` installed, but
 instantiating any of the three fields raises ``ImproperlyConfigured``
-with that install hint.
+with that install hint. Fields instantiate as part of executing a
+model's class body, so a model that *declares* one of them fails at
+app-import/``django.setup()`` time without the extra -- the whole app
+fails to boot, loudly and immediately, not a deferred per-use error.
 """
 
 import json
 import typing
 from typing import TYPE_CHECKING
 
+from django import forms
 from django.conf import settings
 from django.core import exceptions, validators
 from django.db import models
@@ -181,6 +185,17 @@ class EncryptedCharField(_EncryptedField):
     def _deserialize(self, value: str) -> str:
         return value
 
+    def formfield(  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, **kwargs: typing.Any
+    ) -> forms.Field | None:
+        # Same idiom as CharField.formfield(): client-side maxlength and
+        # server-side validation both see the same limit. Narrower
+        # **kwargs-only signature than Field.formfield's (form_class,
+        # choices_form_class, **kwargs) -- same shape django-stubs itself
+        # uses (and silences) for every built-in Field subclass.
+        kwargs.setdefault('max_length', self.max_length)
+        return super().formfield(**kwargs)
+
 
 class EncryptedTextField(_EncryptedField):
     """Fernet-encrypted, unbounded ``str``, stored as a TEXT column."""
@@ -191,12 +206,32 @@ class EncryptedTextField(_EncryptedField):
     def _deserialize(self, value: str) -> str:
         return value
 
+    def formfield(  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, **kwargs: typing.Any
+    ) -> forms.Field | None:
+        # Same idiom as TextField.formfield(): a Textarea widget instead
+        # of the single-line input a bare Field.formfield() would default
+        # to.
+        kwargs.setdefault('widget', forms.Textarea)
+        return super().formfield(**kwargs)
+
 
 class EncryptedJSONField(_EncryptedField):
     """Fernet-encrypted JSON-serializable value, stored as TEXT."""
 
     def _serialize(self, value: typing.Any) -> str:
         return json.dumps(value)
+
+    def formfield(  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, **kwargs: typing.Any
+    ) -> forms.Field | None:
+        # Without this, bare Field.formfield() defaults to forms.CharField,
+        # which never parses submitted text as JSON -- _serialize() would
+        # then re-encode the raw string, silently corrupting the value on
+        # every save through a ModelForm/admin. forms.JSONField parses (and
+        # validates) it first.
+        kwargs.setdefault('form_class', forms.JSONField)
+        return super().formfield(**kwargs)
 
     def _deserialize(self, value: str) -> typing.Any:
         return json.loads(value)

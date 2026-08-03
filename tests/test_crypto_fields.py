@@ -4,6 +4,7 @@ import json
 
 import pytest
 from cryptography.fernet import Fernet
+from django import forms
 from django.core import (
     exceptions,
     validators as django_validators,
@@ -249,3 +250,55 @@ def test_json_value_serializes_through_json_dumps_loads():
     field = crypto_fields.EncryptedJSONField()
     value = {'x': 1}
     assert field._deserialize(json.dumps(value)) == value
+
+
+# -- formfield() overrides: ModelForm/admin must not corrupt values ------
+
+
+def test_json_value_round_trips_through_a_modelform():
+    """Regression: a bare Field.formfield() defaults to forms.CharField,
+    which never parses submitted text as JSON -- get_prep_value() then
+    re-encrypts the raw *string* `'{"a": 1}'` instead of the dict, and
+    reload silently returns a str where a dict is expected. No error at
+    any layer -- this is a silent data-corruption bug, not a crash.
+    """
+    secret = models.Secret.objects.create(
+        char_value='x', text_value='y', json_value=None
+    )
+    form_class = forms.modelform_factory(models.Secret, fields=['json_value'])
+    form = form_class(data={'json_value': '{"a": 1}'}, instance=secret)
+
+    assert form.is_valid(), form.errors
+    saved = form.save()
+
+    saved.refresh_from_db()
+    assert saved.json_value == {'a': 1}
+    assert isinstance(saved.json_value, dict)
+
+
+def test_json_value_form_rejects_invalid_json_without_saving():
+    secret = models.Secret.objects.create(
+        char_value='x', text_value='y', json_value={'untouched': True}
+    )
+    form_class = forms.modelform_factory(models.Secret, fields=['json_value'])
+    form = form_class(data={'json_value': '{not json'}, instance=secret)
+
+    assert not form.is_valid()
+    assert 'json_value' in form.errors
+
+    secret.refresh_from_db()
+    assert secret.json_value == {'untouched': True}
+
+
+def test_text_value_formfield_uses_a_textarea_widget():
+    field = models.Secret._meta.get_field('text_value')
+    formfield = field.formfield()
+    assert isinstance(formfield.widget, forms.Textarea)
+
+
+def test_char_value_formfield_carries_max_length():
+    field = models.Secret._meta.get_field('char_value')
+    formfield = field.formfield()
+    assert formfield.max_length == 100
+    attrs = formfield.widget_attrs(formfield.widget)
+    assert attrs['maxlength'] == '100'

@@ -557,7 +557,11 @@ nothing hand-rolled, no `hazmat` primitives touched directly. Requires the
 `crypto` extra: `pip install "django-utils2[crypto]"`. Importing
 `django_utils.crypto_fields` works without `cryptography` installed;
 *instantiating* any of the three fields without it raises
-`ImproperlyConfigured` naming that install command.
+`ImproperlyConfigured` naming that install command -- and since fields
+instantiate as part of executing a model's class body, a model that
+*declares* one of them fails at app-import/`django.setup()` time, not on
+first use: the whole app fails to boot, loudly and immediately, if the
+extra is missing.
 
 ```python
 from django.db import models
