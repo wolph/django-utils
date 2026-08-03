@@ -27,6 +27,15 @@ STATIC_URL = '/static/'
 # Test-only key, not a real credential.
 SECRET_KEY = 'django-utils2-test-suite-secret-key'
 
+# Test-only Fernet keys for django_utils.crypto_fields, not credentials --
+# generated once with Fernet.generate_key() and hardcoded so the test
+# suite's default encryption/decryption is deterministic across runs.
+# The first key encrypts; both keys decrypt (MultiFernet rotation).
+DJANGO_UTILS_FERNET_KEYS = [
+    '9LSCQxpLl8Xfl9ogBCyDLhFXirKhVtNLpmuEShBJPc4=',
+    'Q7LBlcU2P375f2K8lYWJkEzEVxTuiR_vf9u1rGbBnPU=',
+]
+
 MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

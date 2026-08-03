@@ -4,6 +4,20 @@
 
 ### Added
 
+- `django_utils.crypto_fields`: `EncryptedCharField`, `EncryptedTextField`,
+  `EncryptedJSONField` -- Fernet-encrypted model fields storing a base64
+  token in a plain `TEXT` column (behind the new `crypto` extra:
+  `pip install "django-utils2[crypto]"`). Keys come from
+  `settings.DJANGO_UTILS_FERNET_KEYS`; the first key encrypts, every key is
+  tried on decrypt (`MultiFernet`), so rotation is prepend-a-key-and-save.
+  Every lookup except `isnull` raises `NotImplementedError` -- Fernet salts
+  every encryption, so equality can never match at the database level
+  anyway. A token nothing in the keyring can decrypt raises
+  `ValidationError` (never silently returned as ciphertext).
+  `EncryptedCharField.max_length` validates the plaintext, not the
+  (necessarily longer) stored column. Importing the module never requires
+  `cryptography`; instantiating a field without it does, with an
+  `ImproperlyConfigured` pointing at the extra.
 - `django_utils.admin.mixins.ReadOnlyModelAdminMixin`: turn any existing admin
   into a safe read-only view — add/change/delete denied for everyone
   (superusers included), all fields read-only, list configuration and search

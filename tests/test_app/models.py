@@ -1,7 +1,7 @@
 import typing
 
 from django.db import models
-from django_utils import base_models
+from django_utils import base_models, crypto_fields
 
 
 class Spam(base_models.SlugCreatedAtModelBase):
@@ -74,3 +74,18 @@ class Ingredient(models.Model):
 class Tag(models.Model):
     name = models.CharField(max_length=50)
     sandwiches = models.ManyToManyField(Sandwich, related_name='tags')
+
+
+if crypto_fields._fernet_available:
+    # Guarded: environments that load these settings without the
+    # `crypto` extra installed (e.g. the `docs` tox env, which only
+    # installs `.[docs]`) must still be able to import this module --
+    # instantiating an encrypted field without `cryptography` is
+    # exactly what raises ImproperlyConfigured (see test_crypto_fields.py).
+
+    class Secret(models.Model):
+        """One field of each django_utils.crypto_fields type."""
+
+        char_value = crypto_fields.EncryptedCharField(max_length=100)
+        text_value = crypto_fields.EncryptedTextField()
+        json_value = crypto_fields.EncryptedJSONField(null=True, blank=True)

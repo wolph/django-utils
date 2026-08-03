@@ -546,6 +546,76 @@ Command-line options:
 - `--dry-run`: Run inside a transaction and roll everything back
 - `--log-every N`: Log progress every N rows (default 1000)
 
+## Encrypted model fields
+
+`EncryptedCharField`, `EncryptedTextField` and `EncryptedJSONField` store a
+Fernet-encrypted token in a plain `TEXT` column -- encryption at rest for
+values you never need to query, sort or index by (an API key, a bank
+account number, free-text notes). All crypto goes through
+[`cryptography`](https://cryptography.io/)'s `Fernet`/`MultiFernet` --
+nothing hand-rolled, no `hazmat` primitives touched directly. Requires the
+`crypto` extra: `pip install "django-utils2[crypto]"`. Importing
+`django_utils.crypto_fields` works without `cryptography` installed;
+*instantiating* any of the three fields without it raises
+`ImproperlyConfigured` naming that install command.
+
+```python
+from django.db import models
+from django_utils.crypto_fields import (
+    EncryptedCharField,
+    EncryptedJSONField,
+    EncryptedTextField,
+)
+
+
+class Customer(models.Model):
+    tax_id = EncryptedCharField(max_length=20)
+    notes = EncryptedTextField(blank=True)
+    payment_details = EncryptedJSONField(null=True, blank=True)
+```
+
+Keys live in `settings.DJANGO_UTILS_FERNET_KEYS`, a list of urlsafe-base64
+32-byte keys (`Fernet.generate_key()`):
+
+```python
+DJANGO_UTILS_FERNET_KEYS = [
+    'the-current-key...',
+    'the-previous-key...',  # still needed to decrypt old rows
+]
+```
+
+**Rotation story:** the FIRST key encrypts; EVERY key is tried on decrypt.
+Rotate by prepending a new key and redeploying -- existing rows keep
+decrypting fine under the old key (now second in the list), and get
+re-encrypted under the new (first) key the next time each row is saved.
+There is no bulk re-encryption command here; touch (`.save()`) the rows
+you want migrated on your own schedule, e.g. with
+[`ChunkedCommand`](#chunked-management-commands). Once every row has been
+resaved, drop the old key from the list -- rows that were never resaved
+under it become undecryptable (`ValidationError` on read) the moment it's
+removed.
+
+**Non-goals, loudly:**
+- No queryable or searchable encryption. Fernet salts every encryption,
+  so two rows with identical plaintext get different ciphertext -- even
+  `exact` can never match at the database level. Every lookup except
+  `isnull` raises `NotImplementedError`; filter in Python after decrypting,
+  or maintain a separate searchable hash column alongside the encrypted
+  one.
+- No per-field keys. One keyring (`DJANGO_UTILS_FERNET_KEYS`) for every
+  encrypted field in the project.
+- No deterministic mode. If you need same-plaintext-same-ciphertext,
+  this is the wrong tool -- it also reintroduces exactly the equality
+  side-channel Fernet's salting exists to prevent.
+
+`EncryptedCharField`'s `max_length` validates the PLAINTEXT (a
+`MaxLengthValidator`, same as plain `CharField`); it never sizes the
+column, which always stores the necessarily-longer ciphertext instead.
+`from_db_value` decrypts eagerly, as each row is fetched -- a token
+nothing in `DJANGO_UTILS_FERNET_KEYS` can decrypt raises `ValidationError`
+out of the fetch itself (`.get()`, `.refresh_from_db()`, iterating a
+queryset), not lazily on later attribute access.
+
 ## Links
 
 - Documentation: <https://django-utils-2.readthedocs.io/en/latest/>

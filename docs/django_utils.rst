@@ -61,6 +61,14 @@ django_utils.context module
     :undoc-members:
     :show-inheritance:
 
+django_utils.crypto_fields module
+----------------------------------
+
+.. automodule:: django_utils.crypto_fields
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 django_utils.fields module
 --------------------------
 
