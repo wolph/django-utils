@@ -274,11 +274,16 @@ filters (`django_utils.admin.filters`) — so the intended flow is
 filter first, select second, export third: the export never sees a
 row the changelist wouldn't have shown.
 
-Exported CSV text values starting with `=`, `+`, `-` or `@` are
-prefixed with a single quote before being written — the documented
-OWASP mitigation for CSV/formula injection, where spreadsheet
-applications would otherwise execute those cells as formulas. Numbers
-and other non-str values are left untouched.
+Exported CSV text values starting with `=`, `+`, `-`, `@`, a tab or a
+carriage return are prefixed with a single quote before being written —
+the documented OWASP mitigation for CSV/formula injection, where
+spreadsheet applications would otherwise execute those cells as
+formulas. Numbers and other non-str values are left untouched.
+
+One caveat for models using
+[encrypted fields](#encrypted-model-fields): exports read through the
+ORM, so encrypted values stream into the download as **plaintext** —
+encryption at rest does not survive an export, deliberately.
 
 Hard scope cap, by design: CSV and JSON only, export only — no XLSX,
 no import, no resource classes, ever. For anything heavier —
@@ -605,7 +610,19 @@ removed.
   `exact` can never match at the database level. Every lookup except
   `isnull` raises `NotImplementedError`; filter in Python after decrypting,
   or maintain a separate searchable hash column alongside the encrypted
-  one.
+  one. This includes this package's own admin features: a
+  [`JSONFieldFilter`](#admin-select--dropdown--autocomplete-json-filters)
+  or `search_fields` entry pointing at an encrypted field makes the
+  changelist raise that same `NotImplementedError` at request time -- a
+  configuration error surfaced loudly, not a silent empty result.
+- Ordering is not blocked (Django offers no field-level hook for it),
+  but `order_by()` on an encrypted field sorts by ciphertext -- a
+  meaningless order. Don't.
+- Encryption at rest only: anything that reads through the ORM sees
+  plaintext -- including this package's own
+  [`ExportMixin`](#admin-export) (an export action on an encrypted model
+  streams decrypted values into the CSV/JSON download) and Django's
+  `dumpdata` (fixtures land on disk in plaintext).
 - No per-field keys. One keyring (`DJANGO_UTILS_FERNET_KEYS`) for every
   encrypted field in the project.
 - No deterministic mode. If you need same-plaintext-same-ciphertext,

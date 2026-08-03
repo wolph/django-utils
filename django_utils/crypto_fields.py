@@ -17,7 +17,12 @@ touch (``.save()``) the rows you want migrated, or run your own
 ``queryset_iterator``-based pass over the table.
 
 Non-goals, loudly: this is encryption at rest for values you never need
-to query, sort or index by. There is no queryable/searchable mode, no
+to query, sort or index by. Ordering is not blocked (Django has no
+field-level hook for it) but sorts by ciphertext -- meaningless. And
+anything reading through the ORM sees plaintext: an admin export action
+(``django_utils.admin.export.ExportMixin``) on an encrypted model
+streams decrypted values, and ``dumpdata`` writes plaintext fixtures.
+There is no queryable/searchable mode, no
 per-field keys, and no deterministic (same-plaintext-same-ciphertext)
 mode -- Fernet salts every encryption, so even two rows with identical
 plaintext get different ciphertext, and equality can never match at the
