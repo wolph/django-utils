@@ -8,6 +8,12 @@
   into a safe read-only view — add/change/delete denied for everyone
   (superusers included), all fields read-only, list configuration and search
   working untouched. Built on stable public `ModelAdmin` API.
+- `django_utils.admin.mixins.CountColumnMixin`: sortable related-object count
+  columns for `list_display` (`count_columns = ('review', 'topping')` adds
+  `review_count`/`topping_count`), annotated via
+  `django_utils.aggregates.SubqueryCount` so combining several relations
+  never fans out through a JOIN. Columns already placed in `list_display`,
+  or backed by a method you defined yourself, are left untouched.
 - `django_utils.auth`: `superuser_required` / `staff_required` view decorators
   and `permission_string()` — the helpers behind django/new-features #47 and
   #137 (67 combined reactions) that every project hand-rolls. Both decorators

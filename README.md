@@ -201,6 +201,40 @@ can keep your existing filters, search fields, and display columns. It's a
 `has_add_permission` on `ModelAdmin` first), so keep the mixin first in the
 base list.
 
+## Count columns in the admin
+
+Adding a related-object count to `list_display` is a common ask, but the
+naive approach — a `list_display` method calling `obj.reviews.count()` — is
+an N+1 query per row, and reaching for `annotate(Count(...))` at the
+queryset level reintroduces the JOIN fan-out footgun documented above the
+moment a second relation joins it. `CountColumnMixin` adds one or more
+sortable, fan-out-immune count columns using
+[`SubqueryCount`](#subquery-aggregates) under the hood:
+
+```python
+from django.contrib import admin
+from django_utils.admin.mixins import CountColumnMixin
+
+from myapp.models import Sandwich
+
+
+class SandwichAdmin(CountColumnMixin, admin.ModelAdmin):
+    list_display = ('id',)
+    count_columns = ('review', 'topping')
+
+
+admin.site.register(Sandwich, SandwichAdmin)
+```
+
+Each entry in `count_columns` is a relation name (reverse FK, reverse or
+forward many-to-many) resolved against the model being administered. For
+each one, the mixin annotates the changelist queryset with a
+`<relation>_count` column (`review_count`, `topping_count`, ...) and
+appends it to `list_display` — unless you've already placed it yourself,
+in which case your position and your own method (if you defined one) win.
+Every generated column is sortable in the changelist header, same as any
+other `admin_order_field`-carrying column.
+
 ## Choices usage
 
 To enable easy to use choices which are more convenient than the Django 3.0

@@ -22,9 +22,36 @@ class ReadOnlyTagAdmin(mixins.ReadOnlyModelAdminMixin, admin.ModelAdmin):
     pass
 
 
+class CountSandwichAdmin(mixins.CountColumnMixin, admin.ModelAdmin):
+    list_display = ('id',)
+    count_columns = ('review', 'topping')
+
+
+class PreDefinedCountSandwichAdmin(mixins.CountColumnMixin, admin.ModelAdmin):
+    """Declares its own review_count, already placed in list_display."""
+
+    list_display = ('id', 'review_count')
+    count_columns = ('review',)
+
+    def review_count(self, obj):
+        return 'custom'
+
+    review_count.short_description = 'custom description'
+
+
 @pytest.fixture
 def model_admin():
     return ReadOnlyIngredientAdmin(models.Ingredient, admin.AdminSite())
+
+
+@pytest.fixture
+def count_admin():
+    return CountSandwichAdmin(models.Sandwich, admin.AdminSite())
+
+
+@pytest.fixture
+def predefined_count_admin():
+    return PreDefinedCountSandwichAdmin(models.Sandwich, admin.AdminSite())
 
 
 @pytest.fixture
@@ -32,6 +59,18 @@ def superuser_request(rf):
     request = rf.get('/admin/test_app/ingredient/')
     request.user = User(is_superuser=True, is_staff=True, is_active=True)
     return request
+
+
+@pytest.fixture
+def sandwich_with_relations():
+    sandwich = models.Sandwich.objects.create(data={})
+    for rating in (2, 4):
+        models.Review.objects.create(sandwich=sandwich, rating=rating)
+    for order, price in enumerate((1, 3, 5), 1):
+        models.Topping.objects.create(
+            sandwich=sandwich, price=price, order=order
+        )
+    return sandwich
 
 
 def test_add_change_delete_denied_even_for_superuser(
@@ -124,3 +163,100 @@ def test_view_permission_respects_default_for_non_staff_user(rf):
     request = rf.get('/admin/test_app/ingredient/')
     request.user = User.objects.create(is_staff=False, is_active=True)
     assert model_admin.has_view_permission(request) is False
+
+
+def test_count_columns_annotate_correctly(
+    count_admin, superuser_request, sandwich_with_relations
+):
+    row = count_admin.get_queryset(superuser_request).get(
+        pk=sandwich_with_relations.pk
+    )
+    assert row.review_count == 2
+    assert row.topping_count == 3
+
+
+def test_count_columns_no_fan_out(
+    count_admin, superuser_request, sandwich_with_relations
+):
+    # Two relations on one changelist row: the classic JOIN bug would
+    # report 6/6 here.
+    row = count_admin.get_queryset(superuser_request).get(
+        pk=sandwich_with_relations.pk
+    )
+    assert (row.review_count, row.topping_count) == (2, 3)
+
+
+def test_count_columns_appended_to_list_display(
+    count_admin, superuser_request
+):
+    display = count_admin.get_list_display(superuser_request)
+    assert display[-2:] == ('review_count', 'topping_count')
+
+
+def test_count_column_methods_sortable(count_admin):
+    method = count_admin.review_count
+    assert method.admin_order_field == 'review_count'
+    assert method.short_description == 'review count'
+
+
+def test_count_column_method_returns_annotated_value(
+    count_admin, superuser_request, sandwich_with_relations
+):
+    row = count_admin.get_queryset(superuser_request).get(
+        pk=sandwich_with_relations.pk
+    )
+    assert count_admin.review_count(row) == 2
+
+
+def test_changelist_orders_by_count(
+    count_admin, superuser_request, sandwich_with_relations, rf
+):
+    zero_review_sandwich = models.Sandwich.objects.create(data={})
+    # get_list_display() == ('id', 'review_count', 'topping_count'); 'o'
+    # is a 1-indexed position into that tuple, so index 2 sorts by
+    # review_count.
+    display = count_admin.get_list_display(superuser_request)
+    order_index = display.index('review_count') + 1
+    assert order_index == 2
+
+    request = rf.get('/admin/test_app/sandwich/', {'o': str(order_index)})
+    request.user = superuser_request.user
+    changelist = count_admin.get_changelist_instance(request)
+    ascending = list(changelist.get_queryset(request))
+    # Ascending: 0 reviews (zero_review_sandwich) sorts before 2 reviews.
+    assert [row.pk for row in ascending] == [
+        zero_review_sandwich.pk,
+        sandwich_with_relations.pk,
+    ]
+
+    descending_request = rf.get(
+        '/admin/test_app/sandwich/', {'o': f'-{order_index}'}
+    )
+    descending_request.user = superuser_request.user
+    descending_changelist = count_admin.get_changelist_instance(
+        descending_request
+    )
+    descending = list(descending_changelist.get_queryset(descending_request))
+    assert [row.pk for row in descending] == [
+        sandwich_with_relations.pk,
+        zero_review_sandwich.pk,
+    ]
+
+
+def test_count_column_skips_existing_attribute(predefined_count_admin):
+    # The admin already defines review_count itself; the mixin must not
+    # clobber it with a generated method.
+    assert predefined_count_admin.review_count.short_description == (
+        'custom description'
+    )
+
+
+def test_count_column_not_duplicated_in_list_display(
+    predefined_count_admin, superuser_request
+):
+    display = predefined_count_admin.get_list_display(superuser_request)
+    assert display == ('id', 'review_count')
+
+
+def test_count_admin_checks_pass(count_admin):
+    assert count_admin.check() == []
