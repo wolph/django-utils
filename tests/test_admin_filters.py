@@ -658,15 +658,45 @@ def test_lookup_filter_hidden_inputs_preserve_other_query_state(
 
 
 @pytest.mark.django_db
-def test_lookup_filter_markup_is_csp_safe(rf, lookup_filter_admin):
-    rendered = _render_filter(
-        rf,
-        lookup_filter_admin,
-        {'data__price': '10', 'data__price__op': 'gte'},
-    )
+@pytest.mark.parametrize(
+    'case',
+    ('lookup', 'dropdown-few', 'dropdown-many', 'select2-many'),
+)
+def test_filter_templates_markup_is_csp_safe(
+    rf, lookup_filter_admin, variant_filter_admin, case
+):
+    """No `style=` attribute, no inline event-handler attribute, and no
+    inline `<script>` body across all three filter templates -- a
+    `<script src=...>` tag loading an external file is fine and
+    expected (the select2 variant has one)."""
+    if case == 'lookup':
+        model_admin = lookup_filter_admin
+        get_params = {'data__price': '10', 'data__price__op': 'gte'}
+    elif case == 'dropdown-few':
+        model_admin = variant_filter_admin(
+            filters.JSONFieldFilterDropdown.create('data__filling'),
+            ['bacon', 'cheese'],
+        )
+        get_params = {}
+    elif case == 'dropdown-many':
+        model_admin = variant_filter_admin(
+            filters.JSONFieldFilterDropdown.create('data__filling'),
+            ['bacon', 'cheese', 'egg', 'ham'],
+        )
+        get_params = {}
+    else:  # 'select2-many'
+        model_admin = variant_filter_admin(
+            filters.JSONFieldFilterSelect2.create('data__filling'),
+            ['bacon', 'cheese', 'egg', 'ham'],
+        )
+        get_params = {}
+
+    rendered = _render_filter(rf, model_admin, get_params)
 
     assert 'style=' not in rendered.lower()
     assert not HANDLER_ATTR_RE.search(rendered)
+    for script_tag in re.findall(r'<script[^>]*>', rendered):
+        assert 'src=' in script_tag
 
 
 @pytest.fixture
@@ -692,7 +722,9 @@ def test_dropdown_filter_renders_links_for_few_choices(
     rf, variant_filter_admin
 ):
     """With three or fewer choices (the "All" pseudo-choice included),
-    `dropdown_filter.html` renders plain links rather than a `<select>`.
+    `dropdown_filter.html` renders only the plain link list -- no
+    `<select>` is emitted at all when there's nothing for it to enhance.
+    The CSS/JS enhancement assets are still linked unconditionally.
     """
     model_admin = variant_filter_admin(
         filters.JSONFieldFilterDropdown.create('data__filling'),
@@ -704,15 +736,51 @@ def test_dropdown_filter_renders_links_for_few_choices(
     assert '<select' not in rendered
     assert rendered.count('<a href=') == 3  # All + bacon + cheese
     assert 'class="selected"' in rendered
+    assert 'django_utils/admin/dropdown_filter.css' in rendered
+    assert 'django_utils/admin/dropdown_filter.js' in rendered
+
+
+@pytest.mark.django_db
+def test_dropdown_filter_renders_links_and_hidden_select_for_many_choices(
+    rf, variant_filter_admin
+):
+    """With more than three choices, the always-present link list (the
+    working no-JS fallback) is joined by a `<select>` that starts
+    `hidden` and marked `data-dropdown-filter` -- `dropdown_filter.js`
+    (not exercised here; this is a template-only render test) is what
+    unhides it and hides the links when JavaScript is available.
+    """
+    model_admin = variant_filter_admin(
+        filters.JSONFieldFilterDropdown.create('data__filling'),
+        ['bacon', 'cheese', 'egg', 'ham'],
+    )
+
+    rendered = _render_filter(rf, model_admin, {})
+
+    assert rendered.count('<a href=') == 5  # All + four fillings, links
+    # stay in the markup even though a <select> is also rendered.
+
+    select_tag = re.search(r'<select[^>]*>', rendered)
+    assert select_tag is not None
+    assert 'hidden' in select_tag.group()
+    assert 'data-dropdown-filter' in select_tag.group()
+    assert 'data-select2-filter' not in select_tag.group()
+
+    assert rendered.count('<option') == 5  # All + four fillings
+    assert 'selected="selected"' in rendered  # the "All" choice
+    assert 'django_utils/admin/dropdown_filter.css' in rendered
+    assert 'django_utils/admin/dropdown_filter.js' in rendered
 
 
 @pytest.mark.django_db
 def test_select2_filter_renders_select_with_activation_script(
     rf, variant_filter_admin
 ):
-    """More than three choices flip `dropdown_filter.html` to its
-    `<select>` branch; `select2_filter.html` extends it with the select2
-    activation script targeting `select_html_id()`."""
+    """More than three choices flip `dropdown_filter.html` to also
+    render its `<select>` branch; `select2_filter.html` extends it,
+    marking the select `data-select2-filter` and loading the external
+    `select2_filter.js`, which activates select2 on it (targeting
+    `select_html_id()`) when select2's own JS is present."""
     model_admin = variant_filter_admin(
         filters.JSONFieldFilterSelect2.create('data__filling'),
         ['bacon', 'cheese', 'egg', 'ham'],
@@ -720,7 +788,14 @@ def test_select2_filter_renders_select_with_activation_script(
 
     rendered = _render_filter(rf, model_admin, {})
 
-    assert 'id="data-filling"' in rendered
-    assert 'select2()' in rendered
+    select_tag = re.search(r'<select[^>]*>', rendered)
+    assert select_tag is not None
+    assert 'id="data-filling"' in select_tag.group()
+    assert 'hidden' in select_tag.group()
+    assert 'data-select2-filter' in select_tag.group()
+
+    assert rendered.count('<a href=') == 5  # links stay present too
     assert rendered.count('<option') == 5  # All + four fillings
     assert 'selected="selected"' in rendered  # the "All" choice
+    assert 'django_utils/admin/dropdown_filter.js' in rendered
+    assert 'django_utils/admin/select2_filter.js' in rendered

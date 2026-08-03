@@ -3,32 +3,43 @@ This template was partially copied from the Django Admin List Filter Dropdown
 package. It was copied to allow for easy re-use in the other filters within
 this library.
 Source: https://github.com/mrts/django-admin-list-filter-dropdown
+
+CSP rewrite: this used to carry an inline `style=` on the `<select>` and an
+inline `onchange=` navigation handler, both of which a real CSP blocks --
+and with JavaScript disabled that `<select>` did nothing at all. Now the
+link list below is always rendered (a working no-JS fallback); when there
+are more than three choices a `<select>` is *also* rendered, `hidden` by
+default and marked `data-dropdown-filter`. `dropdown_filter.js` (loaded
+below via `<script src>`, CSP-safe) unhides it, hides the links, and wires
+navigation on `change` -- restoring today's dropdown UX when JavaScript is
+available. Widths formerly inline now live in `dropdown_filter.css`.
 {% endcomment %}
-{% load i18n %}
+{% load i18n static %}
+<link rel="stylesheet" href="{% static 'django_utils/admin/dropdown_filter.css' %}">
 {% block pre %}
 {%  endblock %}
 <h3>{% blocktrans with title as filter_title %} By {{ filter_title }} {% endblocktrans %}</h3>
-<ul class="admin-filter-{{ title|slugify }}">
+<ul class="admin-filter-{{ title|slugify }} django-utils-dropdown-filter">
+    {% for choice in choices %}
+    <li{% if choice.selected %} class="selected"{% endif %}>
+    <a href="{{ choice.query_string|iriencode }}">{{ choice.display }}</a></li>
+    {% endfor %}
 {% if choices|length > 3 %}
     <li>
     <select
         class="form-control"
-        style="width: 95%;margin-left: 2%;"
-        {% if spec.select_html_id %}id="{{ spec.select_html_id }}"{% endif %}
-        onchange="window.location = window.location.pathname + this.options[this.selectedIndex].value">
+        hidden
+        data-dropdown-filter
+        {% block select_attrs %}{% endblock %}
+        {% if spec.select_html_id %}id="{{ spec.select_html_id }}"{% endif %}>
     {% for choice in choices %}
         <option{% if choice.selected %} selected="selected"{% endif %}
          value="{{ choice.query_string|iriencode }}">{{ choice.display }}</option>
     {% endfor %}
     </select>
     </li>
-{% else %}
-    {% for choice in choices %}
-            <li{% if choice.selected %} class="selected"{% endif %}>
-            <a href="{{ choice.query_string|iriencode }}">{{ choice.display }}</a></li>
-    {% endfor %}
-
 {% endif %}
+<script src="{% static 'django_utils/admin/dropdown_filter.js' %}"></script>
 {% block post %}
 {%  endblock %}
 </ul>

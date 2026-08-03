@@ -1,7 +1,8 @@
 {% extends 'django_utils/admin/dropdown_filter.html' %}
+{% load static %}
+
+{% block select_attrs %}data-select2-filter{% endblock %}
 
 {% block post %}
-<script type="text/javascript">
-django.jQuery(document).ready($ => $("#{{ spec.select_html_id }}").select2());
-</script>
+<script src="{% static 'django_utils/admin/select2_filter.js' %}"></script>
 {% endblock %}

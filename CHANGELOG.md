@@ -141,6 +141,22 @@
 
 - `to_json` serialises `datetime`, `date`, `Decimal` and `UUID` via
   `DjangoJSONEncoder` instead of raising `TypeError`.
+- `dropdown_filter.html` and `select2_filter.html` (the templates behind
+  `DropdownMixin`/`Select2Mixin` and their `JSONFieldFilter*` variants) no
+  longer emit an inline `style=` attribute, an inline `onchange=`
+  navigation handler, or an inline `<script>` -- all three broke under a
+  real Content-Security-Policy, and with JavaScript disabled the old
+  `onchange`-driven `<select>` (shown once there are more than three
+  choices) did nothing at all. The plain link list is now always
+  rendered as a working no-JS fallback; when there are more than three
+  choices a `<select>` is *also* rendered, `hidden` until external,
+  CSP-safe `dropdown_filter.js` unhides it, hides the links, and wires
+  navigation on `change`. `select2_filter.html` moves its activation
+  into external `select2_filter.js`, guarded on
+  `window.django && django.jQuery && django.jQuery.fn.select2`.
+  Behavior added, not removed: JavaScript-enabled pages keep today's
+  dropdown/select2 UX; JavaScript-disabled pages gain a working filter
+  where before they had a dead `<select>`.
 
 ### Changed
 
