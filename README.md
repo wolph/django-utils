@@ -316,6 +316,43 @@ if user.has_perm(permission_string(MyModel, 'change')):
     pass
 ```
 
+## Modern CSRF (Fetch-Metadata) middleware
+
+Browser request headers have made the old CSRF token/template-tag dance unnecessary. The `Sec-Fetch-Site` header (sent by all modern browsers since ~2019) tells you whether a request is same-origin, same-site, or cross-site — no tokens required.
+
+`FetchMetadataMiddleware` rejects cross-site state-changing requests by header inspection alone, with a fallback to `Origin` header for older browsers. It's **defense-in-depth**: run it *alongside* Django's `CsrfViewMiddleware`, never instead of it. Old browsers and non-browser clients (curl, webhooks) carry neither header and pass through — that's where token CSRF still catches attacks.
+
+The policy, in order:
+
+1. Safe methods (GET/HEAD/OPTIONS/TRACE) always pass.
+2. Views marked `@fetch_metadata_exempt` pass.
+3. `Sec-Fetch-Site` present: allow `same-origin`/`same-site`/`none` (browser UI); reject everything else with 403 — unknown values fail closed.
+4. No `Sec-Fetch-Site`: compare `Origin` header to `scheme://host`; mismatch rejected.
+5. Neither header: allow (token CSRF is the backstop).
+
+Add to `MIDDLEWARE`:
+
+```python
+MIDDLEWARE = [
+    # ... other middleware ...
+    'django_utils.middleware.FetchMetadataMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',  # Keep this
+]
+```
+
+Exempt specific views with the decorator:
+
+```python
+from django_utils.middleware import fetch_metadata_exempt
+
+@fetch_metadata_exempt
+def webhook_view(request):
+    # This view accepts cross-site requests (e.g., GitHub webhooks)
+    return HttpResponse('ok')
+```
+
+References: [django/new-features #98](https://github.com/django/django/discussions/16632), [OWASP Fetch Metadata](https://owasp.org/www-project-fetch-metadata/), [Go's approach](https://pkg.go.dev/net/http#Request.IsTLS).
+
 ## Links
 
 - Documentation: <https://django-utils-2.readthedocs.io/en/latest/>

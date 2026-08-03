@@ -15,6 +15,12 @@
   `connection.execute_wrapper()` — warn or raise on N+1 regressions in real code
   paths, where `assertNumQueries` (test-only) and profilers (dev-only) cannot
   live. The dominant N+1 package (nplusone) has been unmaintained since 2018.
+- `django_utils.middleware.FetchMetadataMiddleware`: opt-in header-based CSRF
+  hardening via `Sec-Fetch-Site`/`Origin` (django/new-features #98, 59
+  reactions) — strict by default, fails closed on unknown header values,
+  allows header-less clients (token CSRF stays the backstop), with
+  `fetch_metadata_exempt` decorator for opt-outs. Defense-in-depth: run
+  alongside `CsrfViewMiddleware`, never instead of it.
 - `django_utils.context`: contextvars-native current request/user access
   (`RequestContextMiddleware`, `get_current_request()`, `get_current_user()`,
   `current_request()` context manager). Safe under ASGI where thread-local
