@@ -7,6 +7,11 @@ class TestCalls(TestCase):
     def setUp(self):
         self.client = client.Client()
 
+    def test_400(self):
+        response = self.client.get('/error_400')
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, '400', status_code=400)
+
     def test_403(self):
         self.client.get('/error_403')
 

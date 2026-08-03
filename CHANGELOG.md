@@ -63,6 +63,16 @@
   validated, so e.g. `?data__price=10&data__price__op=gte` against a
   filter created without `operators` now raises `SuspiciousOperation`
   (HTTP 400) instead of the previous silent zero-row match.
+- `django_utils.views.error_400`: completes the shipped error-handler set
+  (403/404/500 already existed), so a project's `handler400` can point
+  here too. Renders `django_utils/error_400.html`, which shipped in
+  every release but had no view referencing it.
+- Test infrastructure: template coverage. `django-coverage-plugin` now
+  measures the shipped `.html` templates as part of the combined 100%
+  coverage gate, so an unrendered template line fails CI instead of
+  being invisible to coverage.py. Enabling it immediately surfaced --
+  and forced render tests for -- `dropdown_filter.html` and
+  `select2_filter.html`, which no test had ever rendered.
 
 ### Fixed
 

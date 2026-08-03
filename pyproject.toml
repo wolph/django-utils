@@ -53,7 +53,7 @@ tests = [
     "pytest-django>=4.8",
     "pytest-cov>=6.0",
     "coverage>=7.0",
-    "jinja2>=3.0",
+    "django-coverage-plugin>=3.1",
     "pygments>=2.0",
 ]
 dev = [
@@ -101,6 +101,10 @@ addopts = [
 [tool.coverage.run]
 branch = true
 source = ["django_utils"]
+# Measures Django template execution so shipped .html files count toward
+# the 100% gate; an unrendered template shows up at 0% instead of being
+# invisible to coverage. Requires template debug=True (tests/settings.py).
+plugins = ["django_coverage_plugin"]
 
 [tool.coverage.report]
 exclude_lines = [

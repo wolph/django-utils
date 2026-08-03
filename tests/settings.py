@@ -32,18 +32,18 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'tests.urls'
 
+# Django templates only: django_coverage_plugin measures template
+# execution and refuses to run when a non-Django engine is configured.
 TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.jinja2.Jinja2',
-        'APP_DIRS': True,
-        'DIRS': ['tests/jinja2'],
-        'OPTIONS': {},
-    },
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'APP_DIRS': True,
         'DIRS': ['tests/templates'],
         'OPTIONS': {
+            # django_coverage_plugin needs template debug instrumentation;
+            # pytest-django forces settings.DEBUG off, which would otherwise
+            # default this to False and silently disable template coverage.
+            'debug': True,
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',

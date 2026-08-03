@@ -3,6 +3,11 @@ from django import http
 from . import view_decorators
 
 
+@view_decorators.env(response_class=http.HttpResponseBadRequest)
+def error_400(request: http.HttpRequest, exception: Exception) -> None:
+    pass
+
+
 @view_decorators.env(response_class=http.HttpResponseForbidden)
 def error_403(request: http.HttpRequest, exception: Exception) -> None:
     pass

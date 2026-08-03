@@ -557,8 +557,9 @@ def test_queryset_via_admin_changelist_with_non_exact_operator(rf):
     assert changelist.get_queryset(request).count() == 2
 
 
-def _render_lookup_filter(rf, model_admin, get_params):
-    """Render `lookup_filter.html` through the real admin pipeline --
+def _render_filter(rf, model_admin, get_params):
+    """Render the model admin's sole list filter through the real admin
+    pipeline --
     `get_changelist_instance()` -> `admin_list_filter()` -- exactly how
     `change_list.html` renders it, and return the markup. Exercising the
     template this way (instead of calling `Template.render()` on a
@@ -601,7 +602,7 @@ def lookup_filter_admin():
 def test_lookup_filter_operator_select_lists_operators_and_marks_current(
     rf, lookup_filter_admin
 ):
-    rendered = _render_lookup_filter(
+    rendered = _render_filter(
         rf,
         lookup_filter_admin,
         {'data__price': '10', 'data__price__op': 'gte'},
@@ -634,7 +635,7 @@ def test_lookup_filter_hidden_inputs_preserve_other_query_state(
     round-trips as one hidden input per value instead of collapsing to
     the last one.
     """
-    rendered = _render_lookup_filter(
+    rendered = _render_filter(
         rf,
         lookup_filter_admin,
         {
@@ -658,7 +659,7 @@ def test_lookup_filter_hidden_inputs_preserve_other_query_state(
 
 @pytest.mark.django_db
 def test_lookup_filter_markup_is_csp_safe(rf, lookup_filter_admin):
-    rendered = _render_lookup_filter(
+    rendered = _render_filter(
         rf,
         lookup_filter_admin,
         {'data__price': '10', 'data__price__op': 'gte'},
@@ -666,3 +667,60 @@ def test_lookup_filter_markup_is_csp_safe(rf, lookup_filter_admin):
 
     assert 'style=' not in rendered.lower()
     assert not HANDLER_ATTR_RE.search(rendered)
+
+
+@pytest.fixture
+def variant_filter_admin():
+    """Factory for a model admin whose single list filter is `filter_class`,
+    with one `Sandwich` row per filling so the filter has output."""
+
+    def factory(filter_class, fillings):
+        for filling in fillings:
+            models.Sandwich.objects.create(data={'filling': filling})
+
+        class SandwichAdmin(admin.ModelAdmin):
+            list_display = ('id',)
+            list_filter = (filter_class,)
+
+        return SandwichAdmin(models.Sandwich, admin.AdminSite())
+
+    return factory
+
+
+@pytest.mark.django_db
+def test_dropdown_filter_renders_links_for_few_choices(
+    rf, variant_filter_admin
+):
+    """With three or fewer choices (the "All" pseudo-choice included),
+    `dropdown_filter.html` renders plain links rather than a `<select>`.
+    """
+    model_admin = variant_filter_admin(
+        filters.JSONFieldFilterDropdown.create('data__filling'),
+        ['bacon', 'cheese'],
+    )
+
+    rendered = _render_filter(rf, model_admin, {'data__filling': 'bacon'})
+
+    assert '<select' not in rendered
+    assert rendered.count('<a href=') == 3  # All + bacon + cheese
+    assert 'class="selected"' in rendered
+
+
+@pytest.mark.django_db
+def test_select2_filter_renders_select_with_activation_script(
+    rf, variant_filter_admin
+):
+    """More than three choices flip `dropdown_filter.html` to its
+    `<select>` branch; `select2_filter.html` extends it with the select2
+    activation script targeting `select_html_id()`."""
+    model_admin = variant_filter_admin(
+        filters.JSONFieldFilterSelect2.create('data__filling'),
+        ['bacon', 'cheese', 'egg', 'ham'],
+    )
+
+    rendered = _render_filter(rf, model_admin, {})
+
+    assert 'id="data-filling"' in rendered
+    assert 'select2()' in rendered
+    assert rendered.count('<option') == 5  # All + four fillings
+    assert 'selected="selected"' in rendered  # the "All" choice
