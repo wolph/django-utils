@@ -171,6 +171,36 @@ class's bases (`admin.ModelAdmin` already defines an empty
 in the base list, and merge its `formfield_overrides` mapping into your
 own rather than replacing it if you need overrides for other fields too.
 
+## Read-only admin
+
+For operations dashboards, audits, or restricted data access, convert any
+`ModelAdmin` to a read-only view — add/change/delete denied for everyone
+(superusers included), all fields locked, while list filtering and search
+still work. `ReadOnlyModelAdminMixin` is built on stable public `ModelAdmin`
+API only:
+
+```python
+from django.contrib import admin
+from django_utils.admin.mixins import ReadOnlyModelAdminMixin
+
+from myapp.models import MyModel
+
+
+class ReadOnlyMyModelAdmin(ReadOnlyModelAdminMixin, admin.ModelAdmin):
+    list_display = ('name', 'created_at')
+    search_fields = ('name',)
+    list_filter = ('created_at',)
+
+
+admin.site.register(MyModel, ReadOnlyMyModelAdmin)
+```
+
+The mixin leaves view permission and list configuration untouched, so you
+can keep your existing filters, search fields, and display columns. It's a
+**silent** no-op if listed *after* `admin.ModelAdmin` (MRO finds
+`has_add_permission` on `ModelAdmin` first), so keep the mixin first in the
+base list.
+
 ## Choices usage
 
 To enable easy to use choices which are more convenient than the Django 3.0

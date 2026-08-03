@@ -20,6 +20,14 @@ django\_utils.admin.widgets module
    :undoc-members:
    :show-inheritance:
 
+django\_utils.admin.mixins module
+---------------------------------
+
+.. automodule:: django_utils.admin.mixins
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

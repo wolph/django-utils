@@ -4,6 +4,10 @@
 
 ### Added
 
+- `django_utils.admin.mixins.ReadOnlyModelAdminMixin`: turn any existing admin
+  into a safe read-only view — add/change/delete denied for everyone
+  (superusers included), all fields read-only, list configuration and search
+  working untouched. Built on stable public `ModelAdmin` API.
 - `django_utils.auth`: `superuser_required` / `staff_required` view decorators
   and `permission_string()` — the helpers behind django/new-features #47 and
   #137 (67 combined reactions) that every project hand-rolls. Both decorators
