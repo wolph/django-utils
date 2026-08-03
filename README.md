@@ -242,6 +242,49 @@ Same MRO rule as the read-only mixin above: list `CountColumnMixin`
 `get_list_display` silently fall through to Django's own versions and
 nothing is added.
 
+## Admin export
+
+`ExportMixin` adds two changelist actions — `export_as_csv` and
+`export_as_json` — that stream the selected rows straight to the
+client via `StreamingHttpResponse`, pulling rows one at a time through
+`queryset_iterator` so exporting a million rows never loads the whole
+table into memory:
+
+```python
+from django.contrib import admin
+from django_utils.admin.export import ExportMixin
+
+from myapp.models import Ingredient
+
+
+class IngredientAdmin(ExportMixin, admin.ModelAdmin):
+    list_display = ('name', 'stock')
+    export_fields = ('name', 'stock')  # optional; defaults to every
+                                        # concrete field's attname
+
+
+admin.site.register(Ingredient, IngredientAdmin)
+```
+
+Both actions run against the *changelist's own queryset* — already
+narrowed by `list_filter`, search, and this package's own admin
+filters (`django_utils.admin.filters`) — so the intended flow is
+filter first, select second, export third: the export never sees a
+row the changelist wouldn't have shown.
+
+Exported CSV text values starting with `=`, `+`, `-` or `@` are
+prefixed with a single quote before being written — the documented
+OWASP mitigation for CSV/formula injection, where spreadsheet
+applications would otherwise execute those cells as formulas. Numbers
+and other non-str values are left untouched.
+
+Hard scope cap, by design: CSV and JSON only, export only — no XLSX,
+no import, no resource classes, ever. For anything heavier —
+spreadsheets, round-trip import, custom resource classes — reach for
+[django-import-export](https://django-import-export.readthedocs.io/);
+this mixin exists for the common 90% case without that package's
+weight.
+
 ## Choices usage
 
 To enable easy to use choices which are more convenient than the Django 3.0

@@ -1,9 +1,14 @@
 import typing
 
 from django.contrib import admin
-from django_utils.admin import filters
+from django_utils.admin import export, filters
 
 from . import models
+
+
+class IngredientAdmin(export.ExportMixin, admin.ModelAdmin):
+    list_display = ('name', 'stock')
+    search_fields = ('name',)
 
 
 class SpamAdmin(admin.ModelAdmin):
@@ -46,3 +51,4 @@ def _register(model, admin_class):
 _register(models.Spam, SpamAdmin)
 _register(models.Eggs, EggsAdmin)
 _register(models.RecursionTest, RecursionTestAdmin)
+_register(models.Ingredient, IngredientAdmin)

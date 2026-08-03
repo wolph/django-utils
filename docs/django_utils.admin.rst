@@ -4,6 +4,14 @@ django\_utils.admin package
 Submodules
 ----------
 
+django\_utils.admin.export module
+---------------------------------
+
+.. automodule:: django_utils.admin.export
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 django\_utils.admin.filters module
 ----------------------------------
 
