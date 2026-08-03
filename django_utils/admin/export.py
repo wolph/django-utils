@@ -138,7 +138,9 @@ class ExportMixin:
                     _guard_csv(getattr(obj, field)) for field in fields
                 )
 
-        response = http.StreamingHttpResponse(rows(), content_type='text/csv')
+        response = http.StreamingHttpResponse(
+            rows(), content_type='text/csv; charset=utf-8'
+        )
         filename = _attachment_filename(self, 'csv')
         response['Content-Disposition'] = _content_disposition(filename)
         return response
@@ -161,7 +163,7 @@ class ExportMixin:
             yield ']'
 
         response = http.StreamingHttpResponse(
-            rows(), content_type='application/json'
+            rows(), content_type='application/json; charset=utf-8'
         )
         filename = _attachment_filename(self, 'json')
         response['Content-Disposition'] = _content_disposition(filename)

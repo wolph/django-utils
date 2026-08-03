@@ -86,7 +86,7 @@ def test_export_as_csv_streams_header_and_rows(model_admin, rf):
     )
 
     assert isinstance(response, http.StreamingHttpResponse)
-    assert response['Content-Type'] == 'text/csv'
+    assert response['Content-Type'] == 'text/csv; charset=utf-8'
     assert response['Content-Disposition'] == (
         'attachment; filename="ingredient_export.csv"'
     )
@@ -142,7 +142,7 @@ def test_export_as_json_parses_and_matches_rows(model_admin, rf):
     )
 
     assert isinstance(response, http.StreamingHttpResponse)
-    assert response['Content-Type'] == 'application/json'
+    assert response['Content-Type'] == 'application/json; charset=utf-8'
     assert response['Content-Disposition'] == (
         'attachment; filename="ingredient_export.json"'
     )
@@ -196,6 +196,48 @@ def test_streaming_handles_many_rows_across_chunks(
     assert row_count(content) == 250
 
 
+def test_export_as_csv_guard_survives_csv_quoting(model_admin, rf):
+    """A guarded value that ALSO contains the delimiter: the ' prefix is
+    applied first, then csv.writer quotes the whole cell — parsing it
+    back must yield the prefixed original, not a mangled split."""
+    models.Ingredient.objects.create(name='=1,2', stock=1)
+    request = rf.post('/admin/test_app/ingredient/')
+
+    response = model_admin.export_as_csv(
+        request, models.Ingredient.objects.all()
+    )
+
+    data_row = _csv_rows(b''.join(response.streaming_content).decode())[1]
+    assert data_row[1] == "'=1,2"
+
+
+def test_export_as_json_zero_rows_is_valid_empty_array(model_admin, rf):
+    request = rf.post('/admin/test_app/ingredient/')
+    response = model_admin.export_as_json(
+        request, models.Ingredient.objects.none()
+    )
+    content = b''.join(response.streaming_content).decode()
+    assert json.loads(content) == []
+
+
+def test_export_fk_columns_use_attname(rf):
+    """FKs export as their raw <name>_id column value, per the
+    attname-based default field list."""
+    sandwich = models.Sandwich.objects.create(data={})
+    models.Review.objects.create(sandwich=sandwich, rating=4)
+
+    class ReviewExportAdmin(export.ExportMixin, admin.ModelAdmin):
+        pass
+
+    model_admin = ReviewExportAdmin(models.Review, admin.AdminSite())
+    request = rf.post('/admin/test_app/review/')
+    response = model_admin.export_as_csv(request, models.Review.objects.all())
+    rows = _csv_rows(b''.join(response.streaming_content).decode())
+    assert 'sandwich_id' in rows[0]
+    sandwich_column = rows[0].index('sandwich_id')
+    assert rows[1][sandwich_column] == str(sandwich.pk)
+
+
 # -- get_actions() ----------------------------------------------------
 
 
@@ -221,7 +263,7 @@ def test_changelist_action_post_streams_csv_response(admin_client):
     )
 
     assert response.status_code == 200
-    assert response['Content-Type'] == 'text/csv'
+    assert response['Content-Type'] == 'text/csv; charset=utf-8'
     assert response['Content-Disposition'] == (
         'attachment; filename="ingredient_export.csv"'
     )
