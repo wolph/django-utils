@@ -12,6 +12,8 @@ def _postgres_database(name: str) -> dict[str, str]:
         'HOST': os.environ.get('POSTGRES_HOST', '127.0.0.1'),
         'PORT': os.environ.get('POSTGRES_PORT', '5432'),
         'USER': os.environ.get('POSTGRES_USER', 'postgres'),
+        # Ephemeral-test-container default, not a real credential; CI's
+        # postgres service uses the same value, override via env.
         'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'postgres'),
     }
 
