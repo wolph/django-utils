@@ -390,6 +390,35 @@ bulk_update_or_create(
 
 Arguments are validated before any query runs (`ValueError` on empty or overlapping field lists, unknown fields, mixed model classes). Backend note: PostgreSQL and SQLite use `unique_fields` as the explicit conflict target; MySQL/MariaDB's `ON DUPLICATE KEY UPDATE` fires on *any* unique constraint — identical with one unique constraint on the model, subtly broader with several.
 
+## Chunked management commands
+
+`ChunkedCommand` is a base class for Django management commands that process large querysets in memory-bounded chunks. It composes with `queryset_iterator` to iterate through data in fixed-size batches, logging progress and supporting resumable checkpointing via `--resume-from` and early stopping via `--limit`. Dry-run mode rolls back all changes via an exception-unwound nested transaction, safe for pytest-django's per-test transactions.
+
+Subclass `ChunkedCommand` and implement `get_queryset()` and `handle_instance(instance)`:
+
+```python
+from django_utils.management.commands.base_command import ChunkedCommand
+from myapp.models import MyModel
+
+class Command(ChunkedCommand):
+    chunksize = 1000  # Optional: customize batch size (default 1000)
+    log_every = 1000  # Optional: log progress every N rows (default 1000)
+
+    def get_queryset(self):
+        return MyModel.objects.all()
+
+    def handle_instance(self, instance):
+        instance.some_field = 'updated'
+        instance.save()
+```
+
+Command-line options:
+- `--chunksize N`: Override the class `chunksize` (default 1000)
+- `--resume-from PK`: Skip rows with pk ≤ this value (useful for resuming interrupted runs)
+- `--limit N`: Stop after processing N rows and log the resume-from hint
+- `--dry-run`: Run inside a transaction and roll everything back
+- `--log-every N`: Log progress every N rows (default 1000)
+
 ## Links
 
 - Documentation: <https://django-utils-2.readthedocs.io/en/latest/>
