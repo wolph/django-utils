@@ -66,7 +66,7 @@ def fetch_metadata_exempt(view_func: _View) -> _View:
         ) -> typing.Any:
             return view_func(*args, **kwargs)
 
-    wrapper.fetch_metadata_exempt = True  # type: ignore[attr-defined]
+    wrapper.fetch_metadata_exempt = True  # type: ignore[attr-defined]  # ty: ignore[invalid-assignment]
     return typing.cast(_View, wrapper)
 
 
@@ -92,7 +92,10 @@ class FetchMetadataMiddleware:
         self.get_response = get_response
         self._is_async = iscoroutinefunction(get_response)
         if self._is_async:
-            markcoroutinefunction(self)
+            # Marking the instance is Django's documented idiom for hybrid
+            # middleware; typeshed types markcoroutinefunction for plain
+            # functions only.
+            markcoroutinefunction(self)  # ty: ignore[invalid-argument-type]
 
     def __call__(
         self, request: http.HttpRequest
