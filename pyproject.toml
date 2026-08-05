@@ -50,6 +50,9 @@ crypto = [
 docs = [
     "sphinx>=8.0",
     "furo>=2025.1",
+    "myst-parser>=4.0",
+    "sphinx-design>=0.6",
+    "sphinx-copybutton>=0.5",
 ]
 tests = [
     "django-utils2[crypto]",
