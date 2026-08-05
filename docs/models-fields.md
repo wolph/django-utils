@@ -129,7 +129,7 @@ while application code gets `isinstance`/`match` support:
 
 ```python
 StatusEnum = Status.as_enum()
-StatusEnum('a') is StatusEnum.ACTIVE  # True
+StatusEnum('a') is StatusEnum.Active  # True
 ```
 
 :::{dropdown} Caveat: enum picklability and caching

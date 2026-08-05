@@ -310,7 +310,7 @@ row the changelist wouldn't have shown.
 name,stock
 salt,5
 pepper,3
-"=cmd|'/c calc'!A1",1
+'=cmd|'/c calc'!A1,1
 ```
 
 Exported text values starting with `=`, `+`, `-`, `@`, a tab or a
