@@ -248,6 +248,14 @@
   operational blast radius of a single heavy query and how short,
   resumable chunks (`start_after`) avoid it. These three points follow
   from the query shape and were not independently benchmarked.
+- Documentation moved to the Sphinx/Furo site at
+  <https://django-utils-2.readthedocs.io/en/latest/>: a quickstart, a
+  "why this over the alternatives" page, and one feature-area page per
+  admin/models/querysets/commands/middleware topic, with runnable
+  examples and (for the admin features) screenshots or a live
+  in-browser demo. `README.md` is slimmed to the pitch, install,
+  a single quickstart win, and a feature index linking out to each page
+  -- it is no longer where feature details live.
 
 ## 4.0.0 (unreleased)
 
