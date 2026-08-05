@@ -33,7 +33,14 @@ shaped like:
 By default the results for the JSON filters are cached for 10 minutes;
 pass `timeout=` to `create()` to change it.
 
-<!-- screenshot: /_static/screenshots/filters-sidebar.png -->
+:::{figure} /_static/screenshots/filters-sidebar.png
+:alt: Django admin changelist for Sandwich with the "By Data Filling" JSON dropdown filter open in the sidebar, listing All, Avocado, Bacon, Cheddar, Corned Beef and Turkey.
+:width: 700px
+
+The `data__filling` dropdown filter, open in the sidebar. Five seeded
+filling values (more than three) is what makes `dropdown_filter.js`
+swap the no-JS link list for this `<select>`.
+:::
 
 **Try it live** — {doc}`a live, in-browser demo of the dropdown
 filter's shipped JavaScript </demos/dropdown-filter>`: a no-JS link
@@ -111,7 +118,15 @@ JSONFieldFilter.create(
 )
 ```
 
-<!-- screenshot: /_static/screenshots/operator-filter.png -->
+:::{figure} /_static/screenshots/operator-filter.png
+:alt: Django admin changelist for Sandwich with the "By Data Price" operator filter showing a "gte" operator select and a value input filled in with 550, filtering the list to four rows.
+:width: 700px
+
+The `data__price` operator filter, submitted with `gte` and `550` --
+both the operator `<select>` and the value `<input>` are populated
+straight from the query string, and the changelist below is filtered
+accordingly.
+:::
 
 API reference: {py:class}`~django_utils.admin.filters.JSONFieldFilter`,
 {py:class}`~django_utils.admin.filters.LookupFilterMixin`.
@@ -165,7 +180,15 @@ Keep the mixin first in the base list, and merge its
 if you need overrides for other fields too.
 :::
 
-<!-- screenshot: /_static/screenshots/json-widget.png -->
+:::{figure} /_static/screenshots/json-widget.png
+:alt: Django admin change form for a Sandwich with a JSONWidget textarea containing a multi-key JSON document with a missing closing brace, and a red inline error reading "Expected ',' or '}' after property value in JSON".
+:width: 700px
+
+`JSONWidget` on a change form: a pretty-printed, multi-key document,
+broken here (missing closing brace) to show the inline validation
+error `json_widget.js` adds -- the browser's own `JSON.parse()`
+message, reported as you type.
+:::
 
 **Try it live** — {doc}`a live, in-browser demo of the shipped JSON
 widget JavaScript </demos/json-widget>`, exercising the same inline
@@ -220,7 +243,15 @@ edits are possible. Apply this mixin to inline admin classes too if
 you want their rendered UI to match.
 :::
 
-<!-- screenshot: /_static/screenshots/readonly-admin.png -->
+:::{figure} /_static/screenshots/readonly-admin.png
+:alt: Django admin "View tag" screen for a Tag showing ID, Name and Sandwiches as read-only rows, with only a Close button -- no Save or Delete.
+:width: 700px
+
+A `ReadOnlyModelAdminMixin`-wrapped `Tag` change view: `name` and the
+`sandwiches` many-to-many both render read-only, the page title reads
+"View tag" rather than "Change tag", and only Close remains -- no
+Save, no Delete.
+:::
 
 API reference: {py:class}`~django_utils.admin.mixins.ReadOnlyModelAdminMixin`.
 
@@ -270,7 +301,14 @@ Same MRO rule as the read-only mixin above: list `CountColumnMixin`
 nothing is added.
 :::
 
-<!-- screenshot: /_static/screenshots/count-columns.png -->
+:::{figure} /_static/screenshots/count-columns.png
+:alt: Django admin changelist for Sandwich with Review count and Topping count columns, sorted descending by Review count (3, 2, 1, 0, 0).
+:width: 700px
+
+`CountColumnMixin`'s `review_count` / `topping_count` columns on the
+Sandwich changelist, sorted descending by review count -- both are
+sortable exactly like any other `admin_order_field`-carrying column.
+:::
 
 API reference: {py:class}`~django_utils.admin.mixins.CountColumnMixin`.
 
@@ -352,6 +390,13 @@ spreadsheets, round-trip import, custom resource classes — reach for
 this mixin exists for the common 90% case without that package's
 weight.
 
-<!-- screenshot: /_static/screenshots/export-actions.png -->
+:::{figure} /_static/screenshots/export-actions.png
+:alt: Django admin changelist for Ingredient with all four rows selected and the action selector expanded, listing Delete selected ingredients, Export selected as CSV and Export selected as JSON.
+:width: 700px
+
+The changelist action selector, expanded, showing both `ExportMixin`
+actions -- CSV and JSON -- alongside Django's own built-in delete
+action.
+:::
 
 API reference: {py:class}`~django_utils.admin.export.ExportMixin`.

@@ -42,7 +42,11 @@ templates_path = []
 # ledgers) — git-ignored (see ~/.gitignore), not part of the published
 # site. It only became reachable once `.md` joined `source_suffix`
 # below; exclude it the same way `_build` already is.
-exclude_patterns = ['_build', 'superpowers']
+# `screenshots/` is the admin-screenshot capture pipeline (`capture.py`,
+# the throwaway `demo_project/`, its own `README.md`) -- source code and
+# its own docs, not a page of this site; its README isn't in any
+# toctree, which `-W` would otherwise turn into a hard build failure.
+exclude_patterns = ['_build', 'superpowers', 'screenshots']
 source_suffix = {
     '.rst': 'restructuredtext',
     '.md': 'markdown',
