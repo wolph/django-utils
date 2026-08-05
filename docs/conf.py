@@ -58,3 +58,8 @@ html_theme = 'furo'
 # `_static/django_utils/...` alongside the existing `_static/` contents
 # rather than replacing them.
 html_static_path = ['_static', '../django_utils/static']
+# terminal.js/.css live only in docs/_static/ (this package doesn't ship
+# a terminal effect) -- registered so every page gets the typewriter
+# behavior for `<pre data-terminal>` blocks (used by commands.md).
+html_js_files = ['terminal.js']
+html_css_files = ['terminal.css']

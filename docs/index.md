@@ -94,3 +94,11 @@ middleware
 changelog
 django_utils
 ```
+
+```{toctree}
+:hidden:
+:caption: Live demos
+
+demos/json-widget
+demos/dropdown-filter
+```

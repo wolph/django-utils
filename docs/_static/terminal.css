@@ -1,0 +1,50 @@
+/* Terminal-style typewriter blocks (`<pre data-terminal>`, animated by
+   terminal.js). Padding, border-radius and font stack match furo's own
+   `.highlight pre` code blocks so a terminal block reads as "one more
+   code block" -- but the background stays a fixed dark terminal color
+   in both light and dark theme, since it represents an actual shell
+   session rather than prose or a syntax-highlighted snippet. */
+pre[data-terminal] {
+    background: #1a1c23;
+    color: #d8dee9;
+    font-family: var(
+        --font-stack--monospace,
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Consolas,
+        monospace
+    );
+    font-size: var(--code-font-size, 0.8125rem);
+    line-height: 1.5;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.2rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Blinking block cursor while the typewriter is mid-animation. */
+pre[data-terminal].terminal-animating::after {
+    content: '\2588';
+    display: inline-block;
+    margin-left: 1px;
+    color: #d8dee9;
+    animation: terminal-cursor-blink 1s steps(1, start) infinite;
+}
+
+@keyframes terminal-cursor-blink {
+    50% {
+        opacity: 0;
+    }
+}
+
+/* terminal.js already skips the animation entirely under reduced
+   motion (the block renders full text immediately, no
+   terminal-animating class is ever added) -- this is a defense-in-depth
+   backstop in case that class is ever applied by other means. */
+@media (prefers-reduced-motion: reduce) {
+    pre[data-terminal].terminal-animating::after {
+        animation: none;
+    }
+}

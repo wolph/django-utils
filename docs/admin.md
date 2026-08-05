@@ -7,6 +7,7 @@ dependency-free CSV/JSON export — each covered below with a
 screenshot of the real admin, and the JSON widget backed by a live,
 in-browser demo of the shipped JavaScript.
 
+(dropdown-filters)=
 ## Select / dropdown / autocomplete filters
 
 All of the standard admin list filters are available through
@@ -34,9 +35,9 @@ pass `timeout=` to `create()` to change it.
 
 <!-- screenshot: /_static/screenshots/filters-sidebar.png -->
 
-**Try it live** — an in-browser demo of the select2 dropdown filter
-ships with these docs; the demo pages land in a later revision of this
-site.
+**Try it live** — {doc}`a live, in-browser demo of the dropdown
+filter's shipped JavaScript </demos/dropdown-filter>`: a no-JS link
+list that becomes a `<select>` once JavaScript swaps it in.
 
 API reference: {py:class}`~django_utils.admin.filters.SimpleListFilterDropdown`,
 {py:class}`~django_utils.admin.filters.SimpleListFilterSelect2`, full module at
@@ -115,6 +116,7 @@ JSONFieldFilter.create(
 API reference: {py:class}`~django_utils.admin.filters.JSONFieldFilter`,
 {py:class}`~django_utils.admin.filters.LookupFilterMixin`.
 
+(json-widget-section)=
 ## JSON widget
 
 `django_utils.admin.widgets.JSONWidget` is a drop-in replacement for
@@ -165,9 +167,9 @@ if you need overrides for other fields too.
 
 <!-- screenshot: /_static/screenshots/json-widget.png -->
 
-**Try it live** — a live, in-browser demo of the shipped JSON widget
-JavaScript ships with these docs; the demo pages land in a later
-revision of this site.
+**Try it live** — {doc}`a live, in-browser demo of the shipped JSON
+widget JavaScript </demos/json-widget>`, exercising the same inline
+validation described above.
 
 API reference: {py:class}`~django_utils.admin.widgets.JSONWidget`,
 {py:class}`~django_utils.admin.widgets.JSONWidgetMixin`.
