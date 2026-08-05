@@ -22,7 +22,12 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
+    'myst_parser',
+    'sphinx_design',
+    'sphinx_copybutton',
 ]
+
+myst_enable_extensions = ['colon_fence']
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
@@ -33,9 +38,23 @@ intersphinx_mapping = {
 }
 
 templates_path = []
-exclude_patterns = ['_build']
-source_suffix = '.rst'
+# `superpowers/` is SDD planning scaffolding (specs, plans, progress
+# ledgers) — git-ignored (see ~/.gitignore), not part of the published
+# site. It only became reachable once `.md` joined `source_suffix`
+# below; exclude it the same way `_build` already is.
+exclude_patterns = ['_build', 'superpowers']
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.md': 'markdown',
+}
 master_doc = 'index'
 
 html_theme = 'furo'
-html_static_path = ['_static']
+# `../django_utils/static` serves the package's own shipped JS/CSS (the
+# admin JSON widget, dropdown filter, ...) directly from the site, so the
+# live demo pages load the exact files the package installs -- no copies,
+# no drift. Sphinx merges multiple `html_static_path` entries into one
+# `_static/` tree keyed by each entry's basename, so this adds
+# `_static/django_utils/...` alongside the existing `_static/` contents
+# rather than replacing them.
+html_static_path = ['_static', '../django_utils/static']
