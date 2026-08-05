@@ -34,9 +34,10 @@ the CI/tox configuration that enforces it).
   coverage.py.
 - **Six type checkers and linters, every CI run.** `ruff check`,
   `ruff format --check`, `mypy` (strict, with `django-stubs`),
-  `basedpyright`, `pyrefly`, and `ty` — each its own tox environment,
-  run as dedicated CI jobs (`tox -e lint` and
-  `tox -e mypy,basedpyright,pyrefly,ty`).
+  `basedpyright`, `pyrefly`, and `ty` — six checks across five tox
+  environments (ruff's two share the `lint` env; the four type
+  checkers each get their own), run as dedicated CI jobs
+  (`tox -e lint` and `tox -e mypy,basedpyright,pyrefly,ty`).
 - **Full-suite PostgreSQL CI**, not a hand-picked subset. Every
   ORM-touching test — not only the ones carrying the `postgres` pytest
   marker — runs against PostgreSQL 16 in its own CI job, on top of the
