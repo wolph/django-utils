@@ -170,6 +170,10 @@
 
 ### Fixed
 
+- The `tests` extra pins `pytest-django>=4.8,<4.13`: pytest-django
+  4.13.0 dropped Django 4.2 support without a version floor and crashes
+  on it (`AttributeError: _pre_setup_ran_eagerly`). The cap lifts when
+  Django 4.2 leaves the support matrix.
 - `dropdown_filter.html` renders `{{ spec.Media }}` again — a
   master-only hotfix (a285130, shipped on top of 3.0.2) merged back
   into this branch at release time. Django's admin never consults a
