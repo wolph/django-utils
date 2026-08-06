@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.1.0
+## 4.1.0 (2026-08-06)
 
 ### Added
 
@@ -264,7 +264,7 @@
   a single quickstart win, and a feature index linking out to each page
   -- it is no longer where feature details live.
 
-## 4.0.0 (unreleased)
+## 4.0.0 (never published separately -- its changes first shipped in 4.1.0)
 
 Modernization release. Runtime behavior of retained APIs is unchanged except for the documented fixes below; the removed modules were packaging/metadata only.
 
