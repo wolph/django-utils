@@ -2,14 +2,12 @@ import argparse
 import datetime
 
 import pytest
-
-from django_utils.management import commands
-from django_utils.management.commands import settings
+from django_utils.management.commands import admin_autogen, settings
 
 
 @pytest.fixture
 def settings_command():
-    return commands.settings.Command()
+    return settings.Command()
 
 
 def test_settings_command_empty(settings_command):
@@ -19,6 +17,13 @@ def test_settings_command_empty(settings_command):
 
 def test_settings_command_no_type(settings_command):
     settings_command.render_output(None, output_type=None)
+
+
+def test_settings_command_unknown_type(settings_command):
+    # An output_type that matches none of the known renderers should be a
+    # silent no-op (argparse `choices` prevents this via the CLI, but
+    # render_output() is public API and can be called directly).
+    settings_command.render_output({'a': 1}, output_type='unknown')
 
 
 @pytest.mark.parametrize('output_type', settings.Command.output_types)
@@ -46,5 +51,5 @@ def test_settings_command_data(settings_command, output_type, show_keys):
 
 
 def test_admin_autogen_command():
-    command = commands.admin_autogen.Command()
+    command = admin_autogen.Command()
     command.handle()

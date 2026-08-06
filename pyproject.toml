@@ -1,0 +1,178 @@
+[build-system]
+requires = ["uv_build>=0.11.0,<0.12"]
+build-backend = "uv_build"
+
+[project]
+name = "django-utils2"
+version = "4.1.0"
+description = "Django Utils is a module with some convenient utilities not included with the standard Django install"
+readme = "README.md"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Rick van Hattem", email = "Wolph@Wol.ph" }]
+classifiers = [
+    "Development Status :: 6 - Mature",
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.2",
+    "Framework :: Django :: 6.0",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    "django>=4.2",
+    "python-utils>=3.5.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/WoLpH/django-utils"
+Documentation = "https://django-utils-2.readthedocs.io/"
+"Bug Tracker" = "https://github.com/WoLpH/django-utils/issues"
+
+[project.optional-dependencies]
+crypto = [
+    "cryptography>=42.0",
+]
+docs = [
+    "sphinx>=8.0",
+    "furo>=2025.1",
+    "myst-parser>=4.0",
+    "sphinx-design>=0.6",
+    "sphinx-copybutton>=0.5",
+]
+tests = [
+    "django-utils2[crypto]",
+    "pytest>=8.0",
+    "pytest-django>=4.8",
+    "pytest-cov>=6.0",
+    "coverage>=7.0",
+    "django-coverage-plugin>=3.1",
+    "pygments>=2.0",
+]
+dev = [
+    "django-utils2[tests]",
+    "ruff>=0.15.0",
+    "mypy>=1.14",
+    "django-stubs[compatible-mypy]>=5.1",
+    "basedpyright>=1.0",
+    "pyrefly>=0.1",
+    "ty>=0.0.56",
+]
+tox = [
+    "tox>=4.0",
+    "tox-uv>=1.0",
+]
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "django_utils"
+# uv_build packs the module directory off the filesystem, not off git, so
+# an untracked file sitting in django_utils/ would ship in the wheel.
+# Sync-tool conflict copies are junk under every circumstance, so they are
+# excluded by pattern. Nothing else is excluded by path: a name-based
+# blocklist would silently drop a legitimate future module with the same
+# name. The wheel smoke test in publish.yml is the backstop.
+source-exclude = ["**/*sync-conflict*"]
+wheel-exclude = ["**/*sync-conflict*"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+python_files = ["django_utils/*.py", "tests/*.py"]
+addopts = [
+    "--doctest-modules",
+    "--cov=django_utils",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--no-cov-on-fail",
+    "--ignore=build",
+    "--ignore=docs",
+    # Syncthing conflict copies are not source files; collecting them
+    # duplicates modules and breaks the run outright.
+    "--ignore-glob=*sync-conflict*",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["django_utils"]
+# Measures Django template execution so shipped .html files count toward
+# the 100% gate; an unrendered template shows up at 0% instead of being
+# invisible to coverage. Requires template debug=True (tests/settings.py).
+plugins = ["django_coverage_plugin"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@overload",
+    "@typing.overload",
+]
+
+[tool.mypy]
+packages = ["django_utils"]
+plugins = ["mypy_django_plugin.main"]
+strict = true
+local_partial_types = true
+enable_error_code = [
+    "exhaustive-match",
+    "ignore-without-code",
+    "redundant-expr",
+    "truthy-bool",
+]
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = "django_admin_generator.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pygments.*"
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "tests.settings"
+
+[tool.pyright]
+pythonPlatform = "All"
+include = ["django_utils"]
+ignore = [".venv", ".tox"]
+typeCheckingMode = "strict"
+reportPrivateUsage = false
+reportUnusedParameter = false
+reportUnusedVariable = false
+# Without the django-stubs plugin, model field descriptors resolve to
+# ``Field[Unknown, Unknown]`` and managers/QuerySets to
+# ``QuerySet[Unknown, Unknown]``; partially-typed third-party deps
+# (e.g. pygments) surface the same way. These reportUnknown* diagnostics
+# are stubs-without-plugin noise under strict mode, not real type errors.
+reportUnknownVariableType = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false
+
+[tool.pyrefly]
+project-includes = ["django_utils"]
+ignore-missing-imports = [
+    "django_admin_generator",
+    "django_admin_generator.*",
+]
+
+# django-stubs ships no plugin for ty, so the optional
+# `django_admin_generator` import (guarded by try/except at runtime) and
+# other dynamically-resolved imports read as unresolved; silence at the
+# rule level rather than per-line since it is a stubs-without-plugin gap.
+[tool.ty.rules]
+unresolved-import = "ignore"

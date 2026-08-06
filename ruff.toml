@@ -1,0 +1,57 @@
+# Shared ruff configuration, kept separate from pyproject so it can be
+# copied between projects.
+
+target-version = 'py310'
+src = ['django_utils']
+exclude = ['.tox', '.venv']
+line-length = 79
+
+[lint]
+ignore = [
+    'A001', 'A002', 'A003',
+    'B023', 'B024',
+    'D205', 'D212',
+    'RET505', 'RET506', 'RET507',
+    'TRY003',
+    'C405', 'C406', 'C408',
+    'SIM108', 'SIM114',
+    'Q001', 'Q002',
+    'FA100',
+    'COM812', 'ISC001',
+    'RUF100',
+]
+select = [
+    'A', 'ASYNC', 'B', 'C4', 'C90', 'COM', 'E', 'F', 'FA', 'I', 'ICN',
+    'INP', 'ISC', 'N', 'PERF', 'PIE', 'Q', 'RET', 'RUF', 'SIM', 'T20',
+    'TD', 'TRY', 'UP',
+]
+
+[lint.per-file-ignores]
+'tests/*' = ['SIM115', 'SIM117', 'T201', 'B007', 'INP001']
+'docs/*' = ['INP001', 'RUF012']
+'benchmarks/*' = ['T201', 'INP001']
+'django_utils/management/commands/settings.py' = ['T201']
+
+[lint.isort]
+case-sensitive = true
+combine-as-imports = true
+force-wrap-aliases = true
+
+[lint.flake8-quotes]
+docstring-quotes = 'single'
+inline-quotes = 'single'
+multiline-quotes = 'single'
+
+[format]
+line-ending = 'lf'
+indent-style = 'space'
+quote-style = 'single'
+docstring-code-format = true
+skip-magic-trailing-comma = false
+exclude = ['__init__.py']
+
+[lint.pycodestyle]
+max-line-length = 79
+
+[lint.flake8-pytest-style]
+mark-parentheses = true

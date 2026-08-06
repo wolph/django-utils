@@ -1,0 +1,49 @@
+{% comment %}
+Companion to dropdown_filter.html for LookupFilterMixin. This filter has
+no fixed set of choices to link to -- only a free-text value paired with
+an operator -- so it renders a real <form> that submits via GET. No
+JavaScript is required.
+
+Styling lives in lookup_filter.css, loaded below via a <link>, not a
+`Media` class: `admin_list_filter()` (django.contrib.admin.templatetags.
+admin_list) renders `spec.template` directly with `get_template(...)
+.render(...)`, and `ModelAdmin.media` -- the only media Django's own
+change_list.html emits -- is a fixed property that never consults
+`list_filter`. There is no `Media` hook a `ListFilter` template can ride
+on, so the stylesheet is linked here instead. A <link> to an external
+file needs no `'unsafe-inline'` style-src grant, unlike a `style=`
+attribute, so this keeps the page CSP-safe while still loading the CSS.
+{% endcomment %}
+{% load i18n static %}
+<link rel="stylesheet" href="{% static 'django_utils/admin/lookup_filter.css' %}">
+{% block pre %}
+{%  endblock %}
+<h3>{% blocktrans with title as filter_title %} By {{ filter_title }} {% endblocktrans %}</h3>
+<ul class="admin-filter-{{ title|slugify }}">
+    <li>
+    <form method="get">
+        <select
+            name="{{ spec.operator_parameter_name }}"
+            class="form-control lookup-filter-operator">
+        {% for operator in spec.operators %}
+            <option value="{{ operator }}"{% if operator == spec.get_operator %} selected="selected"{% endif %}>{{ operator }}</option>
+        {% endfor %}
+        </select>
+        <input
+            type="text"
+            name="{{ spec.parameter_name }}"
+            value="{{ spec.value|default_if_none:'' }}"
+            class="form-control lookup-filter-value">
+        {% for key, values in spec.request.GET.lists %}
+        {% if key != spec.parameter_name and key != spec.operator_parameter_name %}
+        {% for value in values %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}">
+        {% endfor %}
+        {% endif %}
+        {% endfor %}
+        <input type="submit" value="{% trans 'Filter' %}">
+    </form>
+    </li>
+{% block post %}
+{%  endblock %}
+</ul>

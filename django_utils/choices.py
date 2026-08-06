@@ -1,4 +1,4 @@
-'''
+"""
 Usage
 ------------------------------------------------------------------------------
 
@@ -25,6 +25,7 @@ The Django Utils Choices version:
 .. code-block:: python
 
     from django_utils import choices
+
 
     class Human(models.Model):
         class Gender(choices.Choices):
@@ -62,6 +63,7 @@ The Django Utils Choices version:
 
     from django_utils import choices
 
+
     class SomeModel(models.Model):
         class Enum(choices.Choices):
             Foo = choices.Choice()
@@ -69,8 +71,7 @@ The Django Utils Choices version:
             Spam = choices.Choice()
             Eggs = choices.Choice()
 
-        enum = models.IntegerField(
-            choices=Enum, default=Enum.Foo)
+        enum = models.IntegerField(choices=Enum, default=Enum.Foo)
 
 To reference these properties:
 
@@ -78,23 +79,109 @@ To reference these properties:
 
     SomeModel.create(enum=SomeModel.Enum.Spam)
 
-'''
+Excluding constants
+==============================================================================
+
+Any plain ``str``, ``int`` or ``float`` class attribute becomes a choice.
+To keep a constant alongside your choices, list it in ``_ignore_``:
+
+.. code-block:: python
+
+    class Gender(choices.Choices):
+        _ignore_ = ('MAX_LENGTH',)
+        MAX_LENGTH = 1
+
+        Male = choices.Choice('m')
+        Female = choices.Choice('f')
+
+Like the standard library's ``enum``, ``_ignore_`` also accepts a single
+string of names separated by whitespace and/or commas, which is split for
+you:
+
+.. code-block:: python
+
+    class Gender(choices.Choices):
+        _ignore_ = 'MAX_LENGTH'
+        MAX_LENGTH = 1
+
+        Male = choices.Choice('m')
+        Female = choices.Choice('f')
+
+Attaching metadata to choices
+==============================================================================
+
+Unlike Django's ``TextChoices``, a :py:class:`Choice` can carry arbitrary
+extra data, reachable as attributes:
+
+.. code-block:: python
+
+    class Status(choices.Choices):
+        Active = choices.Choice('a', 'Active', color='green')
+        Closed = choices.Choice('c', 'Closed', color='red')
+
+
+    Status.choices['a'].color  # 'green'
+
+Grouped choices
+==============================================================================
+
+Give choices a ``group`` and hand Django the nested structure it renders as
+``<optgroup>``:
+
+.. code-block:: python
+
+    class Product(choices.Choices):
+        Apple = choices.Choice('ap', 'Apple', group='Fruit')
+        Carrot = choices.Choice('ca', 'Carrot', group='Vegetable')
+
+
+    field = models.CharField(max_length=2, choices=Product.choices.grouped())
+
+Getting a real ``Enum``
+==============================================================================
+
+Members of a :py:class:`Choices` class are raw values, so they can be passed
+straight to Django fields. When you want ``isinstance`` checks or a
+``match`` on real enum members, ask for an enum:
+
+.. code-block:: python
+
+    class Gender(choices.Choices):
+        Male = choices.Choice('m', 'Male')
+        Female = choices.Choice('f', 'Female')
+
+
+    GenderEnum = Gender.as_enum()
+    GenderEnum('m') is GenderEnum.Male  # True
+
+"""
+
 import collections
+import enum
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from django.utils.functional import Promise as StrPromise
 
 
-class ChoicesDict(object):
-    '''The choices dict is an object that stores a sorted representation of
-    the values by key and database value'''
+class ChoicesDict:
+    """The choices dict is an object that stores a sorted representation of
+    the values by key and database value"""
 
-    def __init__(self):
-        self._by_value = collections.OrderedDict()
-        self._by_key = collections.OrderedDict()
+    def __init__(self) -> None:
+        self._by_value: collections.OrderedDict[Any, Choice] = (
+            collections.OrderedDict()
+        )
+        self._by_key: collections.OrderedDict[str, Choice] = (
+            collections.OrderedDict()
+        )
 
         # Reset the choice creation counter since this will only be accessed
         # after processing the choices
         Choice.order = 0
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Any) -> 'Choice':
         if key in self._by_value:
             return self._by_value[key]
         elif key in self._by_key:
@@ -102,32 +189,67 @@ class ChoicesDict(object):
         else:
             raise KeyError(f'Key {key!r} does not exist')
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: 'Choice') -> None:
         self._by_key[key] = value
         self._by_value[value.value] = value
 
-    def __iter__(self):
-        for key, value in self._by_value.items():
-            yield key, value
+    def __iter__(self) -> Iterator[tuple[Any, 'Choice']]:
+        yield from self._by_value.items()
 
-    def items(self):
+    def items(self) -> list[tuple[Any, 'Choice']]:
         return list(self)
 
-    def values(self):
+    def values(self) -> list[str]:
         return list(self._by_key.keys())
 
-    def keys(self):
+    def keys(self) -> list[Any]:
         return list(self._by_value.keys())
 
-    def __repr__(self):
+    def by_key(self) -> 'collections.OrderedDict[str, Choice]':
+        """The choices keyed by their declared attribute name."""
+        return self._by_key.copy()
+
+    def grouped(
+        self,
+    ) -> list[tuple['str | StrPromise', list[tuple[Any, 'str | StrPromise']]]]:
+        """The choices as Django's ``<optgroup>`` structure.
+
+        Choices declaring a ``group`` metadata key are collected under it,
+        in declaration order; ungrouped choices land under ``''``.
+
+        Labels (and group keys) are passed through unchanged, so a
+        ``gettext_lazy`` label stays a lazy proxy -- resolved at render
+        time, not when ``grouped()`` is called. This matters because the
+        module docstring's own example calls ``grouped()`` at model-field
+        definition time (import time), so eagerly resolving here would
+        freeze translations in whatever language happened to be active
+        at import.
+        """
+        groups: collections.OrderedDict[
+            str | StrPromise, list[tuple[Any, str | StrPromise]]
+        ] = collections.OrderedDict()
+        for choice in self._by_key.values():
+            group = choice.metadata.get('group', '')
+            # `Choice.label` is typed `str | StrPromise | None` because a
+            # bare `Choice()` starts out label-less, but `ChoicesMeta`
+            # always backfills a falsy label with the lowercased
+            # attribute name before a choice reaches `_by_key` (see
+            # `_collect_choices`), so every choice iterated here already
+            # has a real label.
+            label = cast('str | StrPromise', choice.label)
+            groups.setdefault(group, []).append((choice.value, label))
+
+        return list(groups.items())
+
+    def __repr__(self) -> str:
         return repr(self._by_key)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self._by_key)
 
 
-class Choice(object):
-    '''The choice object has an optional label and value. If the value is not
+class Choice:
+    """The choice object has an optional label and value. If the value is not
     given an autoincrementing id (starting from 1) will be used
 
     >>> choice = Choice('value', 'label')
@@ -141,68 +263,118 @@ class Choice(object):
     <Choice[2]:None>
     >>> str(choice)
     'None'
-    '''
-    order = 0
+    """
 
-    def __init__(self, value=None, label=None):
+    # Class-level counter used to preserve definition order. Deliberately
+    # not a `ClassVar`: instances shadow it with their own `order`.
+    order: int = 0
+
+    def __init__(
+        self,
+        value: Any = None,
+        label: 'str | StrPromise | None' = None,
+        **metadata: Any,
+    ) -> None:
         Choice.order += 1
-        self.value = value
-        self.label = label
+        self.value: Any = value
+        self.label: str | StrPromise | None = label
         self.order = Choice.order
+        self.metadata: dict[str, Any] = metadata
 
-    def __eq__(self, other):
+    def __getattr__(self, name: str) -> Any:
+        # Only called when normal attribute lookup fails, so real
+        # attributes (`value`, `label`, `order`, `metadata`) always win.
+        try:
+            return self.__dict__['metadata'][name]
+        except KeyError:
+            raise AttributeError(
+                f'{type(self).__name__!r} object has no attribute {name!r}'
+            ) from None
+
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Choice):  # pragma: no branch
             return self.value == other.value
         else:
             return self.value == other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<{self.__class__.__name__}[{self.order:d}]:{self.label}>'
 
-    def __str__(self):
-        value = self.__unicode__()
-        return value
+    def __str__(self) -> str:
+        return self.__unicode__()
 
-    def __unicode__(self):
+    def __unicode__(self) -> str:
         return str(self.label)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.value)
 
-    def deconstruct(self):
+    def deconstruct(
+        self,
+    ) -> tuple[str, tuple[Any, 'str | StrPromise | None'], dict[str, Any]]:
         return (
-            '{}.{}'.format(self.__class__.__module__, self.__class__.__name__),
+            f'{self.__class__.__module__}.{self.__class__.__name__}',
             (self.value, self.label),
             {},
         )
 
 
 class ChoicesMeta(type):
-    '''The choices metaclass is where all the magic happens, this
+    """The choices metaclass is where all the magic happens, this
     automatically creates a ChoicesDict to get a sorted list of keys and
-    values'''
+    values"""
 
-    def __new__(cls, name, bases, attrs):
-        choices = list()
-        has_values = False
+    # Declared on the metaclass so `SomeChoices.choices` type-checks on
+    # classes using this metaclass; the actual value is assigned in
+    # `_assign_values` during class creation.
+    choices: ChoicesDict
 
+    # Per-class cache for `as_enum()`. Only ever read/written via
+    # `cls.__dict__` (see `as_enum` below), never `getattr`/`setattr`
+    # through the MRO, so a subclass builds and caches its own enum
+    # instead of inheriting its parent's.
+    _as_enum_cache: type[enum.Enum]
+
+    def __new__(
+        cls,
+        name: str,
+        bases: tuple[type, ...],
+        attrs: dict[str, Any],
+    ) -> 'ChoicesMeta':
+        literal = cls._is_literal_choices(bases)
+        choices, has_values = cls._collect_choices(attrs)
+        cls._assign_values(attrs, choices, has_values, literal)
+
+        # No `typing.cast` needed: typeshed types the 4-argument form of
+        # `type.__new__` as returning `Self`, and mypy strict flags a cast
+        # here as redundant.
+        return super().__new__(cls, name, bases, attrs)
+
+    @staticmethod
+    def _is_literal_choices(bases: tuple[type, ...]) -> bool:
         # Chicken-Egg problem, can't check for something that doesn't exist
         # yet. That's why we check for the name of the class instead of a
         # `issubclass`
-        literal = False
-        for base in bases:
-            if base.__name__ == 'LiteralChoices':
-                literal = True
-                break
+        return any(base.__name__ == 'LiteralChoices' for base in bases)
+
+    @staticmethod
+    def _collect_choices(
+        attrs: dict[str, Any],
+    ) -> tuple[list[tuple[str, Choice]], bool]:
+        choices: list[tuple[str, Choice]] = []
+        has_values = False
+        raw_ignore = attrs.get('_ignore_', ())
+        if isinstance(raw_ignore, str):
+            raw_ignore = raw_ignore.replace(',', ' ').split()
+        ignore: frozenset[str] = frozenset(raw_ignore)
 
         for key, value in attrs.items():
-            # Skip private and protected values
-            if key.startswith('_'):
+            # Skip private, protected and explicitly ignored values
+            if key.startswith('_') or key in ignore:
                 continue
 
             if isinstance(value, (str, int, float)):
                 value = Choice(value, key.lower())
-                setattr(cls, key, value)
 
             if isinstance(value, Choice):
                 if value.value is not None:
@@ -213,12 +385,22 @@ class ChoicesMeta(type):
 
                 choices.append((key, value))
 
+        return choices, has_values
+
+    @staticmethod
+    def _assign_values(
+        attrs: dict[str, Any],
+        choices: list[tuple[str, Choice]],
+        has_values: bool,
+        literal: bool,
+    ) -> None:
         attrs['choices'] = ChoicesDict()
         i = 0
         for key, value in sorted(choices, key=lambda c: c[1].order):
             if has_values:
                 assert value.value is not None, (
-                    'Cannot mix choices with and without values')
+                    'Cannot mix choices with and without values'
+                )
             elif literal:
                 value.value = value.label
             else:
@@ -228,15 +410,54 @@ class ChoicesMeta(type):
             attrs[key] = value.value
             attrs['choices'][key] = value
 
-        return super(ChoicesMeta, cls).__new__(cls, name, bases, attrs)
+    def __iter__(cls) -> Iterator[tuple[Any, Choice]]:
+        yield from cls.choices
 
-    def __iter__(self):
-        for item in self.choices:
-            yield item
+    def as_enum(cls) -> type[enum.Enum]:
+        """Build a real :py:class:`enum.Enum` from these choices.
+
+        The result is memoised on the class: repeated calls return the
+        *same* enum class, so ``Gender.as_enum() is Gender.as_enum()``
+        and ``Gender.as_enum().Male is Gender.as_enum().Male`` both hold,
+        and the enum can be used as (or as part of) a dict/cache key. The
+        cache is stored in ``cls.__dict__`` and looked up there directly
+        (never via ``getattr``, which walks the MRO), so a subclass
+        builds and caches its own enum rather than inheriting its
+        parent's.
+
+        The returned class is built dynamically via ``enum.Enum``'s
+        functional API with its ``__module__`` set to
+        ``django_utils.choices`` rather than the caller's module, so its
+        members are **not picklable** with the default pickle protocol
+        (pickling an enum member looks the class up by
+        ``__module__`` + qualified name, which won't resolve back to a
+        class that was never assigned a name in that module).
+
+        The original class is unchanged — its members stay raw values so
+        they can be handed to Django fields. Use the enum where you want
+        ``isinstance`` checks or a ``match`` on real enum members.
+        """
+        if '_as_enum_cache' not in cls.__dict__:
+            members = [
+                (key, choice.value)
+                for key, choice in cls.choices.by_key().items()
+            ]
+            # `enum.Enum`'s functional API creates a new *class*, but its
+            # typeshed stub is written for the member-lookup call
+            # signature (`Color(1)` -> `Color.RED`), so mypy/basedpyright
+            # infer an `Enum` instance here rather than `type[Enum]`, and
+            # the `cast` below is required for them. ty infers the
+            # correct type on its own and considers that same `cast`
+            # redundant.
+            cls._as_enum_cache = cast(  # ty: ignore[redundant-cast]
+                type[enum.Enum], enum.Enum(cls.__name__, members)
+            )
+
+        return cls._as_enum_cache
 
 
 class Choices(metaclass=ChoicesMeta):
-    '''The choices class is what you should inherit in your Django models
+    """The choices class is what you should inherit in your Django models
 
     >>> choices = Choices()
     >>> choices.choices[0]
@@ -275,16 +496,16 @@ class Choices(metaclass=ChoicesMeta):
     [(0, <Choice[...]:a>)]
     >>> list(ChoiceTest)
     [(0, <Choice[...]:a>)]
-    '''
+    """
+
     choices = ChoicesDict()
 
-    def __iter__(self):
-        for item in self.choices:
-            yield item
+    def __iter__(self) -> Iterator[tuple[Any, Choice]]:
+        yield from self.choices
 
 
 class LiteralChoices(Choices):
-    '''Special version of the Choices class that uses the label as the value
+    """Special version of the Choices class that uses the label as the value
 
     >>> class Role(LiteralChoices):
     ...     admin = Choice()
@@ -308,4 +529,4 @@ class LiteralChoices(Choices):
     ['admin', 'user', 'guest']
     >>> Role.admin
     'admin'
-    '''
+    """

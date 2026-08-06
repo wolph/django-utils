@@ -1,0 +1,39 @@
+"""The docs demo pages embed hand-written copies of the widgets' markup
+and load the real shipped JS. If the data-attribute contract between
+them drifts, the demos silently die -- these tests pin the contract
+without needing a docs build."""
+
+from pathlib import Path
+
+DOCS = Path(__file__).parent.parent / 'docs'
+STATIC = Path(__file__).parent.parent / 'django_utils' / 'static'
+
+
+def _read(path):
+    return path.read_text(encoding='utf-8')
+
+
+def test_json_widget_demo_matches_shipped_contract():
+    demo = _read(DOCS / 'demos' / 'json-widget.md')
+    shipped = _read(STATIC / 'django_utils' / 'admin' / 'json_widget.js')
+    assert 'data-json-widget' in demo
+    assert 'data-json-widget' in shipped
+    assert 'django_utils/admin/json_widget.js' in demo
+
+
+def test_dropdown_demo_matches_shipped_contract():
+    demo = _read(DOCS / 'demos' / 'dropdown-filter.md')
+    shipped = _read(STATIC / 'django_utils' / 'admin' / 'dropdown_filter.js')
+    assert 'data-dropdown-filter' in demo
+    assert 'data-dropdown-filter' in shipped
+    assert 'django_utils/admin/dropdown_filter.js' in demo
+
+
+def test_demo_pages_are_csp_clean():
+    import re
+
+    handler_re = re.compile(r'\son[a-z]+\s*=', re.IGNORECASE)
+    for name in ('json-widget.md', 'dropdown-filter.md'):
+        source = _read(DOCS / 'demos' / name)
+        assert not handler_re.search(source), name
+        assert 'style=' not in source, name

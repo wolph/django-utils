@@ -1,0 +1,61 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  # Re-run the full test suite so nothing reaches PyPI without passing.
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          activate-environment: true
+      - name: Build
+        run: uv build
+      - name: Smoke test wheel
+        run: |
+          uv run --isolated --no-project --with dist/django_utils2-*.whl \
+            python -c "import django_utils, django_utils.choices, django_utils.view_decorators; print('wheel import OK')"
+          unzip -l dist/django_utils2-*.whl | grep -q 'admin/dropdown_filter.html'
+          unzip -l dist/django_utils2-*.whl | grep -q 'py.typed'
+          unzip -l dist/django_utils2-*.whl | grep -q 'static/django_utils/admin/json_widget.js'
+          unzip -l dist/django_utils2-*.whl | grep -q 'static/django_utils/admin/json_widget.css'
+          unzip -l dist/django_utils2-*.whl | grep -q 'static/django_utils/admin/lookup_filter.css'
+          unzip -l dist/django_utils2-*.whl | grep -q 'static/django_utils/admin/dropdown_filter.js'
+          unzip -l dist/django_utils2-*.whl | grep -q 'static/django_utils/admin/dropdown_filter.css'
+          unzip -l dist/django_utils2-*.whl | grep -q 'static/django_utils/admin/select2_filter.js'
+          # This negative assertion must stay last. bash runs each step
+          # with `set -e`, which does not abort on a `!`-negated
+          # command's own nonzero status -- that's the whole point of
+          # `!` here, so a real violation (this grep matching) becomes
+          # the script's own -- and therefore the step's -- exit code
+          # instead of aborting mid-script. Any command placed after it
+          # would silently overwrite that exit code on success, masking
+          # the violation.
+          ! unzip -l dist/django_utils2-*.whl \
+            | grep -qE 'sync-conflict|__about__\.py|/models\.py'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

@@ -1,13 +1,17 @@
-# vim: set fileencoding=utf-8 :
-from django.contrib import admin
+import typing
 
-from django_utils.admin import filters
+from django.contrib import admin
+from django_utils.admin import export, filters
 
 from . import models
 
 
-class SpamAdmin(admin.ModelAdmin):
+class IngredientAdmin(export.ExportMixin, admin.ModelAdmin):
+    list_display = ('name', 'stock')
+    search_fields = ('name',)
 
+
+class SpamAdmin(admin.ModelAdmin):
     list_display = ('id', 'updated_at', 'created_at', 'name', 'slug', 'a')
     list_filter = (
         'updated_at',
@@ -15,12 +19,11 @@ class SpamAdmin(admin.ModelAdmin):
         ('slug', filters.AllValuesFieldListFilterDropdown),
     )
     search_fields = ('name', 'slug')
-    prepopulated_fields = {'slug': ['name']}
+    prepopulated_fields: typing.ClassVar[dict] = {'slug': ['name']}
     date_hierarchy = 'created_at'
 
 
 class EggsAdmin(admin.ModelAdmin):
-
     list_display = (
         'updated_at',
         'created_at',
@@ -32,16 +35,13 @@ class EggsAdmin(admin.ModelAdmin):
         ('slug', filters.AllValuesFieldListFilterSelect2),
     )
     search_fields = ('name', 'slug')
-    prepopulated_fields = {'slug': ['name']}
+    prepopulated_fields: typing.ClassVar[dict] = {'slug': ['name']}
     date_hierarchy = 'created_at'
 
 
 class RecursionTestAdmin(admin.ModelAdmin):
-
     list_display = ('id', 'parent')
-    list_filter = (
-        ('parent', filters.RelatedFieldListFilterSelect2),
-    )
+    list_filter = (('parent', filters.RelatedFieldListFilterSelect2),)
 
 
 def _register(model, admin_class):
@@ -51,3 +51,4 @@ def _register(model, admin_class):
 _register(models.Spam, SpamAdmin)
 _register(models.Eggs, EggsAdmin)
 _register(models.RecursionTest, RecursionTestAdmin)
+_register(models.Ingredient, IngredientAdmin)
