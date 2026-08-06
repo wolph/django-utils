@@ -57,7 +57,10 @@ docs = [
 tests = [
     "django-utils2[crypto]",
     "pytest>=8.0",
-    "pytest-django>=4.8",
+    # <4.13: pytest-django 4.13.0 dropped Django 4.2 support and crashes on
+    # it (reads TransactionTestCase._pre_setup_ran_eagerly, added in Django
+    # 5.2.16). Lift the cap when Django 4.2 leaves our support matrix.
+    "pytest-django>=4.8,<4.13",
     "pytest-cov>=6.0",
     "coverage>=7.0",
     "django-coverage-plugin>=3.1",
