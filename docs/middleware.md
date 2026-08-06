@@ -6,6 +6,8 @@ hardening via `Sec-Fetch-Site`, view decorators for superuser/staff
 checks, and production-safe query budgets that catch N+1 regressions
 outside of tests.
 
+(current-request-user)=
+
 ## Current request / user (ASGI-safe)
 
 Store the current request and user in contextvars for access from
@@ -169,6 +171,8 @@ if user.has_perm(permission_string(MyModel, 'change')):
 API reference: {py:func}`~django_utils.auth.superuser_required`,
 {py:func}`~django_utils.auth.staff_required`,
 {py:func}`~django_utils.auth.permission_string`.
+
+(query-budgets)=
 
 ## Query budgets
 

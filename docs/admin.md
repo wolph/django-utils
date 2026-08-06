@@ -14,7 +14,9 @@ All of the standard admin list filters are available through
 `django_utils.admin.filters`: the original filter (`SimpleListFilter`),
 a basic select/dropdown filter (`SimpleListFilterDropdown`), and a
 select2-based autocompleting dropdown filter (`SimpleListFilterSelect2`).
-On PostgreSQL you can additionally filter on JSON fields by path.
+You can additionally filter on JSON fields by path on any backend
+(only the `contains` operator is PostgreSQL-specific, and `create()`
+already rejects it with a pointer at `icontains`).
 
 ```python
 class SomeModelAdmin(admin.ModelAdmin):

@@ -113,4 +113,4 @@ def sandwich_list(request):
 **What you get:** a logged warning past 20 queries and a raised
 `QueryBudgetExceeded` past 100, counted through Django's own
 `connection.execute_wrapper()` so it costs nothing with `DEBUG` off —
-see [Query budgets](middleware.md).
+see [Query budgets](query-budgets).

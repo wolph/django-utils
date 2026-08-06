@@ -13,8 +13,8 @@ the CI/tox configuration that enforces it).
 
 | Incumbent | Where it falls short | This library's answer |
 | --- | --- | --- |
-| `django-crum` | Stores the current request/user in a thread-local. Under ASGI, one thread's event loop interleaves many concurrent requests as asyncio tasks, so a thread-local leaks state between them. | `django_utils.context.RequestContextMiddleware` uses `contextvars.ContextVar` — isolated per asyncio task, correct under both WSGI and ASGI. See [Current request / user (ASGI-safe)](middleware.md). |
-| `nplusone` | The dominant N+1-detection package for Django; unmaintained since 2018. | `django_utils.query_debug.query_budget` counts queries via Django's own `connection.execute_wrapper()` — production-safe (works with `DEBUG` off), usable in real request paths, not only in tests or a dev-only debug toolbar. See [Query budgets](middleware.md). |
+| `django-crum` | Stores the current request/user in a thread-local. Under ASGI, one thread's event loop interleaves many concurrent requests as asyncio tasks, so a thread-local leaks state between them. | `django_utils.context.RequestContextMiddleware` uses `contextvars.ContextVar` — isolated per asyncio task, correct under both WSGI and ASGI. See [Current request / user (ASGI-safe)](current-request-user). |
+| `nplusone` | The dominant N+1-detection package for Django; unmaintained since 2018. | `django_utils.query_debug.query_budget` counts queries via Django's own `connection.execute_wrapper()` — production-safe (works with `DEBUG` off), usable in real request paths, not only in tests or a dev-only debug toolbar. See [Query budgets](query-budgets). |
 
 ## What this library holds itself to
 
