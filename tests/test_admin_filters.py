@@ -848,6 +848,27 @@ def test_select2_filter_renders_select_with_activation_script(
 
     assert rendered.count('<a href=') == 5  # links stay present too
     assert rendered.count('<option') == 5  # All + four fillings
+
+
+@pytest.mark.django_db
+def test_select2_filter_renders_media_assets(rf, variant_filter_admin):
+    """The admin never consults a list filter's ``Media``, so
+    ``dropdown_filter.html`` renders ``{{ spec.Media }}`` itself — a
+    master-only hotfix (a285130) preserved through the CSP rewrite.
+    This is what actually loads ``Select2Mixin``'s select2/jQuery
+    assets; without it the select2 activation script finds no select2
+    and silently degrades to the plain dropdown."""
+    model_admin = variant_filter_admin(
+        filters.JSONFieldFilterSelect2.create('data__filling'),
+        ['bacon', 'cheese', 'egg', 'ham'],
+    )
+
+    rendered = _render_filter(rf, model_admin, {})
+
+    assert 'select2' in rendered.lower()
+    assert 'vendor/jquery' in rendered
+    # Media renders src/href-only tags — the CSP contract still holds.
+    assert not HANDLER_ATTR_RE.search(rendered)
     assert 'selected="selected"' in rendered  # the "All" choice
     assert 'django_utils/admin/dropdown_filter.js' in rendered
     assert 'django_utils/admin/select2_filter.js' in rendered

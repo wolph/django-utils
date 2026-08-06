@@ -170,6 +170,13 @@
 
 ### Fixed
 
+- `dropdown_filter.html` renders `{{ spec.Media }}` again — a
+  master-only hotfix (a285130, shipped on top of 3.0.2) merged back
+  into this branch at release time. Django's admin never consults a
+  list filter's `Media`, so the template must emit it itself; this is
+  what actually loads `Select2Mixin`'s select2/jQuery assets. `Media`
+  renders `src`/`href`-only tags, so the CSP guarantees of the 4.1.0
+  template rewrite are unaffected (render-test enforced).
 - `to_json` serialises `datetime`, `date`, `Decimal` and `UUID` via
   `DjangoJSONEncoder` instead of raising `TypeError`.
 - `dropdown_filter.html` and `select2_filter.html` (the templates behind
