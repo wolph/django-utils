@@ -10,7 +10,7 @@ AJAX header plumbing.
 Deliberately defense-in-depth: run it *alongside*
 ``CsrfViewMiddleware``, never instead of it.  A request carrying neither
 ``Sec-Fetch-Site`` nor ``Origin`` (an old browser, curl, a server-side
-client) is allowed through — rejecting those is exactly the token
+client) is allowed through. Rejecting those is exactly the token
 middleware's job, which is why this middleware alone is not sufficient
 protection.
 """
@@ -79,7 +79,7 @@ class FetchMetadataMiddleware:
     2. Views marked ``@fetch_metadata_exempt`` pass.
     3. ``Sec-Fetch-Site`` present: allow ``same-origin``/``same-site``/
        ``none`` (browser UI, e.g. the address bar); reject anything else
-       with 403 — unknown values fail closed.
+       with 403. Unknown values fail closed.
     4. No ``Sec-Fetch-Site``: compare ``Origin`` to this request's
        ``scheme://host``; mismatch is rejected.
     5. Neither header: allow.  Token CSRF remains the backstop.
@@ -87,7 +87,7 @@ class FetchMetadataMiddleware:
     Behind a TLS-terminating proxy, step 4 can false-reject: without
     ``SECURE_PROXY_SSL_HEADER`` configured, ``request.scheme`` reads
     ``http`` while a legacy browser's ``Origin`` header (the client sees
-    only the outer HTTPS connection) is ``https://…``, so the exact-match
+    only the outer HTTPS connection) is ``https://...``, so the exact-match
     comparison fails and the request is rejected as cross-site. Modern
     browsers are unaffected -- they send ``Sec-Fetch-Site``, which step 3
     handles first. Configure ``SECURE_PROXY_SSL_HEADER`` per the Django

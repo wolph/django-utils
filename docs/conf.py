@@ -32,6 +32,11 @@ extensions = [
 
 myst_enable_extensions = ['colon_fence']
 
+# Straight ASCII quotes and hyphens only, in source and in the rendered
+# site: the smartquotes transform would otherwise turn them back into
+# typographic quotes and dashes at build time.
+smartquotes = False
+
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'django': (

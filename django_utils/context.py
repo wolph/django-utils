@@ -59,7 +59,7 @@ def get_current_user() -> '_User | None':
     ``None`` when there is no current request or when the request has no
     ``user`` attribute (``AuthenticationMiddleware`` absent).  The user is
     read lazily off the stored request, so middleware order relative to
-    ``RequestContextMiddleware`` does not matter — only that auth
+    ``RequestContextMiddleware`` does not matter, only that auth
     middleware ran before *this call*.
     """
     request = _request_var.get()
@@ -74,7 +74,7 @@ def current_request(
 ) -> Generator[http.HttpRequest, None, None]:
     """Make ``request`` current for the duration of the block.
 
-    For tests, ``shell`` sessions and management commands — anywhere no
+    For tests, ``shell`` sessions and management commands, anywhere no
     middleware runs.  Nests: the previous request is restored on exit.
     """
     token = _request_var.set(request)

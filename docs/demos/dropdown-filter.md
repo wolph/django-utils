@@ -1,33 +1,34 @@
 # Dropdown filter demo
 
 This page loads the same `dropdown_filter.js` and `dropdown_filter.css`
-files the package installs — not a copy pasted into the docs — straight
-from `_static/django_utils/admin/`. See
+files the package installs, straight from `_static/django_utils/admin/`,
+not a copy pasted into the docs. See
 [dropdown / autocomplete filters](dropdown-filters) in {doc}`/admin`
 for the full write-up, or read the source on GitHub:
 [`dropdown_filter.js`](https://github.com/WoLpH/django-utils/blob/master/django_utils/static/django_utils/admin/dropdown_filter.js).
 
 The panel styling below is docs-only (in the admin it comes from the
-admin's own stylesheets); everything inside the panel is the shipped
+admin's own stylesheets). Everything inside the panel is the shipped
 markup contract and the shipped JavaScript.
 
 ## Plain dropdown
 
-The base `DropdownFilter` is a native `<select>` — no autocomplete; for
-that, see the [select2 variant](#select2-variant) below.
+The base `DropdownFilter` is a native `<select>` with no autocomplete.
+For that, see the [select2 variant](#select2-variant) below.
 
 **What to try**
 
-- With JavaScript disabled, the link list below *is* the whole filter
-  — each link is a working, no-JS filter option.
+- With JavaScript disabled, the link list below *is* the whole filter.
+  Each link is a working, no-JS filter option.
 - With JavaScript enabled (the normal case), the script hides the
-  links and unhides the `<select>` in their place — the admin's usual
+  links and unhides the `<select>` in their place: the admin's usual
   dropdown UX, restored without an inline `onchange` handler.
 - Pick an option in the dropdown: the shipped script navigates to
   `window.location.pathname + <option value>`. On a real changelist
-  that value is a query string like `?field=value`; here every
+  that value is a query string like `?field=value`. Here every
   option's value is a harmless `?demo=...`, so choosing one just
-  reloads this page with that query string appended — nothing breaks.
+  reloads this page with that query string appended and nothing
+  breaks.
 
 The markup mirrors `dropdown_filter.html`'s CSP-safe rewrite: a
 no-JS-safe link list, plus a `<select>` (rendered `hidden`, marked
@@ -62,21 +63,22 @@ three choices, so this demo lists four.
 ## Select2 variant
 
 The `*Select2` filters (`AllValuesFieldListFilterSelect2`,
-`JSONFieldFilterSelect2`, …) layer typing autocomplete onto the exact
-same markup: `select2_filter.html` extends `dropdown_filter.html`, adds
-`data-select2-filter` to the `<select>`, and loads `select2_filter.js`
-— which activates select2 only when the admin's vendored jQuery +
-select2 are on the page, and silently falls back to the plain dropdown
-when they aren't. On a real changelist those vendored assets arrive via
-`Select2Mixin.Media`; this page loads the same files from the installed
-Django the docs are built against.
+`JSONFieldFilterSelect2`, and friends) layer typing autocomplete onto
+the exact same markup. `select2_filter.html` extends
+`dropdown_filter.html`, adds `data-select2-filter` to the `<select>`,
+and loads `select2_filter.js`, which activates select2 only when the
+admin's vendored jQuery and select2 are on the page and silently
+falls back to the plain dropdown when they are not. On a real
+changelist those vendored assets arrive via `Select2Mixin.Media`.
+This page loads the same files from the installed Django the docs are
+built against.
 
 **What to try**
 
-- Click the dropdown: select2 opens with a search box — type to filter
+- Click the dropdown: select2 opens with a search box. Type to filter
   the options live (try `av` or `beef`).
 - Pick an option: the *same* shipped `change` navigation as the plain
-  dropdown fires — select2 replaces the widget, not the behavior.
+  dropdown fires. select2 replaces the widget, not the behavior.
 - Block or delete the vendored select2 script in devtools and reload:
   the filter degrades to the plain dropdown above, never to a broken
   widget.

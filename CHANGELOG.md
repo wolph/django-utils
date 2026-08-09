@@ -6,9 +6,10 @@
 
 - `JSONWidget` syntax-highlights as you type: keys, strings, numbers
   and `true`/`false`/`null` are colorized live via a dependency-free
-  tokenizer in `json_widget.js` -- a colored overlay on the still fully
-  native `<textarea>` (focus, caret, undo, paste and form submission
-  unchanged; degrades to a plain textarea without JavaScript). Follows
+  tokenizer in `json_widget.js`, painting a colored overlay on the still
+  fully native `<textarea>`. Focus, caret, undo, paste and form
+  submission stay unchanged, and it degrades to a plain textarea
+  without JavaScript. Follows
   the admin's light, dark and auto themes.
 
 ### Fixed
@@ -17,7 +18,7 @@
   `JSONFieldFilterSelect2`, ...) navigate again when an option is picked.
   select2 announces a selection through jQuery's event system only, and
   `dropdown_filter.js` wires navigation with a native `change` listener
-  (it must also work without jQuery) -- so in 4.1.0 picking an option
+  (it must also work without jQuery). In 4.1.0 picking an option
   updated the widget but silently never filtered. `select2_filter.js` now
   re-dispatches a native `change` on select2's selection event.
 
@@ -33,21 +34,21 @@
 ### Added
 
 - `django_utils.crypto_fields`: `EncryptedCharField`, `EncryptedTextField`,
-  `EncryptedJSONField` -- Fernet-encrypted model fields storing a base64
+  `EncryptedJSONField`: Fernet-encrypted model fields storing a base64
   token in a plain `TEXT` column (behind the new `crypto` extra:
   `pip install "django-utils2[crypto]"`). Keys come from
-  `settings.DJANGO_UTILS_FERNET_KEYS`; the first key encrypts, every key is
+  `settings.DJANGO_UTILS_FERNET_KEYS`. The first key encrypts, every key is
   tried on decrypt (`MultiFernet`), so rotation is prepend-a-key-and-save.
-  Every lookup except `isnull` raises `NotImplementedError` -- Fernet salts
+  Every lookup except `isnull` raises `NotImplementedError`, because Fernet salts
   every encryption, so equality can never match at the database level
   anyway. A token nothing in the keyring can decrypt raises
   `ValidationError` (never silently returned as ciphertext).
   `EncryptedCharField.max_length` validates the plaintext, not the
   (necessarily longer) stored column. Importing the module never requires
-  `cryptography`; instantiating a field without it does, with an
+  `cryptography`. Instantiating a field without it does, with an
   `ImproperlyConfigured` pointing at the extra.
 - `django_utils.admin.mixins.ReadOnlyModelAdminMixin`: turn any existing admin
-  into a safe read-only view — add/change/delete denied for everyone
+  into a safe read-only view: add/change/delete denied for everyone
   (superusers included), all fields read-only, list configuration and search
   working untouched. Built on stable public `ModelAdmin` API.
 - `django_utils.admin.mixins.CountColumnMixin`: sortable related-object count
@@ -59,16 +60,16 @@
 - `django_utils.admin.export.ExportMixin`: `export_as_csv` / `export_as_json`
   changelist actions, streamed via `StreamingHttpResponse` and
   `queryset_iterator` so a million-row export never materialises in memory.
-  Runs against the changelist's own (already filtered) queryset — filter
+  Runs against the changelist's own (already filtered) queryset: filter
   first, select second, export third. CSV values are guarded against
   formula/CSV injection (OWASP mitigation: a leading `=`, `+`, `-` or `@` gets
-  a single-quote prefix). `export_fields` restricts the exported columns;
-  unset, it defaults to every concrete field's attname. Dependency-free and
-  scoped on purpose — CSV and JSON only, export only; see
+  a single-quote prefix). `export_fields` restricts the exported columns.
+  Unset, it defaults to every concrete field's attname. Dependency-free and
+  scoped on purpose to CSV and JSON, export only. See
   [django-import-export](https://django-import-export.readthedocs.io/) for
   XLSX/import/resource classes.
 - `django_utils.auth`: `superuser_required` / `staff_required` view decorators
-  and `permission_string()` — the helpers behind django/new-features #47 and
+  and `permission_string()`, the helpers behind django/new-features #47 and
   #137 (67 combined reactions) that every project hand-rolls. Both decorators
   work bare (`@superuser_required`) and parameterized
   (`@superuser_required(raise_exception=True)`), with redirect or 403 options,
@@ -76,27 +77,27 @@
   `permission_string()` builds the `'app_label.action_modelname'` string every
   `user.has_perm()` call needs from a model class.
 - `django_utils.query_debug.query_budget`: production-safe query counting via
-  `connection.execute_wrapper()` — warn or raise on N+1 regressions in real code
+  `connection.execute_wrapper()`. Warn or raise on N+1 regressions in real code
   paths, where `assertNumQueries` (test-only) and profilers (dev-only) cannot
   live. The dominant N+1 package (nplusone) has been unmaintained since 2018.
 - `django_utils.middleware.FetchMetadataMiddleware`: opt-in header-based CSRF
   hardening via `Sec-Fetch-Site`/`Origin` (django/new-features #98, 59
-  reactions) — strict by default, fails closed on unknown header values,
+  reactions). Strict by default, fails closed on unknown header values,
   allows header-less clients (token CSRF stays the backstop), with
   `fetch_metadata_exempt` decorator for opt-outs. Defense-in-depth: run
   alongside `CsrfViewMiddleware`, never instead of it.
 - `django_utils.aggregates`: `SubqueryCount`, `SubquerySum`, `SubqueryAvg`,
-  `SubqueryMin`, `SubqueryMax` — aggregate annotations that run as independent
+  `SubqueryMin`, `SubqueryMax`: aggregate annotations that run as independent
   subqueries, immune to the JOIN fan-out that makes
   `annotate(Count('a'), Count('b'))` silently multiply counts. All five also
   accept a relation name in place of a queryset (`SubqueryCount('review')`,
   `SubquerySum('topping', 'price')`) for reverse FK and (reverse or forward)
   many-to-many relations, resolved against the annotated model.
 - `django_utils.bulk.bulk_update_or_create`: chunked upsert on Django's
-  native `bulk_create(update_conflicts=True)` — one
+  native `bulk_create(update_conflicts=True)`: one
   `INSERT ... ON CONFLICT DO UPDATE` per batch instead of 2N racy queries.
   Existing upsert packages predate the native API and reinvent raw SQL.
-  All argument validation happens before any query runs; PostgreSQL and
+  All argument validation happens before any query runs. PostgreSQL and
   SQLite honour `unique_fields` as the conflict target, MySQL/MariaDB
   fire on any unique constraint (documented in the module).
 - `django_utils.management.commands.base_command.ChunkedCommand`: management-command
@@ -126,21 +127,21 @@
 - `queryset_iterator` gained three keyword-only options, all backwards
   compatible: `pk_field` iterates by any unique, indexed, ordered column
   instead of the primary key (useful when the pk is a random UUID but a
-  monotonic `created_at`/`id` column exists); `start_after` resumes from a
+  monotonic `created_at`/`id` column exists). `start_after` resumes from a
   known cursor value so a batch job that died partway through can
-  continue instead of restarting; `gc_collect` restores the optional
-  per-chunk `gc.collect()` call (off by default -- see below).
+  continue instead of restarting. `gc_collect` restores the optional
+  per-chunk `gc.collect()` call (off by default, see below).
 - `django_utils.admin.widgets.JSONWidget`: a `JSONField` admin textarea
   that pretty-prints and key-sorts a well-formed value (Django renders it
   on one line) and validates it inline as you type, via a small,
   CSP-safe vanilla-JS static asset (no inline handlers, no `eval`) that
   degrades to a plain `Textarea` without JavaScript. Django already
   preserves malformed input across the round-trip
-  (`forms.JSONField.bound_data()` returns `InvalidJSONInput`); the widget
+  (`forms.JSONField.bound_data()` returns `InvalidJSONInput`). The widget
   does not change that.
 - `django_utils.admin.widgets.JSONWidgetMixin`: opts a `ModelAdmin` into
   `JSONWidget` for its `JSONField`s via `formfield_overrides`. Nothing is
-  patched globally -- a project using only the filters below sees no
+  patched globally: a project using only the filters below sees no
   change to its forms.
 - `django_utils.admin.filters.LookupFilterMixin`: adds an operator
   selector to a list filter. The operator is read from
@@ -149,19 +150,19 @@
   `SuspiciousOperation` for anything not in that set. A custom filter
   that mixes this in must also point `template` at
   `django_utils/admin/lookup_filter.html` to render the operator
-  `<select>` and value input -- without it the operator is still
+  `<select>` and value input. Without it the operator is still
   enforced, just with no UI to choose one.
 - `JSONFieldFilter.create()` gained an `operators` keyword to enable the
   above on JSON sub-path filters, e.g.
   `create('data__price', operators=('gte',), cast=int)`. The keyword
   itself is validated against a fixed allowlist (`exact`, `contains`,
   `icontains`, `startswith`, `gt`, `gte`, `lt`, `lte`, `range`) at
-  `create()` time -- this is `JSONFieldFilter.create()`'s own check, not
+  `create()` time. This is `JSONFieldFilter.create()`'s own check, not
   the request-time one described above. `contains` and `range` are
   further rejected at `create()` time for JSON sub-paths: `contains` on
   a `KeyTransform` resolves to PostgreSQL's `@>` containment lookup, not
   substring matching, and raises `NotSupportedError` on SQLite (use
-  `icontains`); `range` expects a two-element sequence but a filter only
+  `icontains`). `range` expects a two-element sequence but a filter only
   ever supplies one scalar. Omitting `operators` keeps the default,
   `exact`-only matching behaviour, but the query string is not fully
   inert even then: `<parameter_name>__op` is now always claimed and
@@ -175,22 +176,22 @@
 - Test infrastructure: template coverage. `django-coverage-plugin` now
   measures the shipped `.html` templates as part of the combined 100%
   coverage gate, so an unrendered template line fails CI instead of
-  being invisible to coverage.py. Enabling it immediately surfaced --
-  and forced render tests for -- `dropdown_filter.html` and
-  `select2_filter.html`, which no test had ever rendered.
+  being invisible to coverage.py. Enabling it immediately surfaced `dropdown_filter.html` and
+  `select2_filter.html`, which no test had ever rendered, and forced
+  render tests for both.
 - `django_utils.pg_enum.EnumField`: a `CharField` wired to a
-  `django_utils.choices.Choices` class -- `choices`/`max_length` derived
+  `django_utils.choices.Choices` class, with `choices`/`max_length` derived
   from it, and on PostgreSQL the column's real type is a native
   `CREATE TYPE ... AS ENUM` type (plain `VARCHAR` on every other
   backend, so models stay portable). Closes the README's oldest
   promise ("coming soon"). Ships with three explicit
-  `migrations.Operation` subclasses -- `CreateEnumType`, `DropEnumType`,
-  `AddEnumValue` -- added to a migration BY HAND (Django's autodetector
-  has no concept of "create this standalone database object first");
-  all three are DB-only and no-ops on non-PostgreSQL vendors.
+  `migrations.Operation` subclasses (`CreateEnumType`, `DropEnumType`,
+  `AddEnumValue`) added to a migration BY HAND (Django's autodetector
+  has no concept of "create this standalone database object first").
+  All three are DB-only and no-ops on non-PostgreSQL vendors.
   `AddEnumValue` is `atomic = False` (PostgreSQL cannot run
   `ALTER TYPE ... ADD VALUE` inside a transaction on versions before 12)
-  and irreversible (PostgreSQL has no `DROP VALUE`; the README documents
+  and irreversible (PostgreSQL has no `DROP VALUE`, and the README documents
   the recreate-and-migrate escape hatch). Test infrastructure: the
   `postgres` pytest marker registered in Phase D (until now unused) gets
   its first real consumers here, verified both skipped (SQLite) and
@@ -202,10 +203,10 @@
   4.13.0 dropped Django 4.2 support without a version floor and crashes
   on it (`AttributeError: _pre_setup_ran_eagerly`). The cap lifts when
   Django 4.2 leaves the support matrix.
-- `dropdown_filter.html` renders `{{ spec.Media }}` again — a
+- `dropdown_filter.html` renders `{{ spec.Media }}` again: a
   master-only hotfix (a285130, shipped on top of 3.0.2) merged back
   into this branch at release time. Django's admin never consults a
-  list filter's `Media`, so the template must emit it itself; this is
+  list filter's `Media`, so the template must emit it itself. That is
   what actually loads `Select2Mixin`'s select2/jQuery assets. `Media`
   renders `src`/`href`-only tags, so the CSP guarantees of the 4.1.0
   template rewrite are unaffected (render-test enforced).
@@ -214,18 +215,18 @@
 - `dropdown_filter.html` and `select2_filter.html` (the templates behind
   `DropdownMixin`/`Select2Mixin` and their `JSONFieldFilter*` variants) no
   longer emit an inline `style=` attribute, an inline `onchange=`
-  navigation handler, or an inline `<script>` -- all three broke under a
+  navigation handler, or an inline `<script>`. All three broke under a
   real Content-Security-Policy, and with JavaScript disabled the old
   `onchange`-driven `<select>` (shown once there are more than three
   choices) did nothing at all. The plain link list is now always
-  rendered as a working no-JS fallback; when there are more than three
+  rendered as a working no-JS fallback. When there are more than three
   choices a `<select>` is *also* rendered, `hidden` until external,
   CSP-safe `dropdown_filter.js` unhides it, hides the links, and wires
   navigation on `change`. `select2_filter.html` moves its activation
   into external `select2_filter.js`, guarded on
   `window.django && django.jQuery && django.jQuery.fn.select2`.
   Behavior added, not removed: JavaScript-enabled pages keep today's
-  dropdown/select2 UX; JavaScript-disabled pages gain a working filter
+  dropdown/select2 UX. JavaScript-disabled pages gain a working filter
   where before they had a dead `<select>`.
 
 ### Changed
@@ -235,15 +236,15 @@
   SQLite. `tests/settings.py` gained an opt-in env-var switch
   (`DJANGO_UTILS_TEST_POSTGRES=1`, plus `POSTGRES_HOST`/`POSTGRES_PORT`/
   `POSTGRES_USER`/`POSTGRES_PASSWORD`, all with local-Postgres-friendly
-  defaults) that flips both configured database aliases to PostgreSQL;
-  local `pytest`/`tox` runs are unaffected unless the var is set.
+  defaults) that flips both configured database aliases to PostgreSQL.
+  Local `pytest`/`tox` runs are unaffected unless the var is set.
   Deliberate deviation from the originating spec's "a `postgres`
   marker; one tox env running the marked tests" text: running the
   *full* suite against PostgreSQL strictly exceeds that (every
   ORM-touching claim gets real cross-backend coverage, not a
   hand-picked subset picked by whoever adds the next test). The
   `postgres` pytest marker is still registered (`tests/conftest.py`,
-  new) and auto-skips when the env var isn't set -- kept for *future*
+  new) and auto-skips when the env var is not set. Kept for *future*
   PostgreSQL-only tests (e.g. an upcoming ENUM field with no SQLite
   equivalent), not as the current PostgreSQL-suite selector. See the
   `[testenv:py313-django52-postgres]` comment in `tox.ini` for the
@@ -252,14 +253,14 @@
   was benchmarked against `QuerySet.iterator(chunk_size=...)` and lost.
   That conclusion was wrong and has been corrected. The benchmark
   (`benchmarks/queryset_iterator.py`) ran on SQLite and measured
-  `tracemalloc` peak, which tracks Python-level allocations only; it
+  `tracemalloc` peak, which tracks Python-level allocations only. It
   cannot see a database driver's C-level result buffer, which is exactly
   what `queryset_iterator` exists to bound. Django opens a server-side
   cursor for `QuerySet.iterator()` on PostgreSQL only. Off that path,
   `iterator()`'s peak memory is set by the driver, not by `chunk_size`,
-  on backends whose driver buffers the whole result set client-side --
-  verified for MySQL with mysqlclient (its default cursor calls
-  `store_result()`); driver-dependent, and not established here, for
+  on backends whose driver buffers the whole result set client-side.
+  Verified for MySQL with mysqlclient (its default cursor calls
+  `store_result()`). Driver-dependent, and not established here, for
   Oracle and for PostgreSQL with `DISABLE_SERVER_SIDE_CURSORS = True`.
   `queryset_iterator` avoids that by issuing each chunk as its own
   bounded `LIMIT` query rather than one unbounded query (confirmed: 1
@@ -267,13 +268,13 @@
   size), so the driver never receives more than one chunk at a time.
   SQLite has no server-side cursor to bypass in the first place, but its
   stdlib driver steps rows lazily rather than buffering the whole result
-  set, so it cannot demonstrate this effect either way; the benchmark
+  set, so it cannot demonstrate this effect either way. The benchmark
   was structurally incapable of observing the failure mode the function
   prevents. The wall-clock cost is real and unchanged from before:
   ~1.09x-1.14x on SQLite. (An earlier version called `gc.collect()`
-  after every chunk, which raised that ratio to ~1.6x; that call is now
+  after every chunk, which raised that ratio to ~1.6x. That call is now
   opt-in via `gc_collect=True`, off by default.) No out-of-memory
-  failure has been reproduced in this repository's benchmark -- the
+  failure has been reproduced in this repository's benchmark. The
   claim is narrower: bounded driver-side memory by construction on
   backends that buffer, not a demonstrated fix for a specific crash.
   The docstring has been rewritten accordingly.
@@ -283,7 +284,7 @@
   satisfy incrementally, instead of one query that may force the
   server to materialise and sort the full result set) and
   distribution across read replicas (N independent statements can be
-  load-balanced; one long-running query cannot). It also covers the
+  load-balanced, one long-running query cannot). It also covers the
   operational blast radius of a single heavy query and how short,
   resumable chunks (`start_after`) avoid it. These three points follow
   from the query shape and were not independently benchmarked.
@@ -293,28 +294,28 @@
   admin/models/querysets/commands/middleware topic, with runnable
   examples and (for the admin features) screenshots or a live
   in-browser demo. `README.md` is slimmed to the pitch, install,
-  a single quickstart win, and a feature index linking out to each page
-  -- it is no longer where feature details live.
+  a single quickstart example, and a feature index linking out to each
+  page. It is no longer where feature details live.
 
-## 4.0.0 (never published separately -- its changes first shipped in 4.1.0)
+## 4.0.0 (never published separately, its changes first shipped in 4.1.0)
 
-Modernization release. Runtime behavior of retained APIs is unchanged except for the documented fixes below; the removed modules were packaging/metadata only.
+Modernization release. Runtime behavior of retained APIs is unchanged except for the documented fixes below. The removed modules were packaging/metadata only.
 
 ### Breaking
 
 - Dropped support for Python < 3.10 and Django < 4.2.
   Supported: Python 3.10-3.14, Django 4.2 / 5.2 / 6.0.
-- Removed `django_utils.__about__`; package metadata now lives in
+- Removed `django_utils.__about__`. Package metadata now lives in
   `pyproject.toml` (use `importlib.metadata.version('django-utils2')`).
 - Removed the empty `django_utils/models.py` module.
-- Django is now an explicit install dependency (`django>=4.2`); 3.x
+- Django is now an explicit install dependency (`django>=4.2`). 3.x
   releases only declared `python-utils`.
 - A JSONP `callback` parameter must now be a valid Python identifier.
   Deployments relying on dotted or subscripted callback names such as
   `angular.callbacks._0`, `window.cb`, or `cb[0]` will now get a 400
   response instead.
 - `RecursiveField` no longer inherits the parent's value when the
-  child's own value is falsy (`0`, `''`, `False`); previously such
+  child's own value is falsy (`0`, `''`, `False`). Previously such
   values were treated as unset. Code relying on the parent value
   being substituted for a falsy child will now see the child's value
   instead.
@@ -344,7 +345,7 @@ Modernization release. Runtime behavior of retained APIs is unchanged except for
   scoped per user. Override `get_lookups_cache_scope()` to share the cache
   between users.
 - `queryset_iterator` no longer skips rows whose primary key is zero or
-  negative; a queryset whose primary keys were all negative previously
+  negative. A queryset whose primary keys were all negative previously
   yielded nothing.
 - `RecursiveField` no longer treats a falsy child value (`0`, `''`,
   `False`) as unset and inherits the parent's value in its place.
@@ -353,17 +354,17 @@ Modernization release. Runtime behavior of retained APIs is unchanged except for
 
 ### Changed
 
-- Packaging: `pyproject.toml` with the `uv_build` backend; added a
+- Packaging: `pyproject.toml` with the `uv_build` backend. Added a
   proper BSD-3-Clause `LICENSE` file and a `py.typed` marker (the whole
   package is strictly typed and checked by mypy, basedpyright, pyrefly
   and ty). Views decorated with `env` can now be typed against the new
   `django_utils.view_decorators.EnvRequest` request class.
 - Linting/formatting: ruff (replaces flake8).
-- CI: split into ci/codeql/publish workflows; releases publish to PyPI
+- CI: split into ci/codeql/publish workflows. Releases publish to PyPI
   via Trusted Publishing on `v*` tags.
 - Docs: furo theme, README converted to Markdown.
 - Filter lookup cache keys are now hashed (`django_utils.lookups.<sha256>`)
-  so they are valid on every cache backend; previously the raw request
+  so they are valid on every cache backend. Previously the raw request
   path and filter title were concatenated, producing keys with spaces
   that memcached rejects. Cached lookups are invalidated once on upgrade.
 

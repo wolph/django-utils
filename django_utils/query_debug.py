@@ -2,12 +2,13 @@
 
 ``query_budget`` counts every query a block executes and logs a
 structured warning (``warn_at``) or raises (``raise_at``) when the block
-exceeds its budget — an always-on guard against N+1 regressions, unlike
+exceeds its budget: an always-on guard against N+1 regressions, unlike
 test-only tools (``assertNumQueries``) or dev-only profilers
 (django-silk, django-debug-toolbar).
 
 The load-bearing design decision: counting is implemented with
-``connection.execute_wrapper()`` — public, documented, active regardless
+``connection.execute_wrapper()``, which is public, documented, and
+active regardless
 of ``DEBUG``, and free of the per-connection query-log accumulation that
 ``force_debug_cursor``/``connection.queries`` would cause in a
 long-lived production process.

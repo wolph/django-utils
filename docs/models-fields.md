@@ -35,20 +35,20 @@ repr(article)          # '<Article[1]: My First Post>'
 ```
 
 :::{dropdown} Caveat: slugs are not unique at the database level by default
-`SlugMixin` does **not** add a unique constraint on `slug` — its
-nested `Meta.unique_together` is inert, since `SlugMixin` is not
-itself a `Model` and a concrete subclass such as `SlugModelBase`
-declares its own `Meta`, which does not inherit from this one. Models
-that need the slug enforced unique at the database level should
-declare `unique=True` on their own slug field.
+`SlugMixin` does **not** add a unique constraint on `slug`. Its
+nested `Meta.unique_together` is inert: `SlugMixin` is not itself a
+`Model`, and a concrete subclass such as `SlugModelBase` declares its
+own `Meta`, which does not inherit from this one. Models that need
+the slug enforced unique at the database level should declare
+`unique=True` on their own slug field.
 
-`get_unique_slug()` probes via `_base_manager` — Django's documented
-unfiltered manager — rather than `_default_manager`, so a model with a
+`get_unique_slug()` probes via `_base_manager`, Django's documented
+unfiltered manager, rather than `_default_manager`. A model with a
 filtered default manager (soft-delete style: `objects =
 ActiveManager()`) still gets checked against every row in the table,
-not just the ones its default manager happens to expose; otherwise two
-rows hidden from each other by the filter could silently collide onto
-the same slug.
+not just the ones its default manager exposes. Otherwise two rows
+hidden from each other by the filter could silently collide onto the
+same slug.
 
 The uniqueness check and the eventual insert are **not** atomic, so
 two concurrent saves can still race each other onto the same slug.
@@ -63,9 +63,9 @@ module at {doc}`django_utils`.
 
 ## Choices
 
-Django 3.0+ ships native `models.TextChoices` / `models.IntegerChoices`
-enums; `django_utils.choices` remains for the extra `Choice` metadata
-and dict-like access it provides.
+Django 3.0+ ships native `models.TextChoices` and
+`models.IntegerChoices` enums. `django_utils.choices` remains for the
+extra `Choice` metadata and dict-like access it provides.
 
 ```python
 from django_utils import choices
@@ -141,10 +141,10 @@ builds and caches its own enum rather than inheriting its parent's.
 
 The returned class is built dynamically with its `__module__` set to
 `django_utils.choices` rather than the caller's module, so its members
-are **not picklable** with the default pickle protocol — pickling an
-enum member looks the class up by `__module__` + qualified name, which
-won't resolve back to a class that was never assigned a name in that
-module.
+are **not picklable** with the default pickle protocol. Pickling an
+enum member looks the class up by `__module__` plus qualified name,
+which will not resolve back to a class that was never assigned a name
+in that module.
 :::
 
 API reference: {py:class}`~django_utils.choices.Choices`,
@@ -154,12 +154,13 @@ API reference: {py:class}`~django_utils.choices.Choices`,
 ## Encrypted model fields
 
 `EncryptedCharField`, `EncryptedTextField` and `EncryptedJSONField`
-store a Fernet-encrypted token in a plain `TEXT` column — encryption
+store a Fernet-encrypted token in a plain `TEXT` column: encryption
 at rest for values you never need to query, sort or index by (an API
 key, a bank account number, free-text notes). All crypto goes through
-[`cryptography`](https://cryptography.io/)'s `Fernet`/`MultiFernet` —
-nothing hand-rolled, no `hazmat` primitives touched directly. Requires
-the `crypto` extra: `pip install "django-utils2[crypto]"`.
+[`cryptography`](https://cryptography.io/)'s `Fernet`/`MultiFernet`.
+Nothing is hand-rolled, and no `hazmat` primitives are touched
+directly. Requires the `crypto` extra:
+`pip install "django-utils2[crypto]"`.
 
 ```python
 from django.db import models
@@ -186,29 +187,29 @@ DJANGO_UTILS_FERNET_KEYS = [
 ]
 ```
 
-**Rotation story:** the FIRST key encrypts; EVERY key is tried on
-decrypt. Rotate by prepending a new key and redeploying — existing
-rows keep decrypting fine under the old key (now second in the list),
-and get re-encrypted under the new (first) key the next time each row
-is saved. There is no bulk re-encryption command here; touch
-(`.save()`) the rows you want migrated on your own schedule, e.g. with
-[`ChunkedCommand`](chunkedcommand). Once every row has
-been resaved, drop the old key from the list — rows that were never
-resaved under it become undecryptable (`ValidationError` on read) the
-moment it's removed.
+**Rotation story:** the FIRST key encrypts, EVERY key is tried on
+decrypt. Rotate by prepending a new key and redeploying. Existing
+rows keep decrypting under the old key, now second in the list, and
+get re-encrypted under the new first key the next time each row is
+saved. There is no bulk re-encryption command here. Touch (`.save()`)
+the rows you want migrated on your own schedule, for example with
+[`ChunkedCommand`](chunkedcommand). Once every row has been resaved,
+drop the old key from the list. Rows that were never resaved under it
+become undecryptable (`ValidationError` on read) the moment it is
+removed.
 
 Importing `django_utils.crypto_fields` works without `cryptography`
-installed; *instantiating* any of the three fields without it raises
-`ImproperlyConfigured` naming that install command — and since fields
+installed. *Instantiating* any of the three fields without it raises
+`ImproperlyConfigured` naming the install command. Since fields
 instantiate as part of executing a model's class body, a model that
 *declares* one of them fails at app-import/`django.setup()` time, not
-on first use: the whole app fails to boot, loudly and immediately, if
+on first use. The whole app fails to boot, loudly and immediately, if
 the extra is missing.
 
 `EncryptedCharField`'s `max_length` validates the PLAINTEXT (a
-`MaxLengthValidator`, same as plain `CharField`); it never sizes the
-column, which always stores the necessarily-longer ciphertext instead.
-`from_db_value` decrypts eagerly, as each row is fetched — a token
+`MaxLengthValidator`, same as plain `CharField`). It never sizes the
+column, which stores the necessarily longer ciphertext instead.
+`from_db_value` decrypts eagerly, as each row is fetched. A token
 nothing in `DJANGO_UTILS_FERNET_KEYS` can decrypt raises
 `ValidationError` out of the fetch itself (`.get()`,
 `.refresh_from_db()`, iterating a queryset), not lazily on later
@@ -218,27 +219,28 @@ attribute access.
 
 - No queryable or searchable encryption. Fernet salts every
   encryption, so two rows with identical plaintext get different
-  ciphertext — even `exact` can never match at the database level.
-  Every lookup except `isnull` raises `NotImplementedError`; filter in
+  ciphertext, and even `exact` can never match at the database level.
+  Every lookup except `isnull` raises `NotImplementedError`. Filter in
   Python after decrypting, or maintain a separate searchable hash
   column alongside the encrypted one. This includes this package's own
   admin features: a [`JSONFieldFilter`](operator-filters) or
   `search_fields` entry pointing at an encrypted field makes the
-  changelist raise that same `NotImplementedError` at request time — a
+  changelist raise that same `NotImplementedError` at request time. A
   configuration error surfaced loudly, not a silent empty result.
 - Ordering is not blocked (Django offers no field-level hook for it),
-  but `order_by()` on an encrypted field sorts by ciphertext — a
-  meaningless order. Don't.
+  but `order_by()` on an encrypted field sorts by ciphertext, which is
+  a meaningless order. Don't.
 - Encryption at rest only: anything that reads through the ORM sees
-  plaintext — including this package's own [`ExportMixin`](admin-export)
-  (an export action on an encrypted model streams decrypted values
-  into the CSV/JSON download) and Django's `dumpdata` (fixtures land
-  on disk in plaintext).
+  plaintext. That includes this package's own
+  [`ExportMixin`](admin-export), which streams decrypted values into
+  the CSV/JSON download, and Django's `dumpdata`, which lands fixtures
+  on disk in plaintext.
 - No per-field keys. One keyring (`DJANGO_UTILS_FERNET_KEYS`) for
   every encrypted field in the project.
 - No deterministic mode. If you need same-plaintext-same-ciphertext,
-  this is the wrong tool — it also reintroduces exactly the equality
-  side-channel Fernet's salting exists to prevent.
+  this is the wrong tool. Deterministic encryption also reintroduces
+  exactly the equality side-channel Fernet's salting exists to
+  prevent.
 
 API reference: {py:class}`~django_utils.crypto_fields.EncryptedCharField`,
 {py:class}`~django_utils.crypto_fields.EncryptedTextField`,
@@ -249,8 +251,8 @@ API reference: {py:class}`~django_utils.crypto_fields.EncryptedCharField`,
 `django_utils.pg_enum.EnumField` wires a `Choices` class straight to a
 `CharField`: `choices` and `max_length` are derived from it, and on
 PostgreSQL the column's real type is a native `CREATE TYPE ... AS ENUM`
-type instead of `VARCHAR` — the database itself then rejects a row
-that doesn't hold one of the declared values, on top of (not instead
+type instead of `VARCHAR`. The database itself then rejects a row
+that does not hold one of the declared values, on top of (not instead
 of) Django's own choice validation.
 
 ::::{tab-set}
@@ -264,7 +266,7 @@ by the database itself, independent of and in addition to Django's own
 
 :::{tab-item} SQLite / everything else
 `db_type()` falls back to plain `VARCHAR`, so a model using `EnumField`
-stays portable — SQLite never sees a Postgres-specific type name, and
+stays portable. SQLite never sees a Postgres-specific type name, and
 only Django's own `choices` validation applies.
 :::
 
@@ -286,17 +288,17 @@ class Order(models.Model):
 ```
 
 `enum_type` defaults to the `Choices` class name in snake_case
-(`OrderStatus` -> `'order_status'`); pass it explicitly to use a
+(`OrderStatus` -> `'order_status'`). Pass it explicitly to use a
 different PostgreSQL type name.
 
 ### Hand-written migration operations
 
-The field never issues DDL for the enum type itself — Django's
+The field never issues DDL for the enum type itself, because Django's
 `makemigrations` autodetector has no concept of "create this
 standalone database object first". Add explicit operations to a
 migration BY HAND instead. All three operation classes are DB-only (no
 model-state changes) and no-ops on every non-PostgreSQL vendor, so a
-migration using them still applies cleanly against SQLite or MySQL —
+migration using them still applies cleanly against SQLite or MySQL,
 just without the enum type's extra database-level integrity check.
 
 ::::{tab-set}
@@ -326,36 +328,35 @@ class Migration(migrations.Migration):
     ]
 ```
 
-`CreateEnumType` reverses to `DROP TYPE`; `DropEnumType` is the
-inverse (it takes the same `values` so *its* reversal has something to
-recreate).
+`CreateEnumType` reverses to `DROP TYPE`. `DropEnumType` is the
+inverse, and takes the same `values` so *its* reversal has something
+to recreate.
 :::
 
 :::{tab-item} Adding a value
 `AddEnumValue` sets `atomic = False` on itself, but **that alone is
-not enough**. Django's migration executor opens its schema editor —
-and with it, the wrapping transaction — keyed on the **Migration's**
+not enough**. Django's migration executor opens its schema editor,
+and with it the wrapping transaction, keyed on the **Migration's**
 `atomic` attribute (default `True`), *before* any operation's own
-`atomic` flag is ever consulted; an operation-level flag can only add
-extra wrapping inside an already-open transaction, never escape one
-that's already open. This is the same reason Django's own
-`AddIndexConcurrently` requires `atomic = False` on the Migration
-class, not just the operation. Skip it and
-`AddEnumValue.database_forwards` raises `NotSupportedError` instead of
-running somewhere it can't safely run:
+`atomic` flag is consulted. An operation-level flag can only add
+extra wrapping inside an already-open transaction, never escape one.
+This is the same reason Django's own `AddIndexConcurrently` requires
+`atomic = False` on the Migration class, not just the operation. Skip
+it and `AddEnumValue.database_forwards` raises `NotSupportedError`
+instead of running somewhere it cannot safely run:
 
 ```python
 class Migration(migrations.Migration):
     dependencies = [...]
-    atomic = False  # required -- see above; the operation's own
-    # atomic = False cannot escape this Migration's transaction on its own.
+    atomic = False  # Required, see above. The operation's own
+    # atomic = False cannot escape this Migration's transaction.
 
     operations = [
         pg_enum.AddEnumValue('order_status', 'cancelled'),
     ]
 ```
 
-`AddEnumValue` is also irreversible — PostgreSQL has no `DROP VALUE`
+`AddEnumValue` is also irreversible. PostgreSQL has no `DROP VALUE`
 at all, on any version.
 :::
 

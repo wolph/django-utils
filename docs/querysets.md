@@ -1,10 +1,10 @@
 # QuerySets & bulk
 
-ORM helpers for two places naive Django code burns memory or produces
-wrong numbers: `queryset_iterator` bounds memory on both the client
-and the database while iterating millions of rows, `Subquery`-based
-aggregates avoid the JOIN fan-out that silently multiplies
-`annotate(Count(...))` results when combined, and
+ORM helpers for the places where naive Django code burns memory or
+produces wrong numbers. `queryset_iterator` bounds memory on both the
+client and the database while iterating millions of rows.
+`Subquery`-based aggregates avoid the JOIN fan-out that silently
+multiplies `annotate(Count(...))` results when combined.
 `bulk_update_or_create` upserts in one statement per batch instead of
 two racy queries per row.
 
@@ -22,12 +22,12 @@ driver:
 
 1. **Bounded memory on the Python side.** Only `chunksize` model
    instances are ever alive at once. `QuerySet.iterator(chunk_size=...)`
-   makes the same promise, but only where the driver streams —
-   verified for MySQL with mysqlclient, whose default cursor
-   materialises the *entire* result set client-side in a C buffer
-   `chunk_size` never touches. PostgreSQL with Django's default
-   server-side cursors streams properly, so `iterator()` is the better
-   choice there. SQLite's stdlib driver steps rows lazily too.
+   makes the same promise, but only where the driver streams. MySQL
+   with mysqlclient does not: its default cursor materialises the
+   *entire* result set client-side in a C buffer `chunk_size` never
+   touches. PostgreSQL with Django's default server-side cursors
+   streams properly, so `iterator()` is the better choice there.
+   SQLite's stdlib driver steps rows lazily too.
 2. **Bounded memory on the database server.** Each chunk is an index
    range scan the planner can stop as soon as it has `chunksize` rows,
    instead of materialising and sorting the entire result set
@@ -35,7 +35,7 @@ driver:
    fit) before returning the first row.
 3. **Read-replica distribution.** Each chunk is its own independent
    statement, so a database router or connection pooler can spread the
-   N chunk queries across read replicas — a single long-running query
+   N chunk queries across read replicas. A single long-running query
    pins one connection to one server for its whole duration.
 4. **Smaller operational blast radius.** A single heavy query is a
    single point of failure: it can exhaust server memory, hit a
@@ -61,12 +61,12 @@ for row in queryset_iterator(
 ```
 
 **Choosing between the two:** prefer `QuerySet.iterator(chunk_size=...)`
-on PostgreSQL with server-side cursors enabled (the default) — one
+on PostgreSQL with server-side cursors enabled (the default). One
 query, and the database holds the unfetched rows, not the driver.
-Reach for `queryset_iterator` when that guarantee isn't available
+Reach for `queryset_iterator` when that guarantee is not available
 (MySQL, Oracle, SQLite, or PostgreSQL with server-side cursors
 disabled), or whenever a single long-lived cursor is undesirable for
-another reason — iteration can resume on a connection that was reset
+another reason. Iteration can resume on a connection that was reset
 or recycled between chunks, which one open cursor cannot.
 
 :::{dropdown} Benchmark data and keyword options
@@ -76,25 +76,25 @@ chunksize=1000): wall clock is close to parity with `QuerySet.iterator()`
 after every chunk; that alone added roughly 37-47% to the default-mode
 wall-clock time for no measured reduction in Python-level memory, so
 `gc_collect` is off by default. None of benefits 2-4 above were
-independently benchmarked in this repository — they follow from the
+independently benchmarked in this repository. They follow from the
 query shape described, not from measurement. The only measured numbers
 are the query counts and wall-clock figures here, and the cost is
 real: N small queries instead of 1, plus a modest wall-clock overhead.
 
-**`pk_field`** — column to order and paginate by, instead of the
+**`pk_field`**: column to order and paginate by, instead of the
 primary key. Must be unique, indexed, totally ordered and non-nullable
-so keyset pagination doesn't skip or repeat rows. A `NULL` value read
+so keyset pagination does not skip or repeat rows. A `NULL` value read
 from `pk_field` raises `ValueError`, since the cursor cannot resume
 from `NULL`. A non-unique value silently truncates: if several rows
 tie on the same `pk_field` value, only the ones that land in the
 current chunk are yielded and the rest of that tied group is skipped.
 
-**`start_after`** — resume from a previously-seen cursor value instead
+**`start_after`**: resume from a previously seen cursor value instead
 of starting from the beginning, so a batch job that died partway
 through can continue rather than restart.
 
-**`gc_collect`** — call `gc.collect()` after every chunk. Off by
-default; see the benchmark above.
+**`gc_collect`**: call `gc.collect()` after every chunk. Off by
+default, see the benchmark above.
 :::
 
 API reference: {py:func}`~django_utils.queryset.queryset_iterator`,
@@ -117,7 +117,7 @@ Sandwich.objects.annotate(
 
 Use `SubqueryCount`, `SubquerySum`, `SubqueryAvg`, `SubqueryMin`, and
 `SubqueryMax` to run each aggregate in its own independent subquery
-instead — the fix for the example above:
+instead. The fix for the example above:
 
 ```python
 from django_utils.aggregates import SubqueryCount
@@ -130,11 +130,11 @@ Sandwich.objects.annotate(
 ```
 
 Passing a relation name resolves it against the annotated model at
-query-build time — reverse FK, reverse many-to-many, and forward
+query-build time. Reverse FK, reverse many-to-many, and forward
 many-to-many relations are all supported. For anything the name form
-can't express (an inner `filter()`, a top-N slice, a relation reached
-through another model), pass a queryset explicitly instead — it's
-resolved as an `OuterRef('pk')`-correlated subquery either way:
+cannot express (an inner `filter()`, a top-N slice, a relation
+reached through another model), pass a queryset explicitly instead.
+Both forms resolve to an `OuterRef('pk')`-correlated subquery:
 
 ```python
 from django.db.models import OuterRef
@@ -149,20 +149,20 @@ Sandwich.objects.annotate(
 ```
 
 Annotations support `filter()` and `order_by()` like any other.
-`SubqueryCount` of an empty set is 0; the column aggregates
+`SubqueryCount` of an empty set is 0. The column aggregates
 (`SubquerySum`, `SubqueryAvg`, `SubqueryMin`, `SubqueryMax`) return
-`None` for an empty set — wrap in `Coalesce()` for a default.
+`None` for an empty set, so wrap them in `Coalesce()` for a default.
 
 :::{dropdown} Caveat: MySQL backend support, and a reserved column name
 The correlated subquery lives inside a FROM-clause derived table
 (`FROM (SELECT ...) _agg`/`_count`). MySQL earlier than 8.0.14 cannot
 reference the outer query's columns from within a derived table and
-fails loudly with an unknown-column error. Verified on SQLite (this
-repo's CI); expected to work on PostgreSQL and on MySQL/MariaDB
-8.0.14+, but not CI-verified on either.
+fails loudly with an unknown-column error. Verified on SQLite and
+PostgreSQL 16, both in this repo's CI. Expected to work on
+MySQL/MariaDB 8.0.14+, but not CI-verified there.
 
 The column aggregates reserve `agg_value` as the inner annotation
-alias — a queryset whose model has a real field or annotation named
+alias. A queryset whose model has a real field or annotation named
 `agg_value` raises Django's annotation-conflict error.
 :::
 
@@ -176,7 +176,7 @@ API reference: {py:class}`~django_utils.aggregates.SubqueryCount`,
 ## Bulk upsert
 
 `bulk_update_or_create()` inserts rows and updates the ones whose
-unique key already exists — in one `INSERT ... ON CONFLICT DO UPDATE`
+unique key already exists, in one `INSERT ... ON CONFLICT DO UPDATE`
 statement per batch, using Django's own
 `bulk_create(update_conflicts=True)` under the hood. The naive
 alternative, a loop of `update_or_create()`, costs two queries per row
@@ -198,25 +198,25 @@ or overlapping field lists, unknown fields, mixed model classes).
 Field names accept the same spellings `bulk_create` does: field names
 (`owner`), foreign-key attnames (`owner_id`), and the `'pk'` alias.
 
-Each batch is committed independently; there is no transaction
-spanning all batches. That is deliberate — a crash partway through a
-large run leaves the earlier batches durable and the operation
-resumable. Wrap the call in `django.db.transaction.atomic()` yourself
-if you need all-or-nothing semantics instead. Writes always go through
-the model's default database (`Model._base_manager`, no `using`
-override); routing to a non-default alias is a known gap.
+Each batch is committed independently, with no transaction spanning
+all batches. That is deliberate: a crash partway through a large run
+leaves the earlier batches durable and the operation resumable. Wrap
+the call in `django.db.transaction.atomic()` yourself if you need
+all-or-nothing semantics instead. Writes always go through the
+model's default database (`Model._base_manager`, no `using`
+override). Routing to a non-default alias is a known gap.
 
 ::::{tab-set}
 
 :::{tab-item} PostgreSQL / SQLite
-Use `ON CONFLICT` with `unique_fields` as the explicit conflict
-target — only rows conflicting on exactly those fields are updated.
+Uses `ON CONFLICT` with `unique_fields` as the explicit conflict
+target. Only rows conflicting on exactly those fields are updated.
 :::
 
 :::{tab-item} MySQL / MariaDB
 `ON DUPLICATE KEY UPDATE` fires on *any* unique constraint, ignoring
 `unique_fields` as a target selector. Identical behaviour to the
-PostgreSQL/SQLite case when the model has one unique constraint;
+PostgreSQL/SQLite case when the model has one unique constraint,
 subtly broader when it has several.
 :::
 
@@ -224,7 +224,7 @@ subtly broader when it has several.
 
 :::{dropdown} Caveat: primary keys on Django 4.2
 On Django 5.0+ the returned objects have their primary keys populated
-(inserted and conflict-updated rows alike) — where the backend can
+(inserted and conflict-updated rows alike), where the backend can
 return rows from a bulk insert at all: PostgreSQL and SQLite can,
 MariaDB can, vanilla MySQL never can (its Django backend disables
 row-returning inserts on every Django version). On Django 4.2,

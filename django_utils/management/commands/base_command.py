@@ -95,7 +95,7 @@ class ChunkedCommand(CustomBaseCommand):
     note: under ``--dry-run``, the resume hints logged refer to work
     that was rolled back -- do not feed them to a real run.
 
-    Deliberately out of scope: retries and parallelism — this is
+    Deliberately out of scope: retries and parallelism. This is
     iterate + log + checkpoint, nothing more.
     """
 
@@ -218,7 +218,7 @@ class ChunkedCommand(CustomBaseCommand):
         except KeyboardInterrupt:
             if last_pk is None:
                 # No row completed; a --resume-from hint would be
-                # 'None' verbatim — tell the operator to just re-run.
+                # 'None' verbatim, so tell the operator to just re-run.
                 log.warning(
                     'interrupted before completing any rows; re-run '
                     'without --resume-from'
