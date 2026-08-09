@@ -1,5 +1,24 @@
 # Changelog
 
+## 4.1.1 (unreleased)
+
+### Fixed
+
+- The `*Select2` admin filters (`AllValuesFieldListFilterSelect2`,
+  `JSONFieldFilterSelect2`, ...) navigate again when an option is picked.
+  select2 announces a selection through jQuery's event system only, and
+  `dropdown_filter.js` wires navigation with a native `change` listener
+  (it must also work without jQuery) -- so in 4.1.0 picking an option
+  updated the widget but silently never filtered. `select2_filter.js` now
+  re-dispatches a native `change` on select2's selection event.
+
+### Changed
+
+- The dropdown filter docs demo got an admin-sidebar look (docs-only
+  CSS) and a live select2 section: the docs build stages Django's own
+  vendored jQuery + select2 so the autocomplete variant is exercised
+  in-browser too.
+
 ## 4.1.0 (2026-08-06)
 
 ### Added

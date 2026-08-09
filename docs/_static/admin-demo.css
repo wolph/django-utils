@@ -1,0 +1,63 @@
+/* Admin-sidebar look for the live filter demos. Docs-only: in a real
+   admin the surrounding styling comes from the admin's own stylesheets,
+   which these pages don't load. Colors are fixed (admin's light palette)
+   rather than furo theme variables, so the panel reads as a rendered
+   widget preview in both light and dark docs themes -- and so select2's
+   default (light) skin never sits on a dark panel. */
+.admin-filter-demo-panel {
+    max-width: 20rem;
+    padding: 0 0 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 0.25rem;
+    background: #fff;
+    color: #333;
+    overflow: hidden;
+}
+
+.admin-filter-demo-panel h3 {
+    margin: 0 0 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #f6f6f6;
+    border-bottom: 1px solid #e0e0e0;
+    color: #666;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.admin-filter-demo-panel ul {
+    margin: 0;
+    padding: 0 0.75rem;
+    list-style: none;
+}
+
+.admin-filter-demo-panel li {
+    margin: 0;
+    padding: 0.15rem 0;
+    list-style: none;
+}
+
+.admin-filter-demo-panel li > a {
+    color: #447e9b;
+    text-decoration: none;
+}
+
+.admin-filter-demo-panel li.selected > a {
+    color: #205067;
+    font-weight: 700;
+}
+
+.admin-filter-demo-panel select {
+    font-size: 0.875rem;
+    padding: 0.2rem;
+    border: 1px solid #ccc;
+    border-radius: 0.25rem;
+    background: #fff;
+    color: #333;
+}
+
+/* select2 renders its own container next to the (hidden) <select>; keep
+   it inside the panel's padding like the plain select. */
+.admin-filter-demo-panel .select2-container {
+    width: 95% !important;
+    margin-left: 2%;
+}

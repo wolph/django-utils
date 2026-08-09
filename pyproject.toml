@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "django-utils2"
-version = "4.1.0"
+version = "4.1.1"
 description = "Django Utils is a module with some convenient utilities not included with the standard Django install"
 readme = "README.md"
 license = "BSD-3-Clause"

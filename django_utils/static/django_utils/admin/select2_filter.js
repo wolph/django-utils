@@ -27,7 +27,21 @@
                 return;
             }
             select.dataset.duSelect2Activated = '1';
-            django.jQuery(select).select2();
+            var $select = django.jQuery(select);
+            $select.select2();
+            // select2 reports a selection by setting the <select>'s value
+            // and firing `change` through jQuery's event system only --
+            // jQuery's .trigger() never dispatches a real DOM event, so
+            // the native `change` listener dropdown_filter.js wired for
+            // navigation (natively, because it must also work without
+            // jQuery) would never fire and picking an option would
+            // silently do nothing. Bridge the gap: on select2's own
+            // selection event, dispatch the native `change` a user
+            // picking an option in the plain <select> would have
+            // produced.
+            $select.on('select2:select', function () {
+                select.dispatchEvent(new Event('change', {bubbles: true}));
+            });
         });
     }
 
