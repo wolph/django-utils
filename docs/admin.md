@@ -140,9 +140,12 @@ API reference: {py:class}`~django_utils.admin.filters.JSONFieldFilter`,
 the admin's default `JSONField` textarea. Django renders a stored
 value on one line (`{"b": 2, "a": [1, 2]}`) and only reports a parse
 error after a submit round-trip. `JSONWidget` indents and key-sorts
-the value, and validates it as you type, via a small, CSP-safe
-vanilla-JS asset (no inline handlers, no `eval`) that degrades to a
-plain textarea if JavaScript is unavailable.
+the value, validates it as you type, and syntax-highlights keys,
+strings, numbers and literals live (a colored overlay on a still
+fully native `<textarea>` — light/dark aware, no highlighting
+library), via a small, CSP-safe vanilla-JS asset (no inline handlers,
+no `eval`) that degrades to a plain textarea if JavaScript is
+unavailable.
 
 Django already preserves malformed JSON input across the round-trip
 (`forms.JSONField.bound_data()` returns it as `InvalidJSONInput`
@@ -194,7 +197,7 @@ message, reported as you type.
 
 **Try it live** — {doc}`a live, in-browser demo of the shipped JSON
 widget JavaScript </demos/json-widget>`, exercising the same inline
-validation described above.
+validation and live syntax highlighting described above.
 
 API reference: {py:class}`~django_utils.admin.widgets.JSONWidget`,
 {py:class}`~django_utils.admin.widgets.JSONWidgetMixin`.

@@ -36,7 +36,7 @@ The template only renders that `<select>` when there are more than
 three choices, so this demo lists four.
 
 ```{raw} html
-<div class="admin-filter-demo-panel">
+<div class="admin-demo-panel">
 <h3>By category</h3>
 <ul class="admin-filter-demo django-utils-dropdown-filter">
     <li class="selected"><a href="?demo=">All</a></li>
@@ -82,7 +82,7 @@ Django the docs are built against.
   widget.
 
 ```{raw} html
-<div class="admin-filter-demo-panel">
+<div class="admin-demo-panel">
 <h3>By filling</h3>
 <ul class="admin-filter-demo django-utils-dropdown-filter">
     <li class="selected"><a href="?demo=">All</a></li>

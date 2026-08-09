@@ -4,6 +4,103 @@
     margin: 0.25rem 0 0;
 }
 
-textarea[data-json-widget] {
+/* Overlay syntax highlighting (see json_widget.js): the <pre> sits on
+   top of the textarea and paints the colored copy of its value; the
+   textarea's own text is transparent but keeps focus, caret, selection,
+   undo and form submission. Font, padding, border and wrapping metrics
+   are pinned identically on both layers so the glyphs align exactly. */
+.django-utils-json-widget {
+    position: relative;
+    display: inline-block;
+    vertical-align: top;
+}
+
+textarea[data-json-widget],
+.django-utils-json-highlight {
+    box-sizing: border-box;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    letter-spacing: normal;
+    tab-size: 4;
+    padding: 4px 6px;
+    border-width: 1px;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+.django-utils-json-widget > textarea[data-json-widget] {
+    position: relative;
+    z-index: 1;
+    color: transparent;
+    /* `color: transparent` would take the caret with it; FieldText is
+       the UA's own text color for form fields in the active color
+       scheme, with a plain fallback for browsers without it. */
+    caret-color: #333;
+    caret-color: FieldText;
+}
+
+.django-utils-json-highlight {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    margin: 0;
+    border: 1px solid transparent;
+    padding: 4px 6px;
+    overflow: hidden;
+    pointer-events: none;
+    background: transparent;
+    color: inherit;
+}
+
+.django-utils-json-key {
+    color: #0550ae;
+}
+
+.django-utils-json-string {
+    color: #1a7f37;
+}
+
+.django-utils-json-number {
+    color: #953800;
+}
+
+.django-utils-json-literal {
+    color: #8250df;
+}
+
+/* The Django admin's dark theme: explicit via html[data-theme="dark"],
+   or html[data-theme="auto"] following the OS preference. */
+html[data-theme='dark'] .django-utils-json-key {
+    color: #79c0ff;
+}
+
+html[data-theme='dark'] .django-utils-json-string {
+    color: #7ee787;
+}
+
+html[data-theme='dark'] .django-utils-json-number {
+    color: #ffa657;
+}
+
+html[data-theme='dark'] .django-utils-json-literal {
+    color: #d2a8ff;
+}
+
+@media (prefers-color-scheme: dark) {
+    html[data-theme='auto'] .django-utils-json-key {
+        color: #79c0ff;
+    }
+
+    html[data-theme='auto'] .django-utils-json-string {
+        color: #7ee787;
+    }
+
+    html[data-theme='auto'] .django-utils-json-number {
+        color: #ffa657;
+    }
+
+    html[data-theme='auto'] .django-utils-json-literal {
+        color: #d2a8ff;
+    }
 }
