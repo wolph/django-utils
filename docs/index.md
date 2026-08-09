@@ -5,14 +5,12 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/django-utils2.svg)](https://pypi.org/project/django-utils2/)
 [![Documentation](https://readthedocs.org/projects/django-utils-2/badge/?version=latest)](https://django-utils-2.readthedocs.io/en/latest/)
 
-Django Utils is a collection of small Django helpers, admin power-ups and
-ORM utilities that make common patterns shorter, safer, and ASGI-friendly —
-JSON-aware admin filters and a validating JSON widget, collision-free slug
-mixins and metadata-carrying choices, encrypted model fields, a native
-PostgreSQL enum field, memory-bounded queryset iteration and fan-out-safe
-subquery aggregates, chunked management commands, contextvars-based request
-context, and header-based CSRF hardening. It is by no means a complete
-collection, but it has served production projects well and keeps growing.
+Django Utils is a collection of the small Django helpers, admin
+power-ups and ORM utilities that most projects end up writing
+themselves: JSON-aware admin filters, encrypted model fields,
+memory-bounded queryset iteration, resumable management commands, and
+more. It is by no means a complete collection, but it has served
+production projects well and keeps growing.
 
 ::::{grid} 1 2 2 3
 :gutter: 3
@@ -61,8 +59,8 @@ decorators, and production-safe query budgets.
 :link: why
 :link-type: doc
 
-Evidence-based positioning against the incumbents, and what this library
-holds itself to.
+What it does differently from django-extensions and django-model-utils,
+and the quality gates every release has to pass.
 :::
 ::::
 
@@ -79,7 +77,8 @@ INSTALLED_APPS = [
 ]
 ```
 
-See the [quickstart](quickstart.md) page for the first three wins.
+The [quickstart](quickstart.md) walks through the first three features
+worth enabling.
 
 ```{toctree}
 :hidden:

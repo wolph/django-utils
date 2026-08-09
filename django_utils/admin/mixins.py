@@ -1,7 +1,7 @@
 """Opt-in ``ModelAdmin`` mixins.
 
-``ReadOnlyModelAdminMixin`` turns any existing admin — including one
-using this package's filters and widgets — into a safe read-only view:
+``ReadOnlyModelAdminMixin`` turns any existing admin, including one
+using this package's filters and widgets, into a safe read-only view:
 add/change/delete are denied for everyone (superusers included), every
 concrete field and many-to-many relation becomes read-only, and the
 list configuration

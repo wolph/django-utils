@@ -2,7 +2,7 @@
 
 The classic footgun: ``annotate(Count('review'), Count('topping'))``
 implements each aggregate as a JOIN, so aggregating two one-to-many
-relations together counts the cartesian product — a sandwich with 2
+relations together counts the cartesian product: a sandwich with 2
 reviews and 3 toppings reports 6 of each.  Each helper here runs its
 aggregate in an independent ``(SELECT ... FROM (subquery))`` instead, so
 combining any number of them stays correct::
@@ -20,7 +20,7 @@ combining any number of them stays correct::
 Annotations built this way support ``filter()`` and ``order_by()`` like
 any other.  ``SubqueryCount`` of an empty set is 0; the column
 aggregates return ``NULL`` (Python ``None``) for an empty set, matching
-SQL — wrap in ``django.db.models.functions.Coalesce`` for a default.
+SQL. Wrap in ``django.db.models.functions.Coalesce`` for a default.
 
 Backend honesty: the correlated subquery lives inside a FROM-clause
 derived table (``FROM (SELECT ...) _agg``/``_count``). MySQL earlier
@@ -30,8 +30,8 @@ on SQLite (this repo's CI); expected to work on PostgreSQL and on
 MySQL/MariaDB 8.0.14+, but not CI-verified on either.
 
 The column aggregates (``SubquerySum``, ``SubqueryAvg``, ``SubqueryMin``,
-``SubqueryMax``) reserve ``agg_value`` as the inner annotation alias —
-a queryset whose model has a real field or annotation named
+``SubqueryMax``) reserve ``agg_value`` as the inner annotation alias.
+A queryset whose model has a real field or annotation named
 ``agg_value`` raises Django's annotation-conflict error.
 """
 

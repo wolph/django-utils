@@ -13,7 +13,7 @@ verbosity-aware logger, so a command gets structured logging for free
 instead of hand-rolling `self.stdout.write()` calls. `create_logger()`
 configures a logger named `management.commands.<module>` (plus the
 full module path, and any names listed in `loggers`) at a level driven
-by `--verbosity` (`0`=`ERROR`, `1`=`WARN`, `2`=`INFO` — the default,
+by `--verbosity` (`0`=`ERROR`, `1`=`WARN`, `2`=`INFO` (the default),
 `3`=`DEBUG`), and exposes it as `self.log`.
 
 ```python
@@ -65,13 +65,13 @@ Command-line options:
 | Option | Effect |
 | --- | --- |
 | `--chunksize N` | Override the class `chunksize` (default 1000). |
-| `--resume-from PK` | Skip rows with pk ≤ this value (useful for resuming interrupted runs). |
+| `--resume-from PK` | Skip rows with pk <= this value (useful for resuming interrupted runs). |
 | `--limit N` | Stop after processing N rows and log the resume-from hint. |
 | `--dry-run` | Run inside a transaction and roll everything back. |
 | `--log-every N` | Log progress every N rows (default 1000). |
 
 Below is a realistic transcript of a run that gets interrupted and
-resumed — the exact `--resume-from` value comes from the last
+resumed. The exact `--resume-from` value comes from the last
 successfully processed row, logged both on interrupt and on hitting
 `--limit`:
 
@@ -95,7 +95,7 @@ $ python manage.py backfill_totals --resume-from 4000
 
 If no row completed before the interrupt, the resume hint is skipped
 in favor of a plain instruction: `interrupted before completing any
-rows; re-run without --resume-from` — a `--resume-from None` would be
+rows; re-run without --resume-from`. A `--resume-from None` would be
 meaningless.
 
 :::{dropdown} Caveat: dry-run transaction scope
@@ -103,7 +103,7 @@ meaningless.
 (`self.get_queryset().db`); writes `handle_instance` makes to OTHER
 databases are not covered and will still be committed. Under
 `--dry-run`, the resume hints logged refer to work that was rolled
-back — do not feed them to a real run.
+back. Do not feed them to a real run.
 
 The rollback itself is implemented as an exception unwound out of a
 nested `transaction.atomic()`, not `transaction.set_rollback(True)`:
@@ -113,8 +113,8 @@ per-test transaction). Unwinding a nested atomic via an exception
 rolls back only its own savepoint.
 :::
 
-Deliberately out of scope: retries and parallelism — this is
-iterate + log + checkpoint, nothing more.
+Deliberately out of scope: retries and parallelism. This is iterate,
+log and checkpoint, nothing more.
 
 API reference: {py:class}`~django_utils.management.commands.base_command.ChunkedCommand`,
 full module at {doc}`django_utils`.

@@ -14,8 +14,8 @@ Store the current request and user in contextvars for access from
 anywhere without needing to pass them as function arguments. Unlike
 thread-local equivalents like `django-crum`, which leak state between
 interleaved requests under ASGI, `RequestContextMiddleware` uses
-`contextvars.ContextVar` — isolated per asyncio task and safe under
-both WSGI and ASGI.
+`contextvars.ContextVar`. A `ContextVar` is isolated per asyncio task
+and safe under both WSGI and ASGI.
 
 ```python
 MIDDLEWARE = [
@@ -39,14 +39,14 @@ class MyModel(models.Model):
 ```
 
 For tests and management commands, use the `current_request()` context
-manager instead of adding the middleware — it nests, restoring the
+manager instead of adding the middleware. It nests, restoring the
 previous request on exit.
 
 ::::{tab-set}
 
 :::{tab-item} Sync (WSGI)
 Under WSGI, each request runs on its own OS thread. A thread-local
-would already isolate requests correctly here — `ContextVar` works
+would already isolate requests correctly here. `ContextVar` works
 just as well, and keeps the same code correct if the project ever
 moves to ASGI.
 :::
@@ -65,7 +65,7 @@ view via `sync_to_async`.
 
 :::{dropdown} Caveat: StreamingHttpResponse body context
 The context variable is reset in a `finally` as soon as the view
-returns a response — *before* a `StreamingHttpResponse` body iterator
+returns a response, *before* a `StreamingHttpResponse` body iterator
 runs. `get_current_request()` called from inside a streaming
 response's body generator therefore returns `None`, not the request
 that triggered it.
@@ -78,27 +78,27 @@ API reference: {py:class}`~django_utils.context.RequestContextMiddleware`,
 ## Fetch-Metadata CSRF middleware
 
 Modern browsers send request metadata headers that let you reject
-cross-site state-changing requests before token checks even run — as
-a second layer, not a replacement. The `Sec-Fetch-Site` header (sent
-by all modern browsers since ~2019) tells you whether a request is
-same-origin, same-site, or cross-site — no tokens required.
+cross-site state-changing requests before token checks even run, as a
+second layer, not a replacement. The `Sec-Fetch-Site` header (sent by
+all modern browsers since roughly 2019) tells you whether a request
+is same-origin, same-site, or cross-site, with no tokens required.
 
 `FetchMetadataMiddleware` rejects cross-site state-changing requests
 by header inspection alone, with a fallback to the `Origin` header for
 older browsers. It's **defense-in-depth**: run it *alongside* Django's
 `CsrfViewMiddleware`, never instead of it. Old browsers and
 non-browser clients (curl, webhooks) carry neither header and pass
-through — that's where token CSRF still catches attacks.
+through. That is where token CSRF still catches attacks.
 
 The policy, in order:
 
 1. Safe methods (GET/HEAD/OPTIONS/TRACE) always pass.
 2. Views marked `@fetch_metadata_exempt` pass.
 3. `Sec-Fetch-Site` present: allow `same-origin`/`same-site`/`none`
-   (browser UI); reject everything else with 403 — unknown values fail
-   closed.
-4. No `Sec-Fetch-Site`: compare `Origin` header to `scheme://host`;
-   mismatch rejected.
+   (browser UI) and reject everything else with 403. Unknown values
+   fail closed.
+4. No `Sec-Fetch-Site`: compare the `Origin` header to `scheme://host`
+   and reject a mismatch.
 5. Neither header: allow (token CSRF is the backstop).
 
 ```python
@@ -121,9 +121,9 @@ def webhook_view(request):
 :::{dropdown} Caveat: SECURE_PROXY_SSL_HEADER and step 4
 Behind a TLS-terminating proxy without `SECURE_PROXY_SSL_HEADER`
 configured, step 4 can false-reject a legacy browser: `request.scheme`
-reads `http` while its `Origin` header is `https://…`, so the
+reads `http` while its `Origin` header is `https://...`, so the
 exact-match comparison fails and the request is rejected as
-cross-site. Modern browsers are unaffected — they send
+cross-site. Modern browsers are unaffected, because they send
 `Sec-Fetch-Site`, which step 3 handles first. Configure
 `SECURE_PROXY_SSL_HEADER` per
 [the Django docs](https://docs.djangoproject.com/en/stable/ref/settings/#secure-proxy-ssl-header)
@@ -176,7 +176,7 @@ API reference: {py:func}`~django_utils.auth.superuser_required`,
 
 ## Query budgets
 
-Catch N+1 regressions in production code paths — not just in tests or
+Catch N+1 regressions in production code paths, not just in tests or
 behind a development-only debug toolbar.
 
 `django_utils.query_debug.query_budget` counts every query a block
@@ -191,7 +191,7 @@ Usable as a context manager or a decorator:
 ```python
 from django_utils.query_debug import query_budget
 
-# Warn if a view runs more than 20 queries; fail tests if more than 100
+# Warn past 20 queries, raise past 100
 with query_budget(warn_at=20, raise_at=100):
     results = expensive_operation()
 
@@ -201,7 +201,7 @@ def my_view(request):
     return render(request, 'template.html', expensive_context())
 ```
 
-`using` limits counting to one connection alias; the default counts
+`using` limits counting to one connection alias. The default counts
 every configured connection. Exceeding `raise_at` raises
 `QueryBudgetExceeded` from the first over-budget query, carrying the
 query count and the offending SQL. Construction itself validates:
@@ -211,7 +211,7 @@ warn).
 
 :::{dropdown} Caveat: thread-safety and reentrancy
 `query_budget` instances are single-use per `with` block (not
-reentrant) — entering the same instance twice raises `RuntimeError`.
+reentrant). Entering the same instance twice raises `RuntimeError`.
 The decorator form is safe because each decorated call gets a fresh
 instance internally, but instances themselves are **not thread-safe**:
 don't share one `query_budget` instance across threads.

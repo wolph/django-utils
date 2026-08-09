@@ -433,7 +433,7 @@ class ChoicesMeta(type):
         ``__module__`` + qualified name, which won't resolve back to a
         class that was never assigned a name in that module).
 
-        The original class is unchanged — its members stay raw values so
+        The original class is unchanged: its members stay raw values so
         they can be handed to Django fields. Use the enum where you want
         ``isinstance`` checks or a ``match`` on real enum members.
         """

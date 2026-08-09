@@ -9,11 +9,11 @@ batch, atomic per row on the database side.
 Backend honesty: PostgreSQL and SQLite use ``ON CONFLICT`` with
 ``unique_fields`` naming the conflict target; MySQL/MariaDB use
 ``ON DUPLICATE KEY UPDATE``, which ignores ``unique_fields`` and fires
-on *any* unique constraint — identical behaviour when the model has one
+on *any* unique constraint: identical behaviour when the model has one
 unique constraint, subtly broader when it has several.
 
 Version honesty: on Django 5.0+ the returned objects have their primary
-keys populated (inserted and conflict-updated rows alike) — where the
+keys populated (inserted and conflict-updated rows alike), where the
 backend can return rows from a bulk insert at all: PostgreSQL and
 SQLite can, MariaDB can, vanilla MySQL never can (its Django backend
 disables row-returning inserts on every Django version).  On Django
