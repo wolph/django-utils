@@ -1,20 +1,70 @@
-/* Admin-sidebar look for the live filter demos. Docs-only: in a real
-   admin the surrounding styling comes from the admin's own stylesheets,
-   which these pages don't load. Colors are fixed (admin's light palette)
+/* Admin look for the live widget demos. Docs-only: in a real admin the
+   surrounding styling comes from the admin's own stylesheets, which
+   these pages don't load. Colors are fixed (admin's light palette)
    rather than furo theme variables, so the panel reads as a rendered
    widget preview in both light and dark docs themes -- and so select2's
-   default (light) skin never sits on a dark panel. */
-.admin-filter-demo-panel {
+   default (light) skin never sits on a dark panel. `color-scheme:
+   light` keeps the UA's own form-control rendering (textarea/select
+   backgrounds, scrollbars) light inside the panel for the same
+   reason. */
+.admin-demo-panel {
     max-width: 20rem;
     padding: 0 0 0.75rem;
     border: 1px solid #e0e0e0;
     border-radius: 0.25rem;
     background: #fff;
     color: #333;
+    color-scheme: light;
     overflow: hidden;
 }
 
-.admin-filter-demo-panel h3 {
+/* The JSON widget's 40-column textarea needs more room than the
+   sidebar-shaped filter panels. */
+.admin-demo-panel.admin-demo-panel-wide {
+    max-width: 26rem;
+}
+
+.admin-demo-panel .django-utils-json-widget {
+    margin: 0 0.75rem;
+    /* The demo textarea's fixed cols would otherwise clip against the
+       panel edge on narrow viewports. */
+    max-width: calc(100% - 1.5rem);
+}
+
+.admin-demo-panel .django-utils-json-widget > textarea[data-json-widget] {
+    max-width: 100%;
+}
+
+.admin-demo-panel .django-utils-json-error {
+    margin: 0.25rem 0.75rem 0;
+}
+
+/* The panel is always light, but furo stamps data-theme on <html> just
+   like the admin does -- without these, json_widget.css's dark token
+   palette would fire inside the light panel in dark docs mode. Higher
+   specificity than the shipped dark rules, so the light palette wins
+   here regardless of theme. */
+html[data-theme='dark'] .admin-demo-panel .django-utils-json-key,
+html[data-theme='auto'] .admin-demo-panel .django-utils-json-key {
+    color: #0550ae;
+}
+
+html[data-theme='dark'] .admin-demo-panel .django-utils-json-string,
+html[data-theme='auto'] .admin-demo-panel .django-utils-json-string {
+    color: #1a7f37;
+}
+
+html[data-theme='dark'] .admin-demo-panel .django-utils-json-number,
+html[data-theme='auto'] .admin-demo-panel .django-utils-json-number {
+    color: #953800;
+}
+
+html[data-theme='dark'] .admin-demo-panel .django-utils-json-literal,
+html[data-theme='auto'] .admin-demo-panel .django-utils-json-literal {
+    color: #8250df;
+}
+
+.admin-demo-panel h3 {
     margin: 0 0 0.5rem;
     padding: 0.5rem 0.75rem;
     background: #f6f6f6;
@@ -24,29 +74,29 @@
     font-weight: 600;
 }
 
-.admin-filter-demo-panel ul {
+.admin-demo-panel ul {
     margin: 0;
     padding: 0 0.75rem;
     list-style: none;
 }
 
-.admin-filter-demo-panel li {
+.admin-demo-panel li {
     margin: 0;
     padding: 0.15rem 0;
     list-style: none;
 }
 
-.admin-filter-demo-panel li > a {
+.admin-demo-panel li > a {
     color: #447e9b;
     text-decoration: none;
 }
 
-.admin-filter-demo-panel li.selected > a {
+.admin-demo-panel li.selected > a {
     color: #205067;
     font-weight: 700;
 }
 
-.admin-filter-demo-panel select {
+.admin-demo-panel select {
     font-size: 0.875rem;
     padding: 0.2rem;
     border: 1px solid #ccc;
@@ -57,7 +107,7 @@
 
 /* select2 renders its own container next to the (hidden) <select>; keep
    it inside the panel's padding like the plain select. */
-.admin-filter-demo-panel .select2-container {
+.admin-demo-panel .select2-container {
     width: 95% !important;
     margin-left: 2%;
 }

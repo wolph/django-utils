@@ -2,6 +2,15 @@
 
 ## 4.1.1 (unreleased)
 
+### Added
+
+- `JSONWidget` syntax-highlights as you type: keys, strings, numbers
+  and `true`/`false`/`null` are colorized live via a dependency-free
+  tokenizer in `json_widget.js` -- a colored overlay on the still fully
+  native `<textarea>` (focus, caret, undo, paste and form submission
+  unchanged; degrades to a plain textarea without JavaScript). Follows
+  the admin's light, dark and auto themes.
+
 ### Fixed
 
 - The `*Select2` admin filters (`AllValuesFieldListFilterSelect2`,

@@ -21,6 +21,31 @@ def test_json_widget_demo_matches_shipped_contract():
     assert 'django_utils/admin/json_widget.js' in demo
 
 
+def test_json_widget_highlight_classes_are_styled():
+    """Every token class the highlighter emits must have a color rule
+    (light and dark) in the shipped stylesheet, and the overlay's own
+    class must exist in both files -- a renamed class on either side
+    silently kills the highlighting."""
+    shipped_js = _read(STATIC / 'django_utils' / 'admin' / 'json_widget.js')
+    shipped_css = _read(STATIC / 'django_utils' / 'admin' / 'json_widget.css')
+    for token_class in (
+        'django-utils-json-key',
+        'django-utils-json-string',
+        'django-utils-json-number',
+        'django-utils-json-literal',
+        'django-utils-json-highlight',
+    ):
+        assert token_class in shipped_js, token_class
+        assert token_class in shipped_css, token_class
+    # Dark-theme parity: the admin's dark and auto themes both restyle
+    # every token class.
+    for scope in ("html[data-theme='dark']", "html[data-theme='auto']"):
+        for token_class in ('key', 'string', 'number', 'literal'):
+            assert (
+                f'{scope} .django-utils-json-{token_class}' in shipped_css
+            ), (scope, token_class)
+
+
 def test_dropdown_demo_matches_shipped_contract():
     demo = _read(DOCS / 'demos' / 'dropdown-filter.md')
     shipped = _read(STATIC / 'django_utils' / 'admin' / 'dropdown_filter.js')
