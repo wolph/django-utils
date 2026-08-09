@@ -29,6 +29,29 @@ def test_dropdown_demo_matches_shipped_contract():
     assert 'django_utils/admin/dropdown_filter.js' in demo
 
 
+def test_select2_demo_matches_shipped_contract():
+    demo = _read(DOCS / 'demos' / 'dropdown-filter.md')
+    shipped = _read(STATIC / 'django_utils' / 'admin' / 'select2_filter.js')
+    assert 'data-select2-filter' in demo
+    assert 'data-select2-filter' in shipped
+    assert 'django_utils/admin/select2_filter.js' in demo
+    # select2 announces selections through jQuery's event system only;
+    # without this native-`change` bridge, dropdown_filter.js's
+    # navigation listener never fires and picking an option silently
+    # does nothing (the 4.1.0 bug).
+    assert 'select2:select' in shipped
+    assert "dispatchEvent(new Event('change'" in shipped
+    # The vendored assets the demo loads must be the ones the shipped
+    # script requires (django.jQuery + select2, wired by jquery.init.js).
+    for vendored in (
+        'admin/js/vendor/jquery/jquery.js',
+        'admin/js/vendor/select2/select2.full.js',
+        'admin/js/jquery.init.js',
+        'admin/css/vendor/select2/select2.css',
+    ):
+        assert vendored in demo, vendored
+
+
 def test_demo_pages_are_csp_clean():
     import re
 
