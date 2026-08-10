@@ -182,3 +182,8 @@ unresolved-import = "ignore"
 
 [tool.uv]
 exclude-newer = "14 days"
+# cryptography gets a shorter soak: waiting out the full two weeks keeps a
+# known-vulnerable version locked while the fix sits on PyPI (GHSA-g6cj-pr64-35w5
+# was published three days after cryptography 50.0.0 shipped). A week is still
+# long enough to catch a broken release.
+exclude-newer-package = { cryptography = "7 days" }
