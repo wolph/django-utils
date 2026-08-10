@@ -1,5 +1,29 @@
 # Changelog
 
+## 4.1.2 (2026-08-10)
+
+Maintenance release. No library code changed; nothing here alters runtime
+behaviour.
+
+### Security
+
+- The development lockfile pins `cryptography` 50.0.0, which fixes
+  GHSA-g6cj-pr64-35w5 / CVE-2026-69247: PKCS#7 `EnvelopedData` decryption
+  leaked a Bleichenbacher oracle through distinguishable errors and timing.
+  `django_utils.crypto_fields` uses `Fernet`/`MultiFernet` only and never
+  touches `pkcs7_decrypt_*`, so the vulnerable path was not reachable through
+  this package. The published floor stays `cryptography>=42.0` -- installs of
+  the `crypto` extra resolve to the newest release anyway, and pinning a
+  ten-day-old version on every consumer buys them nothing here.
+- `[tool.uv] exclude-newer-package` gives `cryptography` a seven-day soak
+  instead of the project-wide fourteen, so a security release can enter the
+  lockfile without waiting out the full quarantine.
+
+### Changed
+
+- Documentation, README and docstrings use plain ASCII punctuation throughout,
+  with filler trimmed.
+
 ## 4.1.1 (2026-08-09)
 
 ### Added
