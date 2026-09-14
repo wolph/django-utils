@@ -1,7 +1,7 @@
 # Django Utils
 
 [![CI on master](https://github.com/wolph/django-utils/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/wolph/django-utils/actions/workflows/ci.yml?query=branch%3Amaster)
-[![Coverage on master](https://coveralls.io/repos/github/WoLpH/django-utils/badge.svg?branch=master)](https://coveralls.io/github/WoLpH/django-utils?branch=master)
+[![Coverage on master](https://coveralls.io/repos/github/wolph/django-utils/badge.svg?branch=master)](https://coveralls.io/github/wolph/django-utils?branch=master)
 [![PyPI version](https://img.shields.io/pypi/v/django-utils2.svg)](https://pypi.org/project/django-utils2/)
 [![Python versions](https://img.shields.io/pypi/pyversions/django-utils2.svg)](https://pypi.org/project/django-utils2/)
 [![Documentation](https://readthedocs.org/projects/django-utils-2/badge/?version=latest)](https://django-utils-2.readthedocs.io/en/latest/)
