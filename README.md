@@ -1,10 +1,10 @@
 # Django Utils
 
-[![CI on master](https://github.com/wolph/django-utils/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/wolph/django-utils/actions/workflows/ci.yml?query=branch%3Amaster)
-[![Coverage on master](https://coveralls.io/repos/github/wolph/django-utils/badge.svg?branch=master)](https://coveralls.io/github/wolph/django-utils?branch=master)
-[![PyPI version](https://img.shields.io/pypi/v/django-utils2.svg?style=plastic)](https://pypi.org/project/django-utils2/)
-[![Python versions](https://img.shields.io/pypi/pyversions/django-utils2.svg?style=plastic)](https://pypi.org/project/django-utils2/)
-[![Documentation](https://img.shields.io/readthedocs/django-utils-2/latest?style=plastic)](https://django-utils-2.readthedocs.io/en/latest/)
+[![CI on master](https://img.shields.io/github/actions/workflow/status/wolph/django-utils/ci.yml?branch=master&label=CI&style=flat-square&labelColor=555)](https://github.com/wolph/django-utils/actions/workflows/ci.yml?query=branch%3Amaster)
+[![Coverage on master](https://img.shields.io/coverallsCoverage/github/wolph/django-utils?branch=master&style=flat-square&labelColor=555)](https://coveralls.io/github/wolph/django-utils?branch=master)
+[![PyPI version](https://img.shields.io/pypi/v/django-utils2.svg?style=flat-square&labelColor=555&color=007ec6)](https://pypi.org/project/django-utils2/)
+[![Python versions](https://img.shields.io/pypi/pyversions/django-utils2.svg?style=flat-square&labelColor=555&color=007ec6)](https://pypi.org/project/django-utils2/)
+[![Documentation](https://img.shields.io/readthedocs/django-utils-2/latest?style=flat-square&labelColor=555)](https://django-utils-2.readthedocs.io/en/latest/)
 
 ![The data__filling dropdown filter open in the Django admin sidebar, listing Avocado, Bacon, Cheddar, Corned Beef and Turkey](https://raw.githubusercontent.com/WoLpH/django-utils/master/docs/_static/screenshots/filters-sidebar.png)
 
