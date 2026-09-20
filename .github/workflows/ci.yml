@@ -25,7 +25,13 @@ jobs:
         with:
           activate-environment: true
       - run: uv pip install '.[tox]'
+      - name: Apply Ruff fixes to pull requests
+        if: github.event_name == 'pull_request'
+        run: tox -e ruff-fix
       - run: tox -e lint
+        env:
+          RUFF_OUTPUT_FORMAT: >-
+            ${{ github.event_name == 'pull_request' && 'github' || 'full' }}
 
   type-check:
     runs-on: ubuntu-latest
