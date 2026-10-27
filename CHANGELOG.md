@@ -1,5 +1,38 @@
 # Changelog
 
+## 4.1.3 (2026-10-28)
+
+Maintenance release. The only edit under `django_utils` is an import alias
+rename, nothing here alters runtime behaviour.
+
+### Security
+
+- The development lockfile pins `virtualenv` 21.14.13, `filelock` 4.2.4,
+  `uv` 0.13.4 and `certifi` 2026.10.19, which close the October 2026
+  advisories on those packages (the GHSA-394h-qwmc-48pf series and
+  GHSA-cx6f-vjhg-g3cc for virtualenv, GHSA-v4x8-3wr5-3wq8 for filelock,
+  GHSA-hq85-5cpj-mr62 for uv, PYSEC-2026-4320 for certifi). None of them is
+  a runtime dependency of `django_utils`, so installs of the package were
+  never exposed; only the test and tox environments were.
+- `[tool.uv] exclude-newer-package` gives those four packages a shorter soak
+  than the project-wide fourteen days. Dependabot's security job cannot
+  lift the cutoff itself, which is why its last ten runs failed to open a
+  fix.
+
+### Changed
+
+- The build backend requirement is now `uv_build>=0.11.0,<1` instead of
+  `<0.12`. The upper bound only ever stopped other build frontends and
+  distro packagers, who had to wait for a new release before they could
+  build an sdist with the `uv` their platform ships (see portalocker
+  PR #155). `uv` itself builds with its bundled backend regardless of the
+  bound, and CI building with the current `uv` on every run is the guard.
+- `import datetime` is spelled `import datetime as dt` in the debug template
+  tag and the tests, the alias ruff 0.17 expects (ICN001), and ty 0.0.87 no
+  longer reports the nested `class Meta` redeclarations in `base_models`,
+  which pyright already ignored. Both tools resolve unpinned in CI, so the
+  release workflow would have gone red on the lint and type-check jobs.
+
 ## 4.1.2 (2026-08-10)
 
 Maintenance release. No library code changed; nothing here alters runtime

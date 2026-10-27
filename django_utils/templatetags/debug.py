@@ -1,5 +1,5 @@
 import copy
-import datetime
+import datetime as dt
 import pprint
 import typing
 from collections.abc import Callable
@@ -155,10 +155,10 @@ class Formatter(_Formatter):
             for v in value
         ]
 
-    @_register(datetime.datetime, datetime.date)
+    @_register(dt.datetime, dt.date)
     def format_datetime(
         self,
-        value: datetime.date,
+        value: dt.date,
         depth: int,
         show_protected: bool,
         show_special: bool,
@@ -170,9 +170,9 @@ class Formatter(_Formatter):
         :return: a formatted string
 
         >>> formatter = Formatter()
-        >>> formatter(datetime.date(2000, 1, 2))
+        >>> formatter(dt.date(2000, 1, 2))
         '<date:2000-01-02>'
-        >>> formatter(datetime.datetime(2000, 1, 2, 3, 4, 5, 6))
+        >>> formatter(dt.datetime(2000, 1, 2, 3, 4, 5, 6))
         '<datetime:2000-01-02 03:04:05.000006>'
         """
         return f'<{value.__class__.__name__}:{value}>'

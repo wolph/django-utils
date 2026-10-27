@@ -1,5 +1,5 @@
 import contextlib
-import datetime
+import datetime as dt
 
 import pytest
 from django import http, template
@@ -76,7 +76,7 @@ def test_some_view():
     some_view(
         request,
         return_={
-            'now': datetime.datetime.now(),
+            'now': dt.datetime.now(),
         },
     )
 

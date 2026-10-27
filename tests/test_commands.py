@@ -1,5 +1,5 @@
 import argparse
-import datetime
+import datetime as dt
 
 import pytest
 from django_utils.management.commands import admin_autogen, settings
@@ -43,9 +43,9 @@ def test_settings_command_data(settings_command, output_type, show_keys):
         d='spam"eggs"test,something',
         e='spam"eggs"',
         f='spam,eggs',
-        g=datetime.datetime.now(),
-        h=datetime.timedelta(),
-        i=datetime.date.today(),
+        g=dt.datetime.now(),
+        h=dt.timedelta(),
+        i=dt.date.today(),
     )
     settings_command.render_output(data, output_type, show_keys)
 

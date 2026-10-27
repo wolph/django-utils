@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import re
 
 import pytest
@@ -149,7 +149,7 @@ def test_lookups_are_cached(rf, model_admin):
 def test_zero_timeout_disables_cache(rf, model_admin):
     models.Sandwich.objects.create(data={'filling': 'cheese'})
     filter_class = filters.JSONFieldFilter.create(
-        'data__filling', timeout=datetime.timedelta(0)
+        'data__filling', timeout=dt.timedelta(0)
     )
     instance, request = make_filter(filter_class, rf, model_admin)
     assert instance.get_lookups_cache_timeout() == 0.0
@@ -191,12 +191,12 @@ def test_create_custom_template_and_names():
         title='Filling',
         parameter_name='filling',
         template='custom.html',
-        timeout=datetime.timedelta(minutes=1),
+        timeout=dt.timedelta(minutes=1),
     )
     assert filter_class.title == 'Filling'
     assert filter_class.parameter_name == 'filling'
     assert filter_class.template == 'custom.html'
-    assert filter_class.timeout == datetime.timedelta(minutes=1)
+    assert filter_class.timeout == dt.timedelta(minutes=1)
 
 
 @pytest.mark.django_db

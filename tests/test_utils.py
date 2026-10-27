@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import decimal
 import json
 import uuid
@@ -9,8 +9,8 @@ from django_utils import utils
 
 def test_to_json_serialises_django_native_types():
     data = {
-        'when': datetime.datetime(2026, 1, 2, 3, 4, 5),
-        'day': datetime.date(2026, 1, 2),
+        'when': dt.datetime(2026, 1, 2, 3, 4, 5),
+        'day': dt.date(2026, 1, 2),
         'amount': decimal.Decimal('1.25'),
         'id': uuid.UUID('12345678-1234-5678-1234-567812345678'),
     }

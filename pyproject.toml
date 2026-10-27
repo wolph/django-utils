@@ -1,10 +1,10 @@
 [build-system]
-requires = ["uv_build>=0.11.0,<0.12"]
+requires = ["uv_build>=0.11.0,<1"]
 build-backend = "uv_build"
 
 [project]
 name = "django-utils2"
-version = "4.1.2"
+version = "4.1.3"
 description = "Django Utils is a module with some convenient utilities not included with the standard Django install"
 readme = "README.md"
 license = "BSD-3-Clause"
@@ -180,10 +180,24 @@ ignore-missing-imports = [
 [tool.ty.rules]
 unresolved-import = "ignore"
 
+# Nested `class Meta` on every model subclass redeclares the parent Meta, the
+# Django pattern pyright already ignores inline (reportIncompatibleVariableOverride).
+[[tool.ty.overrides]]
+include = ["django_utils/base_models.py"]
+[tool.ty.overrides.rules]
+invalid-attribute-override = "ignore"
+
 [tool.uv]
 exclude-newer = "14 days"
 # cryptography gets a shorter soak: waiting out the full two weeks keeps a
 # known-vulnerable version locked while the fix sits on PyPI (GHSA-g6cj-pr64-35w5
 # was published three days after cryptography 50.0.0 shipped). A week is still
 # long enough to catch a broken release.
-exclude-newer-package = { cryptography = "7 days" }
+exclude-newer-package = { certifi = "7 days", cryptography = "7 days", filelock = "7 days", uv = "7 days", virtualenv = "5 days" }
+# certifi, filelock and uv get the same week: their October 2026 advisories
+# (PYSEC-2026-4320 for certifi, GHSA-v4x8-3wr5-3wq8 for filelock,
+# GHSA-hq85-5cpj-mr62 for uv) were fixed eight to eleven days before this
+# release, inside the fourteen-day quarantine, and the Dependabot security job
+# cannot lift the cutoff itself. virtualenv gets five days because 21.14.9
+# fixed one batch of advisories and introduced GHSA-cx6f-vjhg-g3cc, which
+# 21.14.13 fixed six days before this release.
